@@ -60,17 +60,33 @@ The current repository is a clean, build-free static website hosted directly via
 morrow/
 ├── .github/
 │   └── workflows/
-│       └── pages.yml      # Automated GitHub Actions deployment to Pages
+│       └── pages.yml           # Automated GitHub Actions deployment to Pages
 ├── assets/
-│   └── favicon.svg        # Scalable SVG brand mark (M + rising sun)
-├── .gitignore             # Standard ignore rules
-├── index.html             # Accessible, semantic static landing page with theme selector
-├── README.md              # Project documentation & brand system
-├── robots.txt             # Search engine crawl directives
-├── script.js              # Vanilla JS for theme management and accessibility
-├── sitemap.xml            # XML sitemap
-└── styles.css             # Adaptive design tokens & stylesheet (WCAG AAA contrast)
+│   ├── favicon.svg             # Favicon-optimized SVG brand mark (16x16 / 32x32 crisp)
+│   ├── logo.svg                # Primary full-colour vector mark (transparent background)
+│   ├── logo-light-bg.svg       # Light-surface presentation squircle
+│   ├── logo-dark-bg.svg        # Dark-surface presentation squircle
+│   └── logo-monochrome.svg     # Single-tone monochrome mark (currentColor)
+├── .gitignore                  # Standard ignore rules
+├── index.html                  # Accessible, semantic static landing page with theme selector
+├── README.md                   # Project documentation & brand system
+├── robots.txt                  # Search engine crawl directives
+├── script.js                   # Vanilla JS for theme management and accessibility
+├── sitemap.xml                 # XML sitemap
+└── styles.css                  # Adaptive design tokens & stylesheet (WCAG AAA contrast)
 ```
+
+---
+
+## Brand Assets
+
+The approved brand vector assets are located in [`assets/`](assets/):
+
+1. **`assets/logo.svg`**: Primary full-colour vector mark on transparent background. Features the layered forest-green folds, sunrise disc, atmospheric glow, and illuminated ridge crests.
+2. **`assets/logo-light-bg.svg`**: Full-colour mark presented on a warm cream (`#FAF7F2`) squircle for app-icon or light-mode preview cards.
+3. **`assets/logo-dark-bg.svg`**: Full-colour mark presented on a soft charcoal (`#0F1412`) squircle for app-icon or dark-mode preview cards.
+4. **`assets/logo-monochrome.svg`**: Single-tone silhouette using `currentColor` for monochrome printing, single-ink placements, or high-contrast interfaces.
+5. **`assets/favicon.svg`**: Production favicon vector asset tuned for crisp legibility at small sizes (16×16 and 32×32).
 
 ---
 

@@ -1,0 +1,162 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="200 290 625 480" width="100%" height="100%" fill="none">
+  <defs>
+    <!-- Soft atmospheric morning glow behind the sun -->
+    <radialGradient id="sun-glow" cx="511" cy="420" r="145" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFF5D6" stop-opacity="0.95"/>
+      <stop offset="35%" stop-color="#FDE49E" stop-opacity="0.6"/>
+      <stop offset="70%" stop-color="#FCD574" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#FCD574" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Warm golden sunrise disc -->
+    <linearGradient id="sun-disc" x1="511" y1="331" x2="511" y2="515" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FEEDA9"/>
+      <stop offset="30%" stop-color="#FDC862"/>
+      <stop offset="70%" stop-color="#F79F28"/>
+      <stop offset="100%" stop-color="#EB8214"/>
+    </linearGradient>
+
+    <!-- Left pillar/mountain: deep forest summit to luminous sage underbelly -->
+    <linearGradient id="left-pillar-grad" x1="250" y1="304" x2="270" y2="755" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1B3B2B"/>
+      <stop offset="30%" stop-color="#224A35"/>
+      <stop offset="60%" stop-color="#467356"/>
+      <stop offset="85%" stop-color="#7B9E72"/>
+      <stop offset="100%" stop-color="#9EBD92"/>
+    </linearGradient>
+
+    <!-- Left pillar inner soft fold overlay -->
+    <linearGradient id="left-fold-grad" x1="211" y1="500" x2="350" y2="755" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#244E39" stop-opacity="0"/>
+      <stop offset="45%" stop-color="#4A7759" stop-opacity="0.5"/>
+      <stop offset="80%" stop-color="#7FA376" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#9EBB91" stop-opacity="0.95"/>
+    </linearGradient>
+
+    <!-- Right Pillar / Mountain (full continuous hill) -->
+    <linearGradient id="right-pillar-grad" x1="770" y1="305" x2="750" y2="755" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#183827"/>
+      <stop offset="25%" stop-color="#214A36"/>
+      <stop offset="55%" stop-color="#427052"/>
+      <stop offset="80%" stop-color="#729A6E"/>
+      <stop offset="100%" stop-color="#9BBA90"/>
+    </linearGradient>
+
+    <!-- Right pillar inner soft fold overlay -->
+    <linearGradient id="right-fold-grad" x1="811" y1="500" x2="680" y2="755" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#244E39" stop-opacity="0"/>
+      <stop offset="45%" stop-color="#4A7759" stop-opacity="0.45"/>
+      <stop offset="80%" stop-color="#7DA175" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#9CBD90" stop-opacity="0.95"/>
+    </linearGradient>
+
+    <!-- Center valley bowl (smooth organic U-shape) -->
+    <linearGradient id="valley-bowl-grad" x1="390" y1="410" x2="530" y2="648" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#7FA477"/>
+      <stop offset="25%" stop-color="#4B7757"/>
+      <stop offset="60%" stop-color="#27513B"/>
+      <stop offset="85%" stop-color="#183B2B"/>
+      <stop offset="100%" stop-color="#122F22"/>
+    </linearGradient>
+
+    <!-- Illuminated sunlit crest along the left-to-center ridge -->
+    <linearGradient id="crest-highlight" x1="365" y1="385" x2="555" y2="515" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.98"/>
+      <stop offset="35%" stop-color="#FFFDF5" stop-opacity="1"/>
+      <stop offset="75%" stop-color="#FCF3D4" stop-opacity="0.92"/>
+      <stop offset="100%" stop-color="#F2DFAB" stop-opacity="0.88"/>
+    </linearGradient>
+
+    <!-- Right foreground rolling wave / ribbon -->
+    <linearGradient id="right-wave-grad" x1="555" y1="420" x2="740" y2="660" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#193D2C"/>
+      <stop offset="25%" stop-color="#29553E"/>
+      <stop offset="55%" stop-color="#467657"/>
+      <stop offset="80%" stop-color="#6E986B"/>
+      <stop offset="95%" stop-color="#8DAF81"/>
+      <stop offset="100%" stop-color="#9EBA90"/>
+    </linearGradient>
+
+    <!-- Right crest subtle illumination -->
+    <linearGradient id="right-crest-highlight" x1="555" y1="515" x2="680" y2="395" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#F4E2B2" stop-opacity="0.9"/>
+      <stop offset="40%" stop-color="#FEFBEA" stop-opacity="0.75"/>
+      <stop offset="100%" stop-color="#A8C79C" stop-opacity="0.2"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 1. Soft atmospheric morning glow between peaks -->
+  <ellipse cx="511" cy="420" rx="145" ry="125" fill="url(#sun-glow)"/>
+
+  <!-- 2. Warm golden sunrise disc -->
+  <circle cx="511" cy="423" r="92" fill="url(#sun-disc)"/>
+
+  <!-- 3. Left Outer Pillar / Mountain -->
+  <path d="M 211 745
+           V 385
+           C 211 338 234 304 271 304
+           C 308 304 336 332 365 385
+           C 382 418 388 470 375 530
+           C 360 600 315 690 255 742
+           C 238 756 218 756 211 745 Z"
+        fill="url(#left-pillar-grad)"/>
+
+  <!-- Left pillar inner soft fold overlay -->
+  <path d="M 211 520
+           C 211 630 220 710 235 745
+           C 255 745 305 705 340 655
+           C 375 605 382 530 375 480
+           C 345 545 280 620 211 520 Z"
+        fill="url(#left-fold-grad)"/>
+
+  <!-- 4. Right Outer Pillar / Mountain (Smooth continuous hill matching left) -->
+  <path d="M 811 745
+           V 385
+           C 811 338 788 305 742 305
+           C 705 305 675 335 650 385
+           C 630 425 628 475 645 535
+           C 665 605 710 690 765 742
+           C 785 756 805 756 811 745 Z"
+        fill="url(#right-pillar-grad)"/>
+
+  <!-- Right pillar inner soft fold overlay -->
+  <path d="M 811 520
+           C 811 630 802 710 787 745
+           C 767 745 717 705 682 655
+           C 647 605 640 530 647 480
+           C 677 545 742 620 811 520 Z"
+        fill="url(#right-fold-grad)"/>
+
+  <!-- 5. Center Valley Bowl (Smooth organic hanging U-shape) -->
+  <path d="M 365 385
+           C 395 415 430 435 470 455
+           C 510 475 540 498 555 515
+           C 570 540 580 585 565 615
+           C 550 640 532 647 512 647
+           C 465 647 420 600 375 535
+           C 360 480 358 425 365 385 Z"
+        fill="url(#valley-bowl-grad)"/>
+
+  <!-- 6. Center-Right Rolling Wave / Ribbon (Flows over saddle into right leg) -->
+  <path d="M 555 515
+           C 580 470 615 418 668 395
+           C 725 398 765 428 785 485
+           C 802 535 802 620 788 740
+           C 765 745 725 715 682 645
+           C 648 580 612 535 555 515 Z"
+        fill="url(#right-wave-grad)"/>
+
+  <!-- 7. Illuminated Sun-Kissed Crest on Left Ridge -->
+  <path d="M 365 385
+           C 395 415 430 435 470 455
+           C 510 475 540 498 555 515"
+        stroke="url(#crest-highlight)" stroke-width="4.2" stroke-linecap="round" fill="none"/>
+
+  <!-- 8. Right Crest Highlight (Refined rim catching sunlight) -->
+  <path d="M 555 515
+           C 580 470 615 418 668 395"
+        stroke="url(#right-crest-highlight)" stroke-width="2.6" stroke-linecap="round" fill="none"/>
+
+  <!-- Direct sunlight apex glint at the saddle notch -->
+  <circle cx="555" cy="515" r="2.2" fill="#FFFDF4"/>
+</svg>
