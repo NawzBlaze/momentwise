@@ -139,13 +139,41 @@ object SessionClock {
         snapshot.copy(sessionDroppedOnBoot = false)
 
     /**
-     * After process death, resume the clock only if that package is still the
-     * one Usage Access last observed. Otherwise end the session quietly.
+     * After process death, keep the session when Usage Access has not reported
+     * a package yet. An empty window is not proof the user left. End it only
+     * when a different package is actually observed.
      */
     fun reconcileAfterRestart(snapshot: GuardSnapshot, observedPackage: String?): GuardSnapshot {
         if (snapshot.phase == GuardSnapshot.Phase.NONE) return snapshot
-        if (observedPackage != null && observedPackage == snapshot.activePackage) return snapshot
+        if (observedPackage == null || observedPackage == snapshot.activePackage) return snapshot
         return endSession(snapshot)
+    }
+
+    /**
+     * The pause UI is gone after process death. If the user had not chosen yet,
+     * or a reminder was already due, show that same pause again. This is not a
+     * new opening and does not reset the interval.
+     */
+    fun recoverUnansweredPause(
+        snapshot: GuardSnapshot,
+        foregroundPackage: String?,
+        nowMillis: Long,
+        today: String,
+        remindersEnabled: Boolean,
+    ): Pair<GuardSnapshot, GuardCommand> {
+        val cleared = clearStaleDismissals(snapshot, today)
+        val pkg = cleared.activePackage
+        if (pkg == null || foregroundPackage == null || pkg != foregroundPackage) {
+            return cleared to GuardCommand.None
+        }
+        if (cleared.phase == GuardSnapshot.Phase.AWAITING_OPENING) {
+            return cleared to GuardCommand.ShowOpening(pkg)
+        }
+        if (cleared.phase != GuardSnapshot.Phase.CONTINUING) return cleared to GuardCommand.None
+        if (!remindersEnabled || cleared.dismissedOn(pkg, today)) return cleared to GuardCommand.None
+        val dueAt = cleared.nextReminderAtMillis ?: return cleared to GuardCommand.None
+        if (nowMillis < dueAt) return cleared to GuardCommand.None
+        return cleared.copy(reminderPresentedFor = dueAt) to GuardCommand.ShowReminder(pkg)
     }
 
     fun clearStaleDismissals(snapshot: GuardSnapshot, today: String): GuardSnapshot {

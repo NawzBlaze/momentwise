@@ -68,6 +68,7 @@ fun AppsScreen(
     val notePending by viewModel.sampleMigrationNotePending.collectAsStateWithLifecycle()
     val colors = LocalMomentwiseColors.current
     val grants = rememberGrantStatus()
+    val monitoringPaused by viewModel.monitoringPaused.collectAsStateWithLifecycle()
     var query by remember { mutableStateOf("") }
     val loaded = catalog.orEmpty()
     val filtered = loaded.filter { entry ->
@@ -139,6 +140,8 @@ fun AppsScreen(
             items(installed, key = { it.rule.appId }) { entry ->
                 AppRow(
                     entry = entry,
+                    monitoringPaused = monitoringPaused,
+                    canMonitor = grants.canMonitor,
                     onConfigure = { onConfigureRule(entry.rule.appId) },
                     onToggle = { enabled ->
                         if (!enabled) {
@@ -165,6 +168,8 @@ fun AppsScreen(
                 items(missing, key = { "missing-${it.rule.appId}" }) { entry ->
                     AppRow(
                         entry = entry,
+                        monitoringPaused = monitoringPaused,
+                        canMonitor = grants.canMonitor,
                         onConfigure = { onConfigureRule(entry.rule.appId) },
                         onToggle = { enabled ->
                             if (!enabled) viewModel.setDisplayedRuleEnabled(entry.rule, false)
@@ -212,15 +217,19 @@ private fun SearchField(query: String, onQueryChange: (String) -> Unit) {
 @Composable
 private fun AppRow(
     entry: CatalogEntry,
+    monitoringPaused: Boolean,
+    canMonitor: Boolean,
     onConfigure: () -> Unit,
     onToggle: (Boolean) -> Unit,
 ) {
     val rule = entry.rule
     val colors = LocalMomentwiseColors.current
-    val statusText = if (!entry.installed) {
-        stringResource(R.string.apps_status_not_installed)
-    } else {
-        rule.appsRowStatusLabel(
+    val activelyMonitoring = entry.installed && rule.enabled && canMonitor && !monitoringPaused
+    val statusText = when {
+        !entry.installed -> stringResource(R.string.apps_status_not_installed)
+        rule.enabled && monitoringPaused -> stringResource(R.string.apps_status_paused)
+        rule.enabled && !canMonitor -> stringResource(R.string.apps_status_needs_permission)
+        else -> rule.appsRowStatusLabel(
             notGuarded = stringResource(R.string.apps_status_not_guarded),
             openingOnly = stringResource(R.string.apps_status_opening_only),
         )
@@ -251,7 +260,7 @@ private fun AppRow(
             Text(
                 text = statusText,
                 style = MaterialTheme.typography.bodySmall,
-                color = if (rule.enabled && entry.installed) colors.statusGreen else colors.textTertiary,
+                color = if (activelyMonitoring) colors.statusGreen else colors.textTertiary,
             )
         }
         IconButton(onClick = onConfigure, modifier = Modifier.size(34.dp)) {

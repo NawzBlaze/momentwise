@@ -58,6 +58,9 @@ class MomentwiseViewModel(
     val guardingDisclosureAccepted: StateFlow<Boolean> = appSettingsRepository.guardingDisclosureAccepted
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
+    val monitoringPaused: StateFlow<Boolean> = appSettingsRepository.monitoringPaused
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
     val session: StateFlow<GuardSnapshot> = guardSessions.session
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), GuardSnapshot())
 
@@ -95,6 +98,10 @@ class MomentwiseViewModel(
 
     fun acceptGuardingDisclosure() = viewModelScope.launch {
         appSettingsRepository.setGuardingDisclosureAccepted(true)
+    }
+
+    fun setMonitoringPaused(paused: Boolean) = viewModelScope.launch {
+        appSettingsRepository.setMonitoringPaused(paused)
     }
 
     fun dismissSampleMigrationNote() = viewModelScope.launch {

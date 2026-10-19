@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -54,7 +55,7 @@ fun PauseScreen(
         Image(
             painter = painterResource(R.drawable.ic_logo),
             contentDescription = null,
-            modifier = Modifier.width(64.dp).height(49.dp),
+            modifier = Modifier.size(64.dp),
         )
         VerticalSpacer(16)
         Text(

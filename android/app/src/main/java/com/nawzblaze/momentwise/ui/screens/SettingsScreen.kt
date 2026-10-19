@@ -37,6 +37,7 @@ import com.nawzblaze.momentwise.R
 import com.nawzblaze.momentwise.monitoring.GrantIntents
 import com.nawzblaze.momentwise.data.model.ThemeMode
 import com.nawzblaze.momentwise.ui.components.MomentwiseTopBar
+import com.nawzblaze.momentwise.ui.components.RuleSwitch
 import com.nawzblaze.momentwise.ui.components.SectionCard
 import com.nawzblaze.momentwise.ui.components.ThemeSegmentedControl
 import com.nawzblaze.momentwise.ui.components.VerticalSpacer
@@ -55,6 +56,7 @@ fun SettingsScreen(
     snackbarHostState: SnackbarHostState,
 ) {
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
+    val monitoringPaused by viewModel.monitoringPaused.collectAsStateWithLifecycle()
     val colors = LocalMomentwiseColors.current
     val context = LocalContext.current
     val grants = rememberGrantStatus()
@@ -135,6 +137,43 @@ fun SettingsScreen(
                     lightLabel = stringResource(R.string.settings_theme_light),
                     darkLabel = stringResource(R.string.settings_theme_dark),
                 )
+            }
+
+            VerticalSpacer(20)
+            Text(
+                stringResource(R.string.settings_monitoring),
+                style = MaterialTheme.typography.titleSmall,
+                color = colors.textSecondary,
+            )
+            VerticalSpacer(8)
+            SectionCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            stringResource(R.string.settings_monitoring_name),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        VerticalSpacer(2)
+                        Text(
+                            stringResource(R.string.settings_monitoring_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.textTertiary,
+                        )
+                        VerticalSpacer(4)
+                        Text(
+                            stringResource(
+                                if (monitoringPaused) R.string.settings_monitoring_off else R.string.settings_monitoring_on,
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (monitoringPaused) colors.textTertiary else colors.statusGreen,
+                        )
+                    }
+                    RuleSwitch(
+                        checked = monitoringPaused,
+                        onCheckedChange = viewModel::setMonitoringPaused,
+                    )
+                }
             }
 
             VerticalSpacer(20)

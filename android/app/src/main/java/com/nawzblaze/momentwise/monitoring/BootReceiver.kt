@@ -24,7 +24,8 @@ class BootReceiver : BroadcastReceiver() {
             try {
                 app.container.guardSessions.update { SessionClock.onBoot(it) }
                 val enabled = app.container.appRuleRepository.rules.first().any { it.enabled }
-                if (enabled && GrantChecks.read(app).canMonitor) {
+                val paused = app.container.appSettingsRepository.monitoringPaused.first()
+                if (MonitoringPolicy.shouldRun(enabled, GrantChecks.read(app).canMonitor, paused)) {
                     MonitoringService.start(app)
                 }
             } finally {

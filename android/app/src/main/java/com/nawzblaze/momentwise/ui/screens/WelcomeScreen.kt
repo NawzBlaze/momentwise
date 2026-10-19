@@ -62,8 +62,7 @@ fun WelcomeScreen(
                 painter = painterResource(R.drawable.ic_logo),
                 contentDescription = stringResource(R.string.app_name),
                 modifier = Modifier
-                    .width(112.dp)
-                    .height(86.dp),
+                    .size(112.dp),
             )
             VerticalSpacer(12)
             Text(

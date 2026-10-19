@@ -31,6 +31,7 @@ private object Keys {
     val SAMPLE_MIGRATED = booleanPreferencesKey("sample_catalog_migrated.v1")
     val SAMPLE_NOTE = booleanPreferencesKey("sample_migration_note.v1")
     val DISCLOSURE_ACCEPTED = booleanPreferencesKey("guarding_disclosure_accepted.v1")
+    val MONITORING_PAUSED = booleanPreferencesKey("monitoring_paused.v1")
     val GUARD_SESSION = stringPreferencesKey("guard_session_json.v1")
 }
 
@@ -93,6 +94,10 @@ class DataStoreAppSettingsRepository(
         prefs[Keys.DISCLOSURE_ACCEPTED] ?: false
     }
 
+    override val monitoringPaused: Flow<Boolean> = dataStore.data.map { prefs ->
+        prefs[Keys.MONITORING_PAUSED] ?: false
+    }
+
     override suspend fun setThemeMode(mode: ThemeMode) {
         dataStore.edit { it[Keys.THEME_MODE] = mode.name }
     }
@@ -107,6 +112,10 @@ class DataStoreAppSettingsRepository(
 
     override suspend fun setGuardingDisclosureAccepted(accepted: Boolean) {
         dataStore.edit { it[Keys.DISCLOSURE_ACCEPTED] = accepted }
+    }
+
+    override suspend fun setMonitoringPaused(paused: Boolean) {
+        dataStore.edit { it[Keys.MONITORING_PAUSED] = paused }
     }
 }
 

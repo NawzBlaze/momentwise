@@ -5,9 +5,11 @@ This document records the platform constraints for Momentwise's core behaviour
 checking in later) and the least intrusive design that can satisfy it.
 
 It is a plan, not a claim that the behaviour already works on a device.
-The intervention code is now in the app. It has not been run on an emulator
-or on API 34 / 35 hardware in this workspace. Treat every runtime claim below
-as unverified until that happens.
+The intervention code is now in the app. A signed public APK is not published:
+the release workflow refuses to upload one until a stable keystore is stored as
+Actions secrets, outside Git. The website does not link a download that does
+not exist. Treat every runtime claim below as unverified until it is run on
+hardware.
 
 ## Intervention status (19 October 2026)
 
@@ -17,7 +19,8 @@ Implemented in the project, not device-proven:
 - Disclosure before a rule is enabled, with a decline path. Usage Access, display over other apps, and notifications are explained separately. Overlay can be skipped; the pause then uses a notification.
 - Monitoring foreground service (`specialUse`) polls `queryEvents` only while a rule is enabled and Usage Access plus notifications are allowed. The event reducer is unit-tested: empty window, self-package ignored while a pause is showing, self-package as a leave otherwise, duplicate resume, app switch, launcher leave.
 - Pause UI: opaque overlay when display-over-other-apps is allowed, otherwise a notification that opens `PauseActivity` in its own task. Quit is `ACTION_MAIN` + `CATEGORY_HOME`, sent before the overlay is removed. It does not force-stop. Opening Momentwise itself counts as leaving, so the next open of a guarded app is a new pause. While the pause is showing, Momentwise's own package is ignored so the pause does not retrigger.
-- Reminder session and dismiss-for-today are persisted. A boot receiver drops an in-progress session and can restart monitoring. Process-death recovery is coded and unit-tested, not exercised on a device.
+- Reminder session and dismiss-for-today are persisted. A boot receiver drops an in-progress session and can restart monitoring only when a rule is enabled, grants remain, and monitoring is not paused. After process death, an unanswered opening or a due reminder is shown again if that app is still in front. An empty usage window does not end the session. That decision is unit-tested, not exercised on a device.
+- Settings can pause monitoring without deleting rules. Revoking Usage Access or notifications also stops the monitor.
 
 Not done, on purpose:
 

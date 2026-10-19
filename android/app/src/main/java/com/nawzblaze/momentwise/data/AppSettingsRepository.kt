@@ -13,8 +13,12 @@ interface AppSettingsRepository {
     val sampleMigrationNotePending: Flow<Boolean>
     val guardingDisclosureAccepted: Flow<Boolean>
 
+    /** When true, saved rules stay enabled but the monitor does not run. */
+    val monitoringPaused: Flow<Boolean>
+
     suspend fun setThemeMode(mode: ThemeMode)
     suspend fun setOnboardingCompleted(completed: Boolean)
     suspend fun setSampleMigrationNotePending(pending: Boolean)
     suspend fun setGuardingDisclosureAccepted(accepted: Boolean)
+    suspend fun setMonitoringPaused(paused: Boolean)
 }
