@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" fill="none">
+  <rect width="32" height="32" rx="8" fill="#12151B"/>
+  <!-- Calming circle representing presence and open space -->
+  <circle cx="16" cy="16" r="8.5" stroke="#E2E8F0" stroke-width="1.75" stroke-linecap="round" stroke-dasharray="38 12"/>
+  <!-- Gentle center mark representing pause and intention -->
+  <circle cx="16" cy="16" r="2" fill="#94A3B8"/>
+</svg>
