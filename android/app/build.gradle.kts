@@ -66,8 +66,10 @@ dependencies {
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
-    // JVM unit tests see stub org.json inside android.jar (methods throw or
-    // return defaults). The device build keeps using the framework copy.
+    // android.jar's org.json is a stub. With unitTests.returnDefaultValues,
+    // JSONObject.put returns null and JSONArray does not reject bad input, so
+    // AppRuleJsonTest NPEs or fails assertNull. The device build keeps the
+    // framework copy; only the JVM tests need the real library.
     testImplementation(libs.org.json)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
