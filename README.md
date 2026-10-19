@@ -6,13 +6,13 @@ Momentwise is an intentional phone-use companion being designed to help people i
 
 ---
 
-## Current Status: Android intervention coded, not device-proven
+## Current Status: native app coded, signed APK not published
 
-The public site and the browser prototype are still the brand and interaction reference. They are unchanged.
+The public site describes the Android app. It does not offer an APK download, because no signed release file has been published. A browser design reference remains at `/prototype/` until that file exists and the download URL has been checked. It is not the product.
 
-The native project in [`android/`](android/) now lists launchable apps, explains Usage Access, display-over-other-apps, and notifications before a rule is enabled, and can run a foreground monitor plus a pause. Quit returns to the home screen. It does not force-stop other apps. None of that has been run on a device or emulator in this workspace. Constraints and the honest limits are in [`ANDROID_IMPLEMENTATION_PLAN.md`](ANDROID_IMPLEMENTATION_PLAN.md).
+The native project in [`android/`](android/) lists launchable apps, explains Usage Access, display-over-other-apps, and notifications before a rule is enabled, and can run a foreground monitor plus a pause. Settings can pause monitoring without deleting rules. Quit returns to the home screen. It does not force-stop other apps. That pause path has not been proven on an API 34 or API 35 device here. Constraints are in [`ANDROID_IMPLEMENTATION_PLAN.md`](ANDROID_IMPLEMENTATION_PLAN.md).
 
-Proposed application ID: `com.nawzblaze.momentwise`. The app is not published under that ID.
+Proposed application ID: `com.nawzblaze.momentwise`. The app is not published under that ID, and it is not on Google Play.
 
 - **Public Landing Page:** [https://nawzblaze.github.io/momentwise/](https://nawzblaze.github.io/momentwise/)
 - **Interactive Mobile UI Prototype:** [https://nawzblaze.github.io/momentwise/prototype/](https://nawzblaze.github.io/momentwise/prototype/)

@@ -56,6 +56,8 @@
     <string name="apps_configure">Configure %1$s</string>
     <string name="apps_not_installed_heading">Not installed</string>
     <string name="apps_status_not_installed">Not on this device</string>
+    <string name="apps_status_paused">Enabled • monitoring paused</string>
+    <string name="apps_status_needs_permission">Enabled • not monitoring yet</string>
     <string name="apps_tip">Each app has its own independent rule, opening prompt, and reminder schedule. Enabling one asks for access only after you read why.</string>
     <string name="apps_status_not_guarded">Not guarded</string>
     <string name="apps_status_opening_only">Rule active • Opening pause only</string>
@@ -129,7 +131,7 @@
     <string name="settings_reset_confirm_title">Reset all app rules?</string>
     <string name="settings_reset_confirm_body">This clears saved rules and any in-progress check-in stored on this device. It does not change other apps.</string>
     <string name="settings_reset_confirm">Reset</string>
-    <string name="settings_version_value">0.2.0-intervention</string>
+    <string name="settings_version_value">0.3.0</string>
     <string name="settings_version_label">Version</string>
     <string name="preview_quit_body">You paused and chose not to open %1$s. In the native app this returns you to your home screen. It does not force-stop the other app.</string>
     <string name="preview_continue_with_reminder">Preview only. Continuing into %1$s would schedule a check-in in %2$d minutes. This preview does not start one.</string>
@@ -156,6 +158,11 @@
     <string name="toast_preview_app_closed">App closed. Intentional choice logged.</string>
 
     <!-- Access and pause -->
+    <string name="settings_monitoring">Monitoring</string>
+    <string name="settings_monitoring_name">Pause monitoring</string>
+    <string name="settings_monitoring_desc">Saved rules stay as they are. While this is on, Momentwise does not watch for guarded apps or show a pause.</string>
+    <string name="settings_monitoring_on">Monitoring on</string>
+    <string name="settings_monitoring_off">Monitoring paused</string>
     <string name="settings_access">Access</string>
     <string name="settings_access_name">What Momentwise can see</string>
     <string name="settings_access_desc">These are off until you allow them. Declining leaves Momentwise as a configuration app. Opening a system screen does not grant access by itself.</string>

@@ -14,10 +14,22 @@ android {
         applicationId = "com.nawzblaze.momentwise"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.2.0-intervention"
+        versionCode = 3
+        versionName = "0.3.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    val releaseKeystorePath = System.getenv("MOMENTWISE_KEYSTORE_PATH")
+    if (!releaseKeystorePath.isNullOrBlank()) {
+        signingConfigs {
+            create("release") {
+                storeFile = file(releaseKeystorePath)
+                storePassword = System.getenv("MOMENTWISE_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("MOMENTWISE_KEY_ALIAS")
+                keyPassword = System.getenv("MOMENTWISE_KEY_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
@@ -25,8 +37,11 @@ android {
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
+                "proguard-rules.pro",
             )
+            if (!releaseKeystorePath.isNullOrBlank()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 
@@ -73,4 +88,10 @@ dependencies {
     testImplementation(libs.org.json)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
+
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.test.espresso)
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
 }

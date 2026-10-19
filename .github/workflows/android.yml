@@ -46,7 +46,7 @@ jobs:
           HEAD_SHA: ${{ github.sha }}
         run: |
           set +e
-          ./gradlew :app:testDebugUnitTest :app:assembleDebug :app:lintDebug --continue --stacktrace --no-daemon > "$RUNNER_TEMP/gradle.log" 2>&1
+          ./gradlew :app:testDebugUnitTest :app:assembleDebug :app:assembleRelease :app:assembleDebugAndroidTest :app:lintDebug --continue --stacktrace --no-daemon > "$RUNNER_TEMP/gradle.log" 2>&1
           code=$?
           python3 - "$RUNNER_TEMP/gradle.log" "$RUNNER_TEMP/excerpt.md" "$code" <<'PY'
           import sys

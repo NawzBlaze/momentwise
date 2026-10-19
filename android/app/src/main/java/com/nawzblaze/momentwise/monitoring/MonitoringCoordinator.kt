@@ -14,18 +14,20 @@ object MonitoringCoordinator {
 
     fun install(app: MomentwiseApplication) {
         app.applicationScope.launch {
-            app.container.appRuleRepository.rules.collect {
-                sync(app)
-            }
+            app.container.appRuleRepository.rules.collect { sync(app) }
+        }
+        app.applicationScope.launch {
+            app.container.appSettingsRepository.monitoringPaused.collect { sync(app) }
         }
     }
 
     suspend fun sync(app: MomentwiseApplication) {
         val rules = app.container.appRuleRepository.rules.first()
+        val paused = app.container.appSettingsRepository.monitoringPaused.first()
         val grants = GrantChecks.read(app)
-        if (rules.any { it.enabled } && grants.canMonitor) {
+        if (MonitoringPolicy.shouldRun(rules.any { it.enabled }, grants.canMonitor, paused)) {
             MonitoringService.start(app)
-        } else if (rules.none { it.enabled }) {
+        } else {
             MonitoringService.stop(app)
         }
     }

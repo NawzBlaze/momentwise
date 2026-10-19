@@ -1,7 +1,7 @@
 # Momentwise for Android
 
-Native foundation for Momentwise. The website and the browser prototype at the
-repository root are unchanged and remain the visual reference.
+Native Android app for Momentwise. The public site is the product page. The
+browser files under `prototype/` are a design reference, not the app.
 
 Proposed application ID: `com.nawzblaze.momentwise`.
 This build is not published under that ID.
@@ -36,10 +36,31 @@ Debug APK: `android/app/build/outputs/apk/debug/app-debug.apk`.
 
 GitHub Actions workflow: [`.github/workflows/android.yml`](../.github/workflows/android.yml).
 That is the reproducible build for this milestone. A local SDK is not assumed.
-A green run means `testDebugUnitTest`, `assembleDebug`, and `lintDebug` succeeded
-on Ubuntu with JDK 17 and SDK 35. It is not a device or emulator result. It does
-not prove that a pause appears, that Quit returns home, or that a session
-survives process death.
+A green unit-test run means `testDebugUnitTest`, `assembleDebug`, `assembleRelease`,
+`assembleDebugAndroidTest`, and `lintDebug` succeeded on Ubuntu with JDK 17 and
+SDK 35. `assembleRelease` without signing secrets produces an unsigned APK. That
+is not a public release. A separate emulator workflow runs
+`connectedDebugAndroidTest` on API 34 and API 35 when it is green. A green
+emulator run is still not a physical-device result, and it does not prove that a
+pause appears over another app.
+
+## Signed release
+
+The release workflow is `.github/workflows/android-release.yml`. It runs on a
+`v*` tag or by hand. It publishes nothing unless these Actions secrets exist:
+
+- `MOMENTWISE_KEYSTORE_BASE64` — base64 of a `.jks` created once and backed up outside Git
+- `MOMENTWISE_KEYSTORE_PASSWORD`
+- `MOMENTWISE_KEY_ALIAS`
+- `MOMENTWISE_KEY_PASSWORD`
+
+Do not commit the keystore or the passwords. Do not generate a new key on every
+build. After a signed `Momentwise.apk` is attached to a GitHub Release and the
+URL below downloads, the website can point at it:
+
+`https://github.com/NawzBlaze/momentwise/releases/latest/download/Momentwise.apk`
+
+That file is not published yet.
 
 ## Layout
 
