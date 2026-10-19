@@ -15,7 +15,8 @@ import kotlinx.coroutines.launch
 class DebugRuleBridge : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
         if (intent?.action != ACTION) return
-        val packageName = intent.getStringExtra(EXTRA_PACKAGE)?.takeIf { it.isNotBlank() } ?: return
+        val packageName = (intent.getStringExtra(EXTRA_PACKAGE) ?: intent.getStringExtra("package"))
+            ?.takeIf { it.isNotBlank() } ?: return
         val label = intent.getStringExtra(EXTRA_LABEL)?.ifBlank { null } ?: packageName
         val pending = goAsync()
         val app = context.applicationContext as MomentwiseApplication
@@ -40,7 +41,7 @@ class DebugRuleBridge : BroadcastReceiver() {
 
     companion object {
         const val ACTION = "com.nawzblaze.momentwise.DEBUG_ENABLE_RULE"
-        const val EXTRA_PACKAGE = "package"
+        const val EXTRA_PACKAGE = "target_package"
         const val EXTRA_LABEL = "label"
     }
 }

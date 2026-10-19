@@ -62,7 +62,7 @@ jobs:
             echo
             echo '```'
             if [ -f "$log" ]; then
-              grep -E 'FAILED|FAILURE:|What went wrong|e: |error:|Exception|BUILD ' "$log" | tail -n 80
+              grep -E 'FAILED|FAILURE:|What went wrong|e: |error:|Exception|BUILD |not posted|not delivered|not allowed|AssertionError|MomentwiseDebug|foreground start' "$log" | tail -n 80
             else
               echo "No emulator log was written."
             fi

@@ -9,5 +9,9 @@
                 <action android:name="com.nawzblaze.momentwise.DEBUG_ENABLE_RULE" />
             </intent-filter>
         </receiver>
+        <activity
+            android:name=".debug.DebugRuleActivity"
+            android:exported="true"
+            android:theme="@android:style/Theme.Material.Light.NoActionBar" />
     </application>
 </manifest>

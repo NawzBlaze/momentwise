@@ -1,9 +1,9 @@
 package com.nawzblaze.momentwise
 
-import android.content.Intent
 import android.os.ParcelFileDescriptor
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -17,42 +17,40 @@ class CrossAppPauseTest {
 
     @Test
     fun openingTheFixtureShowsThePauseNotification() {
-        val instrumentation = InstrumentationRegistry.getInstrumentation()
         val target = "com.nawzblaze.momentwise.fixture"
 
-        shell("pm grant $APP android.permission.POST_NOTIFICATIONS")
+        val grant = shell("pm grant $APP android.permission.POST_NOTIFICATIONS")
+        assertFalse("Notification grant failed: $grant", grant.contains("Exception") || grant.contains("Error"))
         shell("appops set $APP GET_USAGE_STATS allow")
+        shell("cmd appops set $APP GET_USAGE_STATS allow")
         // Leave overlay off so the supported fallback is a notification we can read.
         shell("appops set $APP SYSTEM_ALERT_WINDOW deny")
+        val usage = shell("appops get $APP GET_USAGE_STATS")
+        assertTrue("Usage Access was not allowed: $usage", usage.contains("allow"))
 
-        val launch = instrumentation.targetContext.packageManager.getLaunchIntentForPackage(APP)
-            ?: Intent(Intent.ACTION_MAIN).setClassName(APP, "$APP.MainActivity")
-        launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        instrumentation.targetContext.startActivity(launch)
-        Thread.sleep(2_000)
-
-        shell(
-            "am broadcast -a com.nawzblaze.momentwise.DEBUG_ENABLE_RULE " +
-                "-n $APP/.debug.DebugRuleBridge " +
-                "--es package $target --es label Fixture",
+        val enable = shell(
+            "am start -W -n $APP/.debug.DebugRuleActivity " +
+                "--es target_package $target --es label Fixture",
         )
+        assertTrue("Could not enable the fixture rule: $enable", enable.contains("Status: ok") || enable.contains("ok"))
 
         assertTrue(
-            "Monitoring notification was not posted. dumpsys tail:\n${notificationTail()}",
+            "Monitoring notification was not posted.\n${diagnostics()}",
             waitForNotification("Momentwise is guarding"),
         )
 
         shell("input keyevent KEYCODE_HOME")
-        shell("am start -n $target/.FixtureActivity")
+        val opened = shell("am start -W -n $target/.FixtureActivity")
+        assertTrue("Fixture did not open: $opened", opened.contains("ok") || opened.contains("Status: ok"))
 
         assertTrue(
-            "Opening notice was not delivered. dumpsys tail:\n${notificationTail()}",
+            "Opening notice was not delivered.\n${diagnostics()}",
             waitForNotification("What brought you here?"),
         )
     }
 
     private fun waitForNotification(text: String): Boolean {
-        val deadline = System.currentTimeMillis() + 25_000
+        val deadline = System.currentTimeMillis() + 30_000
         while (System.currentTimeMillis() < deadline) {
             if (notificationDump().contains(text)) return true
             Thread.sleep(1_000)
@@ -61,9 +59,20 @@ class CrossAppPauseTest {
     }
 
     private fun notificationDump(): String =
-        shell("sh -c 'dumpsys notification --noredact | grep -F -e \"Momentwise is guarding\" -e \"What brought you here?\" || true'")
+        shell(
+            "sh -c 'dumpsys notification --noredact | grep -a -F -e \"Momentwise is guarding\" -e \"What brought you here?\" -e \"A pause is waiting\" || true'",
+        )
 
-    private fun notificationTail(): String = notificationDump().takeLast(1_500)
+    private fun diagnostics(): String {
+        val notes = notificationDump().takeLast(1_500)
+        val service = shell("dumpsys activity services $APP").lineSequence()
+            .filter { it.contains("MonitoringService") || it.contains("app=") }
+            .take(12)
+            .joinToString("\n")
+        val log = shell("logcat -d -t 60 -s Momentwise:I Momentwise:W MomentwiseDebug:I MomentwiseDebug:W")
+            .takeLast(2_000)
+        return "notifications:\n$notes\nservice:\n$service\nlog:\n$log"
+    }
 
     private fun shell(command: String): String {
         val automation = InstrumentationRegistry.getInstrumentation().uiAutomation

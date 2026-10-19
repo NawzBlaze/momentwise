@@ -9,6 +9,7 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
@@ -369,7 +370,8 @@ class MonitoringService : Service() {
                 startForeground(NotificationChannels.MONITORING_NOTIFICATION_ID, notification)
             }
             true
-        } catch (_: Exception) {
+        } catch (error: Exception) {
+            Log.w(TAG, "startForeground failed", error)
             MonitorPresence.markStartFailed(this, System.currentTimeMillis())
             stopSelf()
             false
@@ -420,6 +422,7 @@ class MonitoringService : Service() {
     private fun sessions() = app().container.guardSessions
 
     companion object {
+        private const val TAG = "Momentwise"
         private const val POLL_INTERVAL_MILLIS = 1_000L
         private const val LAUNCHER_CACHE_MILLIS = 30_000L
         private const val BEAT_EVERY_TICKS = 5
@@ -428,9 +431,11 @@ class MonitoringService : Service() {
             val intent = Intent(context, MonitoringService::class.java)
             try {
                 ContextCompat.startForegroundService(context, intent)
-            } catch (_: Exception) {
+            } catch (error: Exception) {
                 // A background start can be rejected. The next time Momentwise
                 // is in the foreground, or the boot receiver, tries again.
+                Log.w(TAG, "foreground start rejected", error)
+                MonitorPresence.markStartFailed(context, System.currentTimeMillis())
             }
         }
 
