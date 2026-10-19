@@ -1,7 +1,9 @@
 name: Fetch failed Android log
 
 # One-shot relay. This workspace cannot read Actions log blobs. The runner can.
+# pull_request is only so this branch can run it; the file is removed after the excerpt lands.
 on:
+  pull_request:
   workflow_dispatch:
 
 permissions:
