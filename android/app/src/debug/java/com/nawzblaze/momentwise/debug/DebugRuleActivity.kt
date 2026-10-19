@@ -19,25 +19,41 @@ import kotlin.concurrent.thread
  * foreground-service start. This activity does the same rule write while
  * Momentwise is in front. Debug source set only.
  *
- * The worker does not block the main thread: API 34 kills the process if
- * [android.app.Service.startForeground] cannot run. It also does not keep the
- * Activity, so a destroyed screen cannot race the file write.
+ * The worker starts only after resume, and not on the main thread. Starting
+ * the service during [onCreate] raced the activity launch: API 34 and API 35
+ * then killed the process because [android.app.Service.startForeground] had
+ * not run yet. The worker does not keep this Activity.
  */
 class DebugRuleActivity : Activity() {
+    private var packageName: String? = null
+    private var label: String? = null
+    private var scheduled = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val packageName = intent.getStringExtra(DebugRuleBridge.EXTRA_PACKAGE)
+        packageName = intent.getStringExtra(DebugRuleBridge.EXTRA_PACKAGE)
             ?: intent.getStringExtra("package")
-        val label = intent.getStringExtra(DebugRuleBridge.EXTRA_LABEL)?.ifBlank { null }
-            ?: packageName
-        if (packageName.isNullOrBlank() || label == null) {
+        label = intent.getStringExtra(DebugRuleBridge.EXTRA_LABEL)?.ifBlank { null } ?: packageName
+        if (packageName.isNullOrBlank() || label.isNullOrBlank()) {
             Log.w(TAG, "missing package extra")
             finish()
             return
         }
         setContentView(TextView(this).apply { text = "Enabling rule" })
-        val started = startEnable(application as MomentwiseApplication, packageName, label)
-        if (!started) Log.i(TAG, "enable already running")
+    }
+
+    override fun onResume() {
+        super.onResume()
+        val packageName = packageName ?: return
+        val label = label ?: return
+        if (scheduled) return
+        scheduled = true
+        val app = application as MomentwiseApplication
+        // After this frame, so launch work is not still occupying the main thread.
+        window.decorView.post {
+            val started = startEnable(app, packageName, label)
+            if (!started) Log.i(TAG, "enable already running")
+        }
     }
 
     companion object {
