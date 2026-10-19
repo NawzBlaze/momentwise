@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Window backgrounds shown before Compose renders the first frame. -->
+    <color name="momentwise_background_light">#FAF7F2</color>
+    <color name="momentwise_background_dark">#0F1412</color>
+</resources>

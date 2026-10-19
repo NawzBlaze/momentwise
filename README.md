@@ -6,11 +6,13 @@ Momentwise is an intentional phone-use companion being designed to help people i
 
 ---
 
-## Current Status: Pre-development
+## Current Status: Android foundation started
 
-This repository contains the **brand foundation and adaptive static public landing page**.
+The public site and the browser prototype are still the brand and interaction reference. They are unchanged.
 
-The actual Momentwise application has **not** been started or built yet. No mobile code, background accessibility services, app-monitoring logic, databases, or client-side application logic are present in this milestone.
+A native Android project now lives in [`android/`](android/). It is a Jetpack Compose foundation: theme, navigation, per-app rules, on-device storage, and unit tests for the configuration logic. It does **not** detect other apps, draw over them, or schedule real reminders. Those constraints, and the planned approach, are in [`ANDROID_IMPLEMENTATION_PLAN.md`](ANDROID_IMPLEMENTATION_PLAN.md).
+
+Proposed application ID: `com.nawzblaze.momentwise`. The app is not published under that ID.
 
 - **Public Landing Page:** [https://nawzblaze.github.io/momentwise/](https://nawzblaze.github.io/momentwise/)
 - **Interactive Mobile UI Prototype:** [https://nawzblaze.github.io/momentwise/prototype/](https://nawzblaze.github.io/momentwise/prototype/)
@@ -62,7 +64,8 @@ The current repository is a clean, build-free static website hosted directly via
 momentwise/
 ├── .github/
 │   └── workflows/
-│       └── pages.yml           # Automated GitHub Actions deployment to Pages
+│       ├── pages.yml           # Automated GitHub Actions deployment to Pages
+│       └── android.yml         # Android unit tests, debug APK, and lint
 ├── assets/
 │   ├── favicon.svg             # Favicon-optimized SVG brand mark (16x16 / 32x32 crisp)
 │   ├── logo.svg                # Primary full-colour vector mark (transparent background)
@@ -74,6 +77,8 @@ momentwise/
 │   ├── app.js                  # Prototype navigation router & state machine
 │   ├── index.html              # Multi-screen Android mobile prototype shell
 │   └── styles.css              # Adaptive Android design system stylesheet
+├── android/                    # Native Android foundation (Compose). See android/README.md
+├── ANDROID_IMPLEMENTATION_PLAN.md
 ├── .gitignore                  # Standard ignore rules
 ├── index.html                  # Accessible, semantic static landing page with theme selector
 ├── README.md                   # Project documentation & brand system

@@ -1,0 +1,142 @@
+<resources>
+    <string name="app_name">Momentwise</string>
+    <string name="tagline">Make room for what matters.</string>
+    <string name="secondary_line">Make your next tap intentional.</string>
+
+    <!-- Shared -->
+    <string name="nav_home">Home</string>
+    <string name="nav_apps">Apps</string>
+    <string name="nav_settings">Settings</string>
+    <string name="action_save_rule">Save rule</string>
+    <string name="action_test_rule_preview">Test rule preview</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_back">Back</string>
+
+    <!-- Welcome / onboarding -->
+    <string name="welcome_title">A quiet pause before distracting apps</string>
+    <string name="welcome_body">Momentwise doesn\'t block apps or lock you out. It gives you a calm moment to ask why you tapped an app, and gentle reminders so you don\'t lose an hour by accident.</string>
+    <string name="welcome_point_1"><b>Choose your apps:</b> Pick which apps pause when opened.</string>
+    <string name="welcome_point_2"><b>Customise your prompt:</b> Write your own question and response options.</string>
+    <string name="welcome_point_3"><b>Respectful reminders:</b> Set how often to check in, or turn them off completely.</string>
+    <string name="welcome_get_started">Configure Your First App</string>
+    <string name="welcome_skip">Go to Overview</string>
+
+    <!-- Home -->
+    <string name="home_summary_eyebrow">Sample configuration</string>
+    <string name="home_summary_desc_sample">Opening pauses and check-in reminders from the seeded sample apps. Device app detection is not connected yet in this build.</string>
+    <string name="home_summary_desc_empty">Select an app in the Apps tab to configure a mindful pause rule.</string>
+    <string name="home_manage_apps">Manage Apps</string>
+    <string name="home_test_section_title">Test Your Active Rules</string>
+    <string name="home_test_section_meta">In-app preview</string>
+    <string name="home_test_section_sub">Experience how your configured notices and button options will look and feel when opened.</string>
+    <string name="home_test_opening">Test Opening Notice</string>
+    <string name="home_test_reminder">Test In-App Reminder</string>
+    <string name="home_how_title">How Momentwise Works</string>
+    <string name="home_how_step_1"><b>Enable an app:</b> Pick distracting social or news apps in the Apps tab.</string>
+    <string name="home_how_step_2"><b>Set your prompt:</b> Write a question that makes you pause before opening.</string>
+    <string name="home_how_step_3"><b>Check in gracefully:</b> If you stay in the app, a gentle nudge helps you leave.</string>
+
+    <!-- Apps -->
+    <string name="apps_title">Apps</string>
+    <string name="apps_heading">Configure App Rules</string>
+    <string name="apps_subtext">Toggle an app to enable its mindful interruption rule, or tap anywhere on an app to customise its notice and reminders.</string>
+    <string name="apps_sample_banner">Sample apps: real device app detection is not connected in this foundation build. Rules, notices, and reminders are fully functional.</string>
+    <string name="apps_tip">Each app has its own independent rule, opening prompt, and reminder schedule.</string>
+    <string name="apps_status_not_guarded">Not guarded</string>
+    <string name="apps_status_opening_only">Rule active • Opening pause only</string>
+
+    <!-- Configure -->
+    <string name="configure_section_opening">When you open this app</string>
+    <string name="configure_opening_help">This message appears the moment you tap the app icon.</string>
+    <string name="configure_section_options">Response options</string>
+    <string name="configure_options_help">Give yourself two clear choices when the notice appears.</string>
+    <string name="configure_option_1_pill">Option 1</string>
+    <string name="configure_option_2_pill">Option 2</string>
+    <string name="configure_option_1_action">Action: Leave app</string>
+    <string name="configure_option_2_action">Action: Continue</string>
+    <string name="configure_button_label">Button label</string>
+    <string name="configure_option_1_behavior"><b>Behavior:</b> Closes the pause dialog and steps away without opening the app.</string>
+    <string name="configure_option_2_behavior"><b>Behavior:</b> Opens the app normally and starts the reminder interval if enabled.</string>
+    <string name="configure_section_reminders">Reminders</string>
+    <string name="configure_reminders_help">Choose how often Momentwise checks in while you stay in this app.</string>
+    <string name="configure_freq_never">Never</string>
+    <string name="configure_freq_custom">Custom</string>
+    <string name="configure_custom_interval_label">Check in every (minutes):</string>
+    <string name="configure_custom_unit">minutes</string>
+    <string name="configure_reminder_notice_label">Reminder notice</string>
+    <string name="configure_reminder_notice_help">Appears on the check-in card when the time expires.</string>
+    <string name="configure_reminders_disabled_note">No reminders will be scheduled while in this app. The opening notice will still pause when launched.</string>
+    <string name="configure_advanced_title">Advanced reminder options</string>
+    <string name="configure_advanced_help">Personalise what happens when a reminder appears.</string>
+    <string name="configure_advanced_notice_synced">Synced with the reminder notice above.</string>
+    <string name="configure_advanced_action_1">Action 1: Exit app</string>
+    <string name="configure_advanced_action_2">Action 2: Snooze</string>
+    <string name="configure_advanced_action_3">Action 3: Dismiss for today</string>
+    <string name="configure_snooze_label">Snooze (min)</string>
+    <string name="configure_dismiss_desc">Dismissing pauses further reminders for this app until tomorrow. It does not permanently disable your rule.</string>
+    <string name="configure_reset_app">Reset this app to defaults</string>
+
+    <!-- Opening-notice preview -->
+    <string name="preview_opening_testing">Testing:</string>
+    <string name="preview_opening_edit_rule">Edit rule</string>
+    <string name="preview_opening_breath">Take a slow breath</string>
+    <string name="preview_opening_quit_desc">Step away &amp; put phone down</string>
+    <string name="preview_opening_quit_result_title">Room made for what matters</string>
+    <string name="preview_opening_quit_result_back">Back to Apps</string>
+    <string name="preview_opening_continue_result_title">Intentional session started</string>
+    <string name="preview_opening_test_checkin">Test Check-in Now</string>
+    <string name="preview_opening_back_home">Back to Home</string>
+    <string name="preview_opening_disclaimer">In-app preview of the configured opening rule. Native app detection is not connected in this build.</string>
+
+    <!-- Reminder preview -->
+    <string name="preview_reminder_brand">Momentwise • Mindful Check-in</string>
+    <string name="preview_reminder_disabled_title">Reminders are turned off</string>
+    <string name="preview_reminder_edit_schedule">Edit Reminder Schedule</string>
+    <string name="preview_reminder_disclaimer">In-app preview of user-configured check-in actions. Native reminder scheduling is not connected in this build.</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_theme_name">App Theme</string>
+    <string name="settings_theme_desc">Choose between System, Light, or Dark mode. System follows your device setting.</string>
+    <string name="settings_theme_system">System</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_platform">Android Platform</string>
+    <string name="settings_respectful_name">Respectful by Design</string>
+    <string name="settings_respectful_desc">Leaving an app returns you cleanly to your device home screen. Momentwise respects user autonomy and platform conventions — it never forcibly terminates other apps.</string>
+    <string name="settings_architecture_name">On-Device by Design</string>
+    <string name="settings_architecture_desc">All rules and reminder schedules are stored strictly on your device with no tracking or remote telemetry. App detection and reminders are not yet wired to Android system services in this foundation build.</string>
+    <string name="settings_prototype_controls">Data</string>
+    <string name="settings_reset_all_name">Reset all app rules</string>
+    <string name="settings_reset_all_desc">Restore sample apps, default notices, and options.</string>
+    <string name="settings_reset_all_action">Reset Data</string>
+    <string name="settings_reset_confirm_title">Reset all app rules?</string>
+    <string name="settings_reset_confirm_body">This restores the sample apps, default notices, and options stored on this device.</string>
+    <string name="settings_reset_confirm">Reset</string>
+    <string name="settings_version_value">0.1.0-foundation</string>
+    <string name="settings_version_label">Version</string>
+    <string name="preview_quit_body">You paused and chose not to open %1$s. In the native app this returns you to your home screen. It does not force-stop the other app.</string>
+    <string name="preview_continue_with_reminder">Continuing into %1$s. A check-in would be scheduled in %2$d minutes. Native scheduling is not connected in this build.</string>
+    <string name="preview_continue_without_reminder">Continuing into %1$s. No mid-session reminders are scheduled.</string>
+    <string name="preview_reminder_disabled_body">You configured %1$s with reminder frequency Never. Only the opening notice pauses when the app is launched.</string>
+    <string name="preview_reminder_scheduled">Scheduled check-in after %1$d minutes in %2$s</string>
+    <string name="preview_simulated_background">Simulated background</string>
+    <string name="settings_storage_label">Storage</string>
+    <string name="settings_storage_value">On-device (DataStore)</string>
+
+    <!-- Snackbars / feedback -->
+    <string name="toast_rule_saved">Saved rule for %1$s</string>
+    <string name="toast_fix_errors">Please fix the errors above.</string>
+    <string name="toast_app_guarded">%1$s is now guarded</string>
+    <string name="toast_app_inactive">%1$s is now inactive</string>
+    <string name="toast_defaults_restored">Defaults restored for %1$s</string>
+    <string name="toast_all_reset">All rules reset to defaults</string>
+    <string name="toast_theme_changed">Theme: %1$s</string>
+    <string name="toast_first_enable">%1$s enabled. Set your opening rule.</string>
+    <string name="toast_preview_quit">Exit action: in the native app this returns you to your home screen.</string>
+    <string name="toast_preview_continue">Continue action: the app would open normally.</string>
+    <string name="toast_preview_snoozed">Reminder snoozed for %1$d minutes.</string>
+    <string name="toast_preview_dismissed">Reminders paused for %1$s for the rest of today.</string>
+    <string name="toast_preview_app_closed">App closed. Intentional choice logged.</string>
+</resources>

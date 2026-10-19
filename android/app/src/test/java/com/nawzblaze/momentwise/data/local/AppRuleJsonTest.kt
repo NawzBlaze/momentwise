@@ -1,0 +1,71 @@
+package com.nawzblaze.momentwise.data.local
+
+import com.nawzblaze.momentwise.data.RuleDefaults
+import com.nawzblaze.momentwise.data.model.ReminderFrequency
+import com.nawzblaze.momentwise.data.model.RuleAction
+import org.json.JSONArray
+import org.json.JSONObject
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class AppRuleJsonTest {
+
+    @Test
+    fun roundTripPreservesAnIndependentCatalog() {
+        val original = RuleDefaults.sampleCatalog()
+        val decoded = AppRuleJson.decodeList(AppRuleJson.encodeList(original))
+
+        assertEquals(original, decoded)
+    }
+
+    @Test
+    fun legacyOpeningNoticeIsMigratedWithoutTouchingCustomCopy() {
+        val legacy = JSONArray().put(
+            JSONObject()
+                .put("appId", "instagram")
+                .put("appName", "Instagram")
+                .put("openingNotice", "You Are Distracted")
+                .put("option1Label", "Quit")
+                .put("option2Label", "Anyways"),
+        )
+        val custom = JSONArray().put(
+            JSONObject()
+                .put("appId", "reddit")
+                .put("appName", "Reddit")
+                .put("openingNotice", "You are distracted by design"),
+        )
+
+        assertEquals(
+            RuleDefaults.OPENING_NOTICE,
+            AppRuleJson.decodeList(legacy.toString())!!.single().openingNotice,
+        )
+        assertEquals(
+            "You are distracted by design",
+            AppRuleJson.decodeList(custom.toString())!!.single().openingNotice,
+        )
+    }
+
+    @Test
+    fun missingFieldsFallBackToApprovedDefaultsAndFixedActions() {
+        val sparse = JSONArray().put(JSONObject().put("appId", "example").put("appName", "Example"))
+        val rule = AppRuleJson.decodeList(sparse.toString())!!.single()
+
+        assertEquals(RuleDefaults.OPENING_NOTICE, rule.openingNotice)
+        assertEquals(RuleDefaults.QUIT_OPTION_LABEL, rule.quitOption.label)
+        assertEquals(RuleAction.LEAVE_APP, rule.quitOption.action)
+        assertEquals(RuleAction.CONTINUE_INTO_APP, rule.continueOption.action)
+        assertEquals(ReminderFrequency.Never, rule.reminderFrequency)
+        assertEquals(RuleDefaults.REMINDER_NOTICE, rule.reminderNotice)
+        assertEquals(10, rule.reminderActions.snoozeMinutes)
+    }
+
+    @Test
+    fun corruptStorageDoesNotThrow() {
+        assertNull(AppRuleJson.decodeList(null))
+        assertNull(AppRuleJson.decodeList(""))
+        assertNull(AppRuleJson.decodeList("not-json"))
+        assertTrue(AppRuleJson.decodeList("[]")!!.isEmpty())
+    }
+}
