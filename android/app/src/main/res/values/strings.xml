@@ -131,7 +131,7 @@
     <string name="settings_reset_confirm_title">Reset all app rules?</string>
     <string name="settings_reset_confirm_body">This clears saved rules and any in-progress check-in stored on this device. It does not change other apps.</string>
     <string name="settings_reset_confirm">Reset</string>
-    <string name="settings_version_value">0.3.0</string>
+    <string name="settings_version_value">0.3.1</string>
     <string name="settings_version_label">Version</string>
     <string name="preview_quit_body">You paused and chose not to open %1$s. In the native app this returns you to your home screen. It does not force-stop the other app.</string>
     <string name="preview_continue_with_reminder">Preview only. Continuing into %1$s would schedule a check-in in %2$d minutes. This preview does not start one.</string>

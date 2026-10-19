@@ -52,6 +52,9 @@ class MonitoringService : Service() {
     @Volatile
     private var stopRequested = false
 
+    /** One recovery per process. An empty usage window does not count as a decision. */
+    private var recoveredUnanswered = false
+
     private val gate = Any()
     private var startGeneration = 0
 
@@ -110,6 +113,7 @@ class MonitoringService : Service() {
         val snapshot = sessions().current()
         val reconciled = SessionClock.reconcileAfterRestart(snapshot, detector.lastPackage)
         if (reconciled != snapshot) sessions().save(reconciled)
+        maybeRecoverUnanswered(detector.lastPackage, now)
     }
 
     private suspend fun tick() {
@@ -148,14 +152,16 @@ class MonitoringService : Service() {
 
         when (reduced.signal) {
             DetectorSignal.OPENED -> {
-                val pkg = reduced.packageName ?: return
-                val rule = enabled.find { it.appId == pkg }
-                val (next, command) = SessionClock.onOpened(snapshot, pkg, rule != null, today)
-                sessions().save(next)
-                if (command is GuardCommand.ShowOpening && rule != null) {
-                    showPause(rule, PauseRequest.Kind.OPENING)
-                } else if (rule == null) {
-                    dismissPause()
+                val pkg = reduced.packageName
+                if (pkg != null) {
+                    val rule = enabled.find { it.appId == pkg }
+                    val (next, command) = SessionClock.onOpened(snapshot, pkg, rule != null, today)
+                    sessions().save(next)
+                    if (command is GuardCommand.ShowOpening && rule != null) {
+                        showPause(rule, PauseRequest.Kind.OPENING)
+                    } else if (rule == null) {
+                        dismissPause()
+                    }
                 }
             }
             DetectorSignal.LEFT -> {
@@ -177,6 +183,34 @@ class MonitoringService : Service() {
                     showPause(rule, PauseRequest.Kind.REMINDER)
                 }
             }
+        }
+        maybeRecoverUnanswered(detector.lastPackage, now)
+    }
+
+    /**
+     * Re-present a pause the user had not answered when the process died.
+     * Skipped once a foreground package has been seen, and skipped if a new
+     * pause was just shown. This does not start a new opening.
+     */
+    private suspend fun maybeRecoverUnanswered(foreground: String?, nowMillis: Long) {
+        if (recoveredUnanswered || foreground == null) return
+        recoveredUnanswered = true
+        if (pauseVisible || stopRequested) return
+        val today = LocalDate.now().toString()
+        val rules = app().container.appRuleRepository.rules.first()
+        val rule = rules.find { it.enabled && it.appId == foreground }
+        val (next, command) = SessionClock.recoverUnansweredPause(
+            snapshot = sessions().current(),
+            foregroundPackage = foreground,
+            nowMillis = nowMillis,
+            today = today,
+            remindersEnabled = rule?.reminderFrequency?.isEnabled == true,
+        )
+        if (next != sessions().current()) sessions().save(next)
+        when (command) {
+            is GuardCommand.ShowOpening -> if (rule != null) showPause(rule, PauseRequest.Kind.OPENING)
+            is GuardCommand.ShowReminder -> if (rule != null) showPause(rule, PauseRequest.Kind.REMINDER)
+            GuardCommand.None -> Unit
         }
     }
 

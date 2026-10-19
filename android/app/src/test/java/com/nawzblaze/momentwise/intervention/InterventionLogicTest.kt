@@ -289,7 +289,96 @@ class SessionClockTest {
     fun restartResumesOnlyIfTheSamePackageIsStillInFront() {
         val active = GuardSnapshot(activePackage = instagram, phase = GuardSnapshot.Phase.CONTINUING, nextReminderAtMillis = 9)
         assertEquals(active, SessionClock.reconcileAfterRestart(active, instagram))
+        assertEquals(active, SessionClock.reconcileAfterRestart(active, null))
         assertEquals(GuardSnapshot.Phase.NONE, SessionClock.reconcileAfterRestart(active, "com.android.launcher").phase)
+    }
+
+    @Test
+    fun processDeathReshowsAnUnansweredOpeningWithoutStartingANewOne() {
+        val waiting = SessionClock.onOpened(GuardSnapshot(), instagram, true, today).first
+        val (recovered, command) = SessionClock.recoverUnansweredPause(
+            waiting,
+            foregroundPackage = instagram,
+            nowMillis = 5_000,
+            today = today,
+            remindersEnabled = true,
+        )
+        assertTrue(command is GuardCommand.ShowOpening)
+        assertEquals(waiting, recovered)
+        assertEquals(GuardCommand.None, SessionClock.recoverUnansweredPause(
+            waiting,
+            foregroundPackage = null,
+            nowMillis = 5_000,
+            today = today,
+            remindersEnabled = true,
+        ).second)
+    }
+
+    @Test
+    fun processDeathReshowsADueReminderWithoutResettingTheInterval() {
+        val continuing = GuardSnapshot(
+            activePackage = instagram,
+            phase = GuardSnapshot.Phase.CONTINUING,
+            nextReminderAtMillis = 5_000,
+            reminderPresentedFor = 5_000,
+        )
+        val (recovered, command) = SessionClock.recoverUnansweredPause(
+            continuing,
+            foregroundPackage = instagram,
+            nowMillis = 6_000,
+            today = today,
+            remindersEnabled = true,
+        )
+        assertTrue(command is GuardCommand.ShowReminder)
+        assertEquals(5_000L, recovered.nextReminderAtMillis)
+        assertEquals(5_000L, recovered.reminderPresentedFor)
+    }
+
+    @Test
+    fun reminderDoesNotStartUntilTheUserContinues() {
+        val waiting = SessionClock.onOpened(GuardSnapshot(), instagram, true, today).first
+        val (_, command) = SessionClock.onTick(
+            waiting,
+            foregroundPackage = instagram,
+            nowMillis = 60_000,
+            today = today,
+            remindersEnabled = true,
+        )
+        assertEquals(GuardCommand.None, command)
+        assertNull(waiting.nextReminderAtMillis)
+    }
+
+    @Test
+    fun neverFrequencyDoesNotScheduleAReminder() {
+        val opened = SessionClock.onOpened(GuardSnapshot(), instagram, true, today).first
+        val continued = SessionClock.onContinue(opened, intervalMinutes = null, nowMillis = 1_000, today)
+        assertNull(continued.nextReminderAtMillis)
+        val (_, command) = SessionClock.onTick(
+            continued,
+            foregroundPackage = instagram,
+            nowMillis = 60_000,
+            today = today,
+            remindersEnabled = false,
+        )
+        assertEquals(GuardCommand.None, command)
+    }
+
+    @Test
+    fun dismissingOneAppDoesNotDismissAnother() {
+        val tiktok = "com.zhiliaoapp.musically"
+        val instagramDismissed = SessionClock.onDismissForToday(
+            GuardSnapshot(activePackage = instagram, phase = GuardSnapshot.Phase.CONTINUING),
+            instagram,
+            today,
+        )
+        val both = SessionClock.onDismissForToday(
+            instagramDismissed.copy(activePackage = tiktok, phase = GuardSnapshot.Phase.CONTINUING),
+            tiktok,
+            today,
+        )
+        assertEquals(today, both.dismissals[instagram])
+        assertEquals(today, both.dismissals[tiktok])
+        assertEquals(2, both.dismissals.size)
     }
 
     @Test
