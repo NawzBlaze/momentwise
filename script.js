@@ -1,15 +1,33 @@
 /**
- * Morrow — Static Landing Page Script
+ * Momentwise — Static Landing Page Script
  * Brand Alignment & Adaptive Theme Controller
  */
 
 (() => {
-  const STORAGE_KEY = 'morrow-theme';
+  const STORAGE_KEY = 'momentwise-theme';
+  const LEGACY_STORAGE_KEY = 'morrow-theme';
   const THEME_COLOR_LIGHT = '#FAF7F2';
   const THEME_COLOR_DARK = '#0F1412';
 
   // System media query for dark mode detection
   const systemDarkQuery = window.matchMedia('(prefers-color-scheme: dark)');
+
+  /**
+   * Retrieve saved theme preference with automatic migration from legacy key
+   * @returns {string} - 'system' | 'light' | 'dark'
+   */
+  function getSavedThemePreference() {
+    try {
+      const current = localStorage.getItem(STORAGE_KEY);
+      if (current) return current;
+      const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
+      if (legacy) {
+        localStorage.setItem(STORAGE_KEY, legacy);
+        return legacy;
+      }
+    } catch (e) {}
+    return 'system';
+  }
 
   /**
    * Determine the effective active theme based on preference and OS state
@@ -65,20 +83,14 @@
    * Initialize theme system and event listeners
    */
   function initTheme() {
-    let savedPreference = 'system';
-    try {
-      savedPreference = localStorage.getItem(STORAGE_KEY) || 'system';
-    } catch (e) {}
+    const savedPreference = getSavedThemePreference();
 
     // Apply on load
     applyTheme(savedPreference);
 
     // Listen for OS theme changes (handles 'system' mode dynamically)
     systemDarkQuery.addEventListener('change', () => {
-      let currentPreference = 'system';
-      try {
-        currentPreference = localStorage.getItem(STORAGE_KEY) || 'system';
-      } catch (e) {}
+      const currentPreference = getSavedThemePreference();
 
       if (currentPreference === 'system') {
         applyTheme('system');

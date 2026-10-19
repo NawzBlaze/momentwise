@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://nawzblaze.github.io/morrow/sitemap.xml
+Sitemap: https://nawzblaze.github.io/momentwise/sitemap.xml

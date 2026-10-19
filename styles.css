@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Morrow — Stylesheet
+   Momentwise — Stylesheet
    Brand Identity: Warm cream, forest green, restrained sunrise gold.
    Personality: Minimal, premium, calm, thoughtful, human.
    ========================================================================== */
@@ -370,6 +370,9 @@ body {
 }
 
 @media (max-width: 520px) {
+  :root {
+    --container-padding: 1.15rem;
+  }
   .site-header {
     padding: 0.75rem 0;
   }
@@ -384,7 +387,7 @@ body {
     height: 25px;
   }
   .brand-name {
-    font-size: 1.1rem;
+    font-size: 1.05rem;
   }
   .header-status .status-text {
     display: none;
