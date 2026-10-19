@@ -80,6 +80,20 @@
       if (raw) {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed) && parsed.length > 0) {
+          // Migration: upgrade legacy default "You Are Distracted" to approved "What brought you here?"
+          // Only touches apps where the notice equals the known legacy default, preserving genuine user-entered copy.
+          let migrated = false;
+          parsed.forEach((r) => {
+            if (r.openingNotice && r.openingNotice.trim().toLowerCase() === 'you are distracted') {
+              r.openingNotice = 'What brought you here?';
+              migrated = true;
+            }
+          });
+          if (migrated) {
+            try {
+              localStorage.setItem(RULES_STORAGE_KEY, JSON.stringify(parsed));
+            } catch (ignore) {}
+          }
           return parsed;
         }
       }

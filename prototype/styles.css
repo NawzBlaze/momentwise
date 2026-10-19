@@ -1580,6 +1580,7 @@ body {
   flex-direction: column;
   justify-content: flex-end;
   background: #000;
+  overflow: hidden;
 }
 
 .simulated-app-background {
@@ -1657,8 +1658,21 @@ body {
   background: var(--color-surface);
   border-top: 1px solid var(--color-border);
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-  padding: var(--space-md) var(--space-md) var(--space-lg) var(--space-md);
+  padding: var(--space-sm) var(--space-md) var(--space-md) var(--space-md);
   box-shadow: var(--shadow-dialog);
+  max-height: 85%;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+
+.reminder-dialog::-webkit-scrollbar {
+  width: 4px;
+}
+
+.reminder-dialog::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
 }
 
 .reminder-handle {
