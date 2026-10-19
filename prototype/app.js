@@ -1,7 +1,7 @@
 /**
- * Momentwise — Android UI Prototype Application Script
- * Provides screen routing, interactive state management, simulated device metrics,
- * app guarding toggles, intervention workflows, and dual-theme engine.
+ * Momentwise — App Rule Builder & UI Prototype
+ * Complete client-side state machine, independent per-app rule builder,
+ * responsive navigation router, and dual-theme controller.
  */
 
 (function () {
@@ -9,74 +9,114 @@
 
   // --- Constants & Storage Keys ---
   const THEME_STORAGE_KEY = 'momentwise-prototype-theme';
-  const DATA_STORAGE_KEY = 'momentwise-prototype-data';
+  const RULES_STORAGE_KEY = 'momentwise-prototype-rules-v2';
 
-  // --- Initial Default Data ---
-  const DEFAULT_DATA = {
-    metrics: {
-      pauses: 7,
-      minutesReclaimed: 42,
-      intentionalRate: 71,
-      streakDays: 6
-    },
-    guardedApps: [
-      { id: 'instagram', name: 'Instagram', meta: 'Social • 45m daily avg', avatar: 'instagram', icon: '📸', guarded: true },
-      { id: 'tiktok', name: 'TikTok', meta: 'Entertainment • 1h 10m daily avg', avatar: 'tiktok', icon: '🎵', guarded: true },
-      { id: 'x', name: 'X / Twitter', meta: 'News & Social • 35m daily avg', avatar: 'x', icon: '𝕏', guarded: true },
-      { id: 'youtube', name: 'YouTube', meta: 'Video & Media • 50m daily avg', avatar: 'youtube', icon: '▶️', guarded: false },
-      { id: 'reddit', name: 'Reddit', meta: 'Discussion • 25m daily avg', avatar: 'reddit', icon: '💬', guarded: false },
-      { id: 'threads', name: 'Threads', meta: 'Social • 15m daily avg', avatar: 'threads', icon: '🧵', guarded: false },
-      { id: 'facebook', name: 'Facebook', meta: 'Social • 20m daily avg', avatar: 'facebook', icon: '👥', guarded: false }
-    ],
-    settings: {
-      pauseDuration: '5',
-      breathingGuide: true,
-      haptics: true,
-      reminderInterval: '10',
-      allowExtensions: true
-    }
+  // --- SVG Vector Icons for Clean, Professional App Presentation ---
+  const APP_SVGS = {
+    instagram: `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>`,
+    tiktok: `<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64c.29 0 .58.04.86.12V9.42a6.34 6.34 0 0 0-.86-.06A6.34 6.34 0 0 0 3.1 15.7a6.34 6.34 0 0 0 10.82 4.48c1.37-1.37 1.83-3.08 1.83-5.2V8.75a8.28 8.28 0 0 0 4.84 1.44V6.75a4.85 4.85 0 0 1-1-.06z"/></svg>`,
+    x: `<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>`,
+    youtube: `<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>`,
+    reddit: `<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="9" cy="11.5" r="1.5"/><circle cx="15" cy="11.5" r="1.5"/><path d="M8.5 15.5c1 1 2.33 1.5 3.5 1.5s2.5-.5 3.5-1.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`,
+    threads: `<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12.002 2C6.477 2 2 6.477 2 12s4.477 10 10.002 10c3.21 0 6.09-1.517 7.933-3.877l-1.99-1.52A7.472 7.472 0 0 1 12.002 19.5c-4.142 0-7.5-3.358-7.5-7.5s3.358-7.5 7.5-7.5c3.784 0 6.91 2.802 7.433 6.444H12v2.5h9.948A9.99 9.99 0 0 0 12.002 2z"/></svg>`
   };
 
+  // --- Default Rules Generator ---
+  function createDefaultRule(id, name, category, enabled, defaultFreq) {
+    return {
+      id,
+      name,
+      category,
+      enabled: !!enabled,
+      configuredEver: !!enabled,
+      openingNotice: 'What brought you here?',
+      option1: {
+        label: 'Quit',
+        action: 'exit'
+      },
+      option2: {
+        label: 'Anyways',
+        action: 'continue'
+      },
+      reminderFrequency: defaultFreq || 'never',
+      customMinutes: 8,
+      reminderNotice: "You're still here?",
+      advanced: {
+        action1: {
+          label: "Okay, I'm quitting",
+          action: 'exit'
+        },
+        action2: {
+          label: 'Wait',
+          action: 'snooze',
+          snoozeMinutes: 10
+        },
+        action3: {
+          label: 'Dismiss reminder',
+          action: 'dismiss'
+        }
+      }
+    };
+  }
+
+  const DEFAULT_APP_RULES = [
+    createDefaultRule('instagram', 'Instagram', 'Social Media', true, '10'),
+    createDefaultRule('tiktok', 'TikTok', 'Short Video', true, '15'),
+    createDefaultRule('x', 'X / Twitter', 'News & Feeds', false, 'never'),
+    createDefaultRule('youtube', 'YouTube', 'Video & Media', false, 'never'),
+    createDefaultRule('reddit', 'Reddit', 'Communities', false, 'never'),
+    createDefaultRule('threads', 'Threads', 'Social Media', false, 'never')
+  ];
+
   // --- State ---
-  let appState = loadState();
-  let currentSlide = 1;
+  let appRules = loadAppRules();
+  let currentConfigAppId = 'instagram';
+  let activePreviewAppId = 'instagram';
   let toastTimer = null;
 
-  function loadState() {
+  function loadAppRules() {
     try {
-      const raw = localStorage.getItem(DATA_STORAGE_KEY);
+      const raw = localStorage.getItem(RULES_STORAGE_KEY);
       if (raw) {
-        return JSON.parse(raw);
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
       }
     } catch (e) {
-      console.warn('Failed to load prototype state from storage:', e);
+      console.warn('Failed to load rules from localStorage:', e);
     }
-    return JSON.parse(JSON.stringify(DEFAULT_DATA));
+    return JSON.parse(JSON.stringify(DEFAULT_APP_RULES));
   }
 
-  function saveState() {
+  function saveAppRules() {
     try {
-      localStorage.setItem(DATA_STORAGE_KEY, JSON.stringify(appState));
+      localStorage.setItem(RULES_STORAGE_KEY, JSON.stringify(appRules));
     } catch (e) {
-      console.warn('Failed to save prototype state:', e);
+      console.warn('Failed to save rules to localStorage:', e);
     }
   }
 
-  // --- DOM Elements Cache ---
+  function getRule(id) {
+    return appRules.find((r) => r.id === id) || appRules[0];
+  }
+
+  // --- Screens Map ---
   const screens = {
     welcome: document.getElementById('screenWelcome'),
     home: document.getElementById('screenHome'),
     apps: document.getElementById('screenApps'),
+    configure: document.getElementById('screenConfigure'),
     intervention: document.getElementById('screenIntervention'),
     reminder: document.getElementById('screenReminder'),
     settings: document.getElementById('screenSettings')
   };
 
-  const statusClock = document.getElementById('statusClock');
   const appToast = document.getElementById('appToast');
   const toastMessage = document.getElementById('toastMessage');
+  const statusClock = document.getElementById('statusClock');
 
-  // --- Toast Notifications ---
+  // --- Toast Notification ---
   function showToast(msg) {
     if (!appToast || !toastMessage) return;
     toastMessage.textContent = msg;
@@ -93,8 +133,7 @@
     const now = new Date();
     let hours = now.getHours();
     let minutes = now.getMinutes();
-    const formatted = `${hours}:${minutes < 10 ? '0' : ''}${minutes}`;
-    statusClock.textContent = formatted;
+    statusClock.textContent = `${hours}:${minutes < 10 ? '0' : ''}${minutes}`;
   }
   setInterval(updateClock, 30000);
   updateClock();
@@ -107,7 +146,6 @@
       window.history.replaceState(null, '', '#' + targetScreenId);
     }
 
-    // Transition screens
     Object.keys(screens).forEach((key) => {
       const screenEl = screens[key];
       if (screenEl) {
@@ -125,367 +163,568 @@
       chip.classList.toggle('active', chip.getAttribute('data-screen-target') === targetScreenId);
     });
 
-    // Update bottom nav items
+    // Update bottom nav items (only Home, Apps, Settings)
     document.querySelectorAll('.nav-item').forEach((item) => {
       item.classList.toggle('active', item.getAttribute('data-nav-target') === targetScreenId);
     });
 
-    // Specialized screen resets
-    if (targetScreenId === 'intervention') {
-      resetInterventionScreen();
+    // Dynamic screen hooks
+    if (targetScreenId === 'home') {
+      renderHomeOverview();
+    } else if (targetScreenId === 'apps') {
+      renderAppsList();
+    } else if (targetScreenId === 'configure') {
+      populateConfigureScreen(currentConfigAppId);
+    } else if (targetScreenId === 'intervention') {
+      populateInterventionPreview(activePreviewAppId);
+    } else if (targetScreenId === 'reminder') {
+      populateReminderPreview(activePreviewAppId);
     }
   }
-
-  // Expose for external control / test harness
   window.navigateTo = navigateTo;
 
-  // --- Onboarding Flow ---
-  function setupOnboarding() {
-    const slides = document.querySelectorAll('.onboarding-slide');
-    const dots = document.querySelectorAll('.dot');
-    const btnNext = document.getElementById('btnNextOnboarding');
-    const btnSkip = document.getElementById('btnSkipOnboarding');
-    const nextText = document.getElementById('nextOnboardingText');
+  // --- Home Screen Overview Renderer ---
+  function renderHomeOverview() {
+    const activeRules = appRules.filter((r) => r.enabled);
+    const headingEl = document.getElementById('homeActiveRulesHeading');
+    const subEl = document.getElementById('homeActiveRulesSub');
+    const chipsContainer = document.getElementById('homeActiveChips');
+    const hintOpening = document.getElementById('testOpeningHint');
+    const hintReminder = document.getElementById('testReminderHint');
 
-    function goToSlide(n) {
-      currentSlide = n;
-      slides.forEach((s) => s.classList.remove('active'));
-      dots.forEach((d) => d.classList.remove('active'));
+    const count = activeRules.length;
+    if (headingEl) {
+      headingEl.textContent = count === 0 ? 'No Apps Guarded' : `${count} App${count === 1 ? '' : 's'} Guarded`;
+    }
+    if (subEl) {
+      subEl.textContent = count === 0
+        ? 'Enable an app in the Apps tab to set up a conscious opening pause.'
+        : 'Opening pauses and mindful check-ins are active for your selected apps.';
+    }
 
-      const activeSlide = document.querySelector(`.onboarding-slide[data-slide="${n}"]`);
-      const activeDot = document.querySelector(`.dot[data-slide-target="${n}"]`);
-
-      if (activeSlide) activeSlide.classList.add('active');
-      if (activeDot) activeDot.classList.add('active');
-
-      if (n === slides.length) {
-        if (nextText) nextText.textContent = 'Get Started';
+    if (chipsContainer) {
+      chipsContainer.innerHTML = '';
+      if (count === 0) {
+        chipsContainer.innerHTML = '<span class="empty-hint">Tap Manage Apps below to choose an app to guard.</span>';
       } else {
-        if (nextText) nextText.textContent = 'Continue';
+        activeRules.forEach((app) => {
+          const chip = document.createElement('div');
+          chip.className = 'app-rule-chip';
+          const freqLabel = app.reminderFrequency === 'never' ? 'No reminders' : `${app.reminderFrequency === 'custom' ? app.customMinutes : app.reminderFrequency}m reminders`;
+          chip.innerHTML = `
+            <span class="chip-status-dot"></span>
+            <strong>${app.name}</strong>
+            <span class="chip-freq">${freqLabel}</span>
+          `;
+          chip.addEventListener('click', () => {
+            currentConfigAppId = app.id;
+            navigateTo('configure');
+          });
+          chipsContainer.appendChild(chip);
+        });
       }
     }
 
-    if (btnNext) {
-      btnNext.addEventListener('click', () => {
-        if (currentSlide < slides.length) {
-          goToSlide(currentSlide + 1);
+    const firstActive = activeRules[0] || appRules[0];
+    if (hintOpening && firstActive) {
+      hintOpening.textContent = `Preview "${firstActive.openingNotice}" on ${firstActive.name}`;
+    }
+    if (hintReminder && firstActive) {
+      hintReminder.textContent = firstActive.reminderFrequency === 'never'
+        ? `Reminders are off for ${firstActive.name}`
+        : `Preview mid-session check-in on ${firstActive.name}`;
+    }
+  }
+
+  // --- Apps List Renderer ---
+  function renderAppsList() {
+    const container = document.getElementById('appsListContainer');
+    const counterBadge = document.getElementById('appsActiveCounterBadge');
+    if (!container) return;
+
+    const activeCount = appRules.filter((r) => r.enabled).length;
+    if (counterBadge) {
+      counterBadge.textContent = `${activeCount} active`;
+    }
+
+    container.innerHTML = '';
+    appRules.forEach((app) => {
+      const row = document.createElement('div');
+      row.className = `app-row-item ${app.enabled ? 'is-enabled' : ''}`;
+      row.setAttribute('role', 'listitem');
+
+      let statusText = 'Not guarded';
+      if (app.enabled) {
+        if (app.reminderFrequency === 'never') {
+          statusText = 'Rule active • Opening pause only';
         } else {
-          navigateTo('home');
-          showToast('Welcome to Momentwise!');
+          const mins = app.reminderFrequency === 'custom' ? app.customMinutes : app.reminderFrequency;
+          statusText = `Rule active • ${mins} min reminders`;
+        }
+      }
+
+      const svgIcon = APP_SVGS[app.id] || `<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg>`;
+
+      row.innerHTML = `
+        <div class="app-row-main" data-app-id="${app.id}">
+          <div class="app-icon-badge ${app.id}">
+            ${svgIcon}
+          </div>
+          <div class="app-row-text">
+            <div class="app-row-title-row">
+              <span class="app-row-name">${app.name}</span>
+              <span class="app-category-tag">${app.category}</span>
+            </div>
+            <span class="app-row-status">${statusText}</span>
+          </div>
+        </div>
+        <div class="app-row-actions">
+          <button type="button" class="btn-config-app" data-app-id="${app.id}" aria-label="Configure rule for ${app.name}" title="Configure ${app.name}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <label class="switch-control" aria-label="Toggle ${app.name} rule">
+            <input type="checkbox" data-app-id="${app.id}" ${app.enabled ? 'checked' : ''}>
+            <span class="switch-slider"></span>
+          </label>
+        </div>
+      `;
+
+      // Clicking main row area opens configuration
+      const mainClickArea = row.querySelector('.app-row-main');
+      mainClickArea.addEventListener('click', () => {
+        currentConfigAppId = app.id;
+        navigateTo('configure');
+      });
+
+      // Clicking configure icon button opens configuration
+      const configBtn = row.querySelector('.btn-config-app');
+      configBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        currentConfigAppId = app.id;
+        navigateTo('configure');
+      });
+
+      // Toggle switch handling
+      const checkbox = row.querySelector('input[type="checkbox"]');
+      checkbox.addEventListener('change', (e) => {
+        const isChecked = e.target.checked;
+        app.enabled = isChecked;
+
+        if (isChecked && !app.configuredEver) {
+          // First-time enablement: immediately open configuration screen!
+          app.configuredEver = true;
+          saveAppRules();
+          currentConfigAppId = app.id;
+          showToast(`${app.name} enabled. Set your opening rule.`);
+          navigateTo('configure');
+        } else {
+          saveAppRules();
+          renderAppsList();
+          showToast(`${app.name} is now ${isChecked ? 'guarded' : 'inactive'}`);
+        }
+      });
+
+      container.appendChild(row);
+    });
+  }
+
+  // --- Configure Screen Logic ---
+  const elConfigTitle = document.getElementById('configureScreenTitle');
+  const elConfigToggle = document.getElementById('configureAppToggle');
+  const elOpeningNotice = document.getElementById('inputOpeningNotice');
+  const elOption1Label = document.getElementById('inputOption1Label');
+  const elOption2Label = document.getElementById('inputOption2Label');
+  const elCustomInterval = document.getElementById('inputCustomInterval');
+  const elCustomIntervalBox = document.getElementById('customIntervalBox');
+  const elReminderNotice = document.getElementById('inputReminderNotice');
+  const elReminderNoticeGroup = document.getElementById('reminderNoticeGroup');
+  const elReminderDisabledNote = document.getElementById('reminderDisabledNote');
+  const elAdvReminderNotice = document.getElementById('inputAdvancedReminderNotice');
+  const elAdvAction1Label = document.getElementById('inputAdvAction1Label');
+  const elAdvAction2Label = document.getElementById('inputAdvAction2Label');
+  const elAdvAction3Label = document.getElementById('inputAdvAction3Label');
+  const elSnoozeDuration = document.getElementById('inputSnoozeDuration');
+  const freqChips = document.querySelectorAll('.freq-chip');
+
+  let activeFreqChoice = 'never';
+
+  function populateConfigureScreen(appId) {
+    const app = getRule(appId);
+    if (!app) return;
+
+    if (elConfigTitle) elConfigTitle.textContent = `Configure ${app.name}`;
+    if (elConfigToggle) elConfigToggle.checked = app.enabled;
+
+    // Section A: Opening Notice
+    if (elOpeningNotice) elOpeningNotice.value = app.openingNotice || 'What brought you here?';
+
+    // Section B: Response Options
+    if (elOption1Label) elOption1Label.value = app.option1.label || 'Quit';
+    if (elOption2Label) elOption2Label.value = app.option2.label || 'Anyways';
+
+    // Section C: Reminders
+    activeFreqChoice = app.reminderFrequency || 'never';
+    freqChips.forEach((chip) => {
+      chip.classList.toggle('active', chip.getAttribute('data-freq') === activeFreqChoice);
+    });
+
+    if (elCustomInterval) elCustomInterval.value = app.customMinutes || 8;
+    if (elReminderNotice) elReminderNotice.value = app.reminderNotice || "You're still here?";
+    if (elAdvReminderNotice) elAdvReminderNotice.value = app.reminderNotice || "You're still here?";
+
+    updateReminderFrequencyUI();
+
+    // Section D: Advanced Reminder Options
+    if (elAdvAction1Label) elAdvAction1Label.value = app.advanced.action1.label || "Okay, I'm quitting";
+    if (elAdvAction2Label) elAdvAction2Label.value = app.advanced.action2.label || 'Wait';
+    if (elAdvAction3Label) elAdvAction3Label.value = app.advanced.action3.label || 'Dismiss reminder';
+    if (elSnoozeDuration) elSnoozeDuration.value = app.advanced.action2.snoozeMinutes || 10;
+
+    // Reset validations
+    clearValidationErrors();
+  }
+
+  function updateReminderFrequencyUI() {
+    const isNever = activeFreqChoice === 'never';
+    const isCustom = activeFreqChoice === 'custom';
+
+    if (elCustomIntervalBox) elCustomIntervalBox.hidden = !isCustom;
+    if (elReminderNoticeGroup) elReminderNoticeGroup.hidden = isNever;
+    if (elReminderDisabledNote) elReminderDisabledNote.hidden = !isNever;
+  }
+
+  function clearValidationErrors() {
+    ['valMsgOpeningNotice', 'valMsgOption1', 'valMsgOption2', 'valMsgCustomInterval', 'valMsgReminderNotice'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = '';
+    });
+  }
+
+  function setupConfigureScreen() {
+    // Frequency chip selection
+    freqChips.forEach((chip) => {
+      chip.addEventListener('click', (e) => {
+        freqChips.forEach((c) => c.classList.remove('active'));
+        e.currentTarget.classList.add('active');
+        activeFreqChoice = e.currentTarget.getAttribute('data-freq');
+        updateReminderFrequencyUI();
+      });
+    });
+
+    // Sync simple reminder notice and advanced reminder notice
+    if (elReminderNotice && elAdvReminderNotice) {
+      elReminderNotice.addEventListener('input', () => {
+        elAdvReminderNotice.value = elReminderNotice.value;
+      });
+      elAdvReminderNotice.addEventListener('input', () => {
+        elReminderNotice.value = elAdvReminderNotice.value;
+      });
+    }
+
+    // Save Rule Button
+    const btnSave = document.getElementById('btnSaveAppRule');
+    if (btnSave) {
+      btnSave.addEventListener('click', () => {
+        saveCurrentConfig(true);
+      });
+    }
+
+    // Test Rule Button
+    const btnTest = document.getElementById('btnTestThisRule');
+    if (btnTest) {
+      btnTest.addEventListener('click', () => {
+        if (saveCurrentConfig(false)) {
+          activePreviewAppId = currentConfigAppId;
+          navigateTo('intervention');
         }
       });
     }
 
-    if (btnSkip) {
-      btnSkip.addEventListener('click', () => {
-        navigateTo('home');
+    // Cancel Button
+    const btnCancel = document.getElementById('btnCancelConfigure');
+    if (btnCancel) {
+      btnCancel.addEventListener('click', () => {
+        navigateTo('apps');
       });
     }
 
-    dots.forEach((dot) => {
-      dot.addEventListener('click', (e) => {
-        const target = parseInt(e.currentTarget.getAttribute('data-slide-target'), 10);
-        if (target) goToSlide(target);
+    // Back Arrow
+    const btnBack = document.getElementById('btnBackFromConfigure');
+    if (btnBack) {
+      btnBack.addEventListener('click', () => {
+        navigateTo('apps');
       });
-    });
+    }
+
+    // App Enabled Toggle in header
+    if (elConfigToggle) {
+      elConfigToggle.addEventListener('change', (e) => {
+        const app = getRule(currentConfigAppId);
+        if (app) {
+          app.enabled = e.target.checked;
+          app.configuredEver = true;
+          saveAppRules();
+          showToast(`${app.name} rule ${app.enabled ? 'activated' : 'paused'}`);
+        }
+      });
+    }
+
+    // Reset this app to defaults
+    const btnResetApp = document.getElementById('btnResetAppDefaults');
+    if (btnResetApp) {
+      btnResetApp.addEventListener('click', () => {
+        const app = getRule(currentConfigAppId);
+        if (app) {
+          const fresh = createDefaultRule(app.id, app.name, app.category, app.enabled, 'never');
+          Object.assign(app, fresh);
+          populateConfigureScreen(app.id);
+          showToast(`Defaults restored for ${app.name}`);
+        }
+      });
+    }
   }
 
-  // --- Guarded Apps Renderer ---
-  function renderGuardedApps() {
-    const listContainer = document.getElementById('appsListContainer');
-    const chipsContainer = document.getElementById('guardedChipsContainer');
-    const countBadge = document.getElementById('appsGuardedCount');
-    const summaryText = document.getElementById('guardedCountSummary');
+  function saveCurrentConfig(redirectBack) {
+    clearValidationErrors();
+    let hasError = false;
 
-    const guardedOnly = appState.guardedApps.filter((a) => a.guarded);
-    const count = guardedOnly.length;
+    const openingNoticeVal = (elOpeningNotice ? elOpeningNotice.value : '').trim();
+    if (!openingNoticeVal) {
+      const valEl = document.getElementById('valMsgOpeningNotice');
+      if (valEl) valEl.textContent = 'Please enter an opening notice.';
+      hasError = true;
+    }
 
-    if (countBadge) countBadge.textContent = count;
-    if (summaryText) summaryText.textContent = `${count} app${count === 1 ? '' : 's'} will pause before opening`;
+    const opt1Val = (elOption1Label ? elOption1Label.value : '').trim();
+    if (!opt1Val) {
+      const valEl = document.getElementById('valMsgOption1');
+      if (valEl) valEl.textContent = 'Label cannot be empty.';
+      hasError = true;
+    }
 
-    // Render chips on Home Dashboard
-    if (chipsContainer) {
-      chipsContainer.innerHTML = '';
-      if (guardedOnly.length === 0) {
-        chipsContainer.innerHTML = '<span class="section-sub">No apps currently guarded. Tap Manage to add apps.</span>';
+    const opt2Val = (elOption2Label ? elOption2Label.value : '').trim();
+    if (!opt2Val) {
+      const valEl = document.getElementById('valMsgOption2');
+      if (valEl) valEl.textContent = 'Label cannot be empty.';
+      hasError = true;
+    }
+
+    if (opt1Val && opt2Val && opt1Val.toLowerCase() === opt2Val.toLowerCase()) {
+      const valEl = document.getElementById('valMsgOption2');
+      if (valEl) valEl.textContent = 'Option labels must be distinct.';
+      hasError = true;
+    }
+
+    let customMinutesVal = 8;
+    if (activeFreqChoice === 'custom') {
+      const num = parseInt(elCustomInterval ? elCustomInterval.value : '0', 10);
+      if (isNaN(num) || num < 1 || num > 300) {
+        const valEl = document.getElementById('valMsgCustomInterval');
+        if (valEl) valEl.textContent = 'Please enter a valid interval between 1 and 300 minutes.';
+        hasError = true;
       } else {
-        guardedOnly.forEach((app) => {
-          const pill = document.createElement('div');
-          pill.className = 'app-pill';
-          pill.innerHTML = `<span class="app-pill-dot"></span><span>${app.name}</span>`;
-          chipsContainer.appendChild(pill);
-        });
+        customMinutesVal = num;
       }
     }
 
-    // Render full list in Apps screen
-    if (listContainer) {
-      listContainer.innerHTML = '';
-      appState.guardedApps.forEach((app) => {
-        const row = document.createElement('div');
-        row.className = 'app-row';
-        row.innerHTML = `
-          <div class="app-row-info">
-            <div class="app-avatar ${app.avatar}">
-              <span>${app.icon}</span>
-            </div>
-            <div class="app-text-block">
-              <span class="app-name-title">${app.name}</span>
-              <span class="app-meta-sub">${app.meta}</span>
-            </div>
-          </div>
-          <label class="switch-control" aria-label="Toggle pause for ${app.name}">
-            <input type="checkbox" data-app-id="${app.id}" ${app.guarded ? 'checked' : ''}>
-            <span class="switch-slider"></span>
-          </label>
-        `;
-        listContainer.appendChild(row);
-      });
+    const reminderNoticeVal = (elReminderNotice ? elReminderNotice.value : '').trim();
+    if (activeFreqChoice !== 'never' && !reminderNoticeVal) {
+      const valEl = document.getElementById('valMsgReminderNotice');
+      if (valEl) valEl.textContent = 'Please provide a reminder notice message.';
+      hasError = true;
+    }
 
-      // Bind switches
-      listContainer.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
-        checkbox.addEventListener('change', (e) => {
-          const appId = e.target.getAttribute('data-app-id');
-          const isChecked = e.target.checked;
-          const targetApp = appState.guardedApps.find((a) => a.id === appId);
-          if (targetApp) {
-            targetApp.guarded = isChecked;
-            saveState();
-            renderGuardedApps();
-            showToast(`${targetApp.name} is now ${isChecked ? 'guarded' : 'unguarded'}`);
-          }
-        });
-      });
+    if (hasError) {
+      showToast('Please fix the errors above.');
+      return false;
+    }
+
+    // Persist to current app rule
+    const app = getRule(currentConfigAppId);
+    if (app) {
+      app.configuredEver = true;
+      app.enabled = elConfigToggle ? elConfigToggle.checked : true;
+      app.openingNotice = openingNoticeVal;
+      app.option1.label = opt1Val;
+      app.option2.label = opt2Val;
+      app.reminderFrequency = activeFreqChoice;
+      app.customMinutes = customMinutesVal;
+      app.reminderNotice = reminderNoticeVal || "You're still here?";
+
+      // Advanced options
+      app.advanced.action1.label = (elAdvAction1Label && elAdvAction1Label.value.trim()) || "Okay, I'm quitting";
+      app.advanced.action2.label = (elAdvAction2Label && elAdvAction2Label.value.trim()) || 'Wait';
+      app.advanced.action3.label = (elAdvAction3Label && elAdvAction3Label.value.trim()) || 'Dismiss reminder';
+      const snoozeNum = parseInt(elSnoozeDuration ? elSnoozeDuration.value : '10', 10);
+      app.advanced.action2.snoozeMinutes = isNaN(snoozeNum) || snoozeNum < 1 ? 10 : snoozeNum;
+
+      saveAppRules();
+      showToast(`Saved rule for ${app.name}`);
+
+      if (redirectBack) {
+        navigateTo('apps');
+      }
+      return true;
+    }
+    return false;
+  }
+
+  // --- Intervention Preview Screen Populator ---
+  function populateInterventionPreview(appId) {
+    const app = getRule(appId);
+    if (!app) return;
+
+    const elAppName = document.getElementById('previewAppName');
+    const elNotice = document.getElementById('previewOpeningNotice');
+    const elOpt1 = document.getElementById('previewOption1Label');
+    const elOpt2 = document.getElementById('previewOption2Label');
+    const elChoices = document.getElementById('previewChoicesBox');
+    const elQuitPanel = document.getElementById('previewResultQuit');
+    const elContinuePanel = document.getElementById('previewResultContinue');
+    const elQuitApp = document.getElementById('quitAppName');
+    const elContinueStatus = document.getElementById('continueReminderStatus');
+
+    if (elAppName) elAppName.textContent = app.name;
+    if (elNotice) elNotice.textContent = app.openingNotice;
+    if (elOpt1) elOpt1.textContent = app.option1.label;
+    if (elOpt2) elOpt2.textContent = app.option2.label;
+    if (elQuitApp) elQuitApp.textContent = app.name;
+
+    // Reset visibility
+    if (elChoices) elChoices.hidden = false;
+    if (elQuitPanel) elQuitPanel.hidden = true;
+    if (elContinuePanel) elContinuePanel.hidden = true;
+
+    if (elContinueStatus) {
+      if (app.reminderFrequency === 'never') {
+        elContinueStatus.textContent = `Continuing into ${app.name}. No mid-session reminders are scheduled.`;
+      } else {
+        const mins = app.reminderFrequency === 'custom' ? app.customMinutes : app.reminderFrequency;
+        elContinueStatus.textContent = `Continuing into ${app.name}. Check-in reminder scheduled in ${mins} minutes.`;
+      }
     }
   }
 
-  // --- Intervention Experience ---
-  const interveneChoices = document.getElementById('interveneChoices');
-  const subviewPurpose = document.getElementById('subviewPurpose');
-  const subviewChecking = document.getElementById('subviewChecking');
-  const subviewSuccess = document.getElementById('subviewSuccess');
-  const breathingRing = document.getElementById('breathingRing');
-  const breathingLabel = document.getElementById('breathingLabel');
+  function setupInterventionPreview() {
+    const btnQuit = document.getElementById('btnPreviewQuit');
+    const btnContinue = document.getElementById('btnPreviewContinue');
+    const elChoices = document.getElementById('previewChoicesBox');
+    const elQuitPanel = document.getElementById('previewResultQuit');
+    const elContinuePanel = document.getElementById('previewResultContinue');
 
-  function resetInterventionScreen() {
-    if (interveneChoices) interveneChoices.hidden = false;
-    if (subviewPurpose) subviewPurpose.hidden = true;
-    if (subviewChecking) subviewChecking.hidden = true;
-    if (subviewSuccess) subviewSuccess.hidden = true;
-
-    if (breathingLabel) breathingLabel.textContent = 'Take a slow breath';
-    if (breathingRing) {
-      breathingRing.style.display = 'flex';
-      breathingRing.style.animation = 'breathePulse 6s ease-in-out infinite';
+    if (btnQuit) {
+      btnQuit.addEventListener('click', () => {
+        if (elChoices) elChoices.hidden = true;
+        if (elQuitPanel) elQuitPanel.hidden = false;
+        showToast('Exit action triggered. Room made for what matters.');
+      });
     }
-  }
 
-  function setupIntervention() {
-    const btnPurpose = document.getElementById('btnChoicePurpose');
-    const btnChecking = document.getElementById('btnChoiceChecking');
+    if (btnContinue) {
+      btnContinue.addEventListener('click', () => {
+        if (elChoices) elChoices.hidden = true;
+        if (elContinuePanel) elContinuePanel.hidden = false;
+        showToast('Continue action triggered.');
+      });
+    }
+
+    const btnReturnQuit = document.getElementById('btnReturnFromQuit');
+    if (btnReturnQuit) btnReturnQuit.addEventListener('click', () => navigateTo('apps'));
+
+    const btnReturnCont = document.getElementById('btnReturnFromContinue');
+    if (btnReturnCont) btnReturnCont.addEventListener('click', () => navigateTo('home'));
+
+    const btnTriggerReminder = document.getElementById('btnTriggerReminderFromContinue');
+    if (btnTriggerReminder) {
+      btnTriggerReminder.addEventListener('click', () => {
+        navigateTo('reminder');
+      });
+    }
+
     const btnExit = document.getElementById('btnExitIntervention');
-    const btnBack1 = document.getElementById('btnBackToInterventionChoices');
-    const btnBack2 = document.getElementById('btnBackToInterventionChoices2');
-
-    const btnStartPurpose = document.getElementById('btnStartPurposeSession');
-    const btnStepAway = document.getElementById('btnStepAway');
-    const btnContinueReminder = document.getElementById('btnContinueWithReminder');
-    const btnCelebrateReturn = document.getElementById('btnCelebrateReturn');
-
-    // Choice 1: Purpose
-    if (btnPurpose) {
-      btnPurpose.addEventListener('click', () => {
-        interveneChoices.hidden = true;
-        subviewPurpose.hidden = false;
-        if (breathingLabel) breathingLabel.textContent = 'Clarify your purpose';
-      });
-    }
-
-    // Choice 2: Just checking
-    if (btnChecking) {
-      btnChecking.addEventListener('click', () => {
-        interveneChoices.hidden = true;
-        subviewChecking.hidden = false;
-        if (breathingLabel) breathingLabel.textContent = 'Pause & reflect';
-      });
-    }
-
-    // Back to choices
-    if (btnBack1) btnBack1.addEventListener('click', resetInterventionScreen);
-    if (btnBack2) btnBack2.addEventListener('click', resetInterventionScreen);
     if (btnExit) btnExit.addEventListener('click', () => navigateTo('home'));
 
-    // Purpose Session Started
-    if (btnStartPurpose) {
-      btnStartPurpose.addEventListener('click', () => {
-        appState.metrics.pauses += 1;
-        saveState();
-        updateDashboardMetrics();
-        showToast('Intentional session started. Nudge set for 5m.');
-        navigateTo('reminder');
-      });
-    }
-
-    // Stepped Away (Celebration!)
-    if (btnStepAway) {
-      btnStepAway.addEventListener('click', () => {
-        appState.metrics.pauses += 1;
-        appState.metrics.minutesReclaimed += 10;
-        saveState();
-        updateDashboardMetrics();
-
-        subviewChecking.hidden = true;
-        subviewSuccess.hidden = false;
-        if (breathingLabel) breathingLabel.textContent = 'Presence restored';
-      });
-    }
-
-    // Continue Anyway with reminder
-    if (btnContinueReminder) {
-      btnContinueReminder.addEventListener('click', () => {
-        showToast('Opening Instagram. Reminder set for 5 min.');
-        navigateTo('reminder');
-      });
-    }
-
-    // Celebrate return
-    if (btnCelebrateReturn) {
-      btnCelebrateReturn.addEventListener('click', () => {
-        navigateTo('home');
-        showToast('+1 Mindful pause logged!');
-      });
-    }
-
-    // Intent Chips
-    document.querySelectorAll('.intent-chip').forEach((chip) => {
-      chip.addEventListener('click', (e) => {
-        document.querySelectorAll('.intent-chip').forEach((c) => c.classList.remove('active'));
-        e.currentTarget.classList.add('active');
-      });
-    });
-
-    // Time Limit Chips
-    document.querySelectorAll('.time-chip').forEach((chip) => {
-      chip.addEventListener('click', (e) => {
-        document.querySelectorAll('.time-chip').forEach((c) => c.classList.remove('active'));
-        e.currentTarget.classList.add('active');
-      });
-    });
-  }
-
-  // --- In-App Reminder Setup ---
-  function setupReminder() {
-    const btnExit = document.getElementById('btnReminderExit');
-    const btnSnooze = document.getElementById('btnReminderSnooze');
-    const btnStop = document.getElementById('btnReminderStop');
-
-    if (btnExit) {
-      btnExit.addEventListener('click', () => {
-        appState.metrics.minutesReclaimed += 15;
-        saveState();
-        updateDashboardMetrics();
-        showToast('Great choice! 15 minutes reclaimed.');
-        navigateTo('home');
-      });
-    }
-
-    if (btnSnooze) {
-      btnSnooze.addEventListener('click', () => {
-        showToast('Reminder snoozed for 5 minutes.');
-        navigateTo('home');
-      });
-    }
-
-    if (btnStop) {
-      btnStop.addEventListener('click', () => {
-        showToast('Reminders paused for Instagram for today.');
-        navigateTo('home');
+    const btnEdit = document.getElementById('btnEditFromPreview');
+    if (btnEdit) {
+      btnEdit.addEventListener('click', () => {
+        currentConfigAppId = activePreviewAppId;
+        navigateTo('configure');
       });
     }
   }
 
-  // --- Dashboard Metrics Updater ---
-  function updateDashboardMetrics() {
-    const elPauses = document.getElementById('metricPauses');
-    const elReclaimed = document.getElementById('metricReclaimed');
-    const elRate = document.getElementById('metricRate');
+  // --- Reminder Preview Screen Populator ---
+  function populateReminderPreview(appId) {
+    const app = getRule(appId);
+    if (!app) return;
 
-    if (elPauses) elPauses.textContent = appState.metrics.pauses;
-    if (elReclaimed) elReclaimed.textContent = `${appState.metrics.minutesReclaimed}m`;
-    if (elRate) elRate.textContent = `${appState.metrics.intentionalRate}%`;
+    const elFeedTitle = document.getElementById('simFeedAppTitle');
+    const elDisabledPanel = document.getElementById('panelReminderDisabled');
+    const elActivePanel = document.getElementById('panelReminderActive');
+    const elDisabledAppName = document.getElementById('disabledReminderAppName');
+    const elNotice = document.getElementById('previewReminderNotice');
+    const elSub = document.getElementById('previewReminderSub');
+    const elAct1 = document.getElementById('labelAdvAction1');
+    const elAct2 = document.getElementById('labelAdvAction2');
+    const elAct3 = document.getElementById('labelAdvAction3');
+
+    if (elFeedTitle) elFeedTitle.textContent = `${app.name} Feed`;
+
+    if (app.reminderFrequency === 'never') {
+      if (elDisabledPanel) elDisabledPanel.hidden = false;
+      if (elActivePanel) elActivePanel.hidden = true;
+      if (elDisabledAppName) elDisabledAppName.textContent = app.name;
+    } else {
+      if (elDisabledPanel) elDisabledPanel.hidden = true;
+      if (elActivePanel) elActivePanel.hidden = false;
+      const mins = app.reminderFrequency === 'custom' ? app.customMinutes : app.reminderFrequency;
+      if (elNotice) elNotice.textContent = app.reminderNotice;
+      if (elSub) elSub.textContent = `Scheduled check-in after ${mins} minutes in ${app.name}`;
+      if (elAct1) elAct1.textContent = app.advanced.action1.label;
+      if (elAct2) elAct2.textContent = `${app.advanced.action2.label} (+${app.advanced.action2.snoozeMinutes} min)`;
+      if (elAct3) elAct3.textContent = app.advanced.action3.label;
+    }
   }
 
-  // --- Settings Setup ---
-  function setupSettings() {
-    // Segmented controls for pause duration
-    const pauseDurBtns = document.querySelectorAll('#pauseDurationSelector .segment-btn');
-    pauseDurBtns.forEach((btn) => {
-      btn.addEventListener('click', (e) => {
-        pauseDurBtns.forEach((b) => b.classList.remove('active'));
-        e.currentTarget.classList.add('active');
-        appState.settings.pauseDuration = e.currentTarget.getAttribute('data-duration');
-        saveState();
-        showToast(`Pause duration set to ${appState.settings.pauseDuration} seconds`);
-      });
-    });
+  function setupReminderPreview() {
+    const btnAct1 = document.getElementById('btnReminderAction1');
+    const btnAct2 = document.getElementById('btnReminderAction2');
+    const btnAct3 = document.getElementById('btnReminderAction3');
+    const btnEnable = document.getElementById('btnEnableReminderShortcut');
 
-    // Segmented controls for reminder intervals
-    const reminderBtns = document.querySelectorAll('#reminderIntervalSelector .segment-btn');
-    reminderBtns.forEach((btn) => {
-      btn.addEventListener('click', (e) => {
-        reminderBtns.forEach((b) => b.classList.remove('active'));
-        e.currentTarget.classList.add('active');
-        appState.settings.reminderInterval = e.currentTarget.getAttribute('data-interval');
-        saveState();
-        showToast(`Reminder interval set to ${appState.settings.reminderInterval} min`);
-      });
-    });
-
-    // Toggles
-    const toggleBreathing = document.getElementById('toggleBreathingGuide');
-    if (toggleBreathing) {
-      toggleBreathing.checked = appState.settings.breathingGuide;
-      toggleBreathing.addEventListener('change', (e) => {
-        appState.settings.breathingGuide = e.target.checked;
-        saveState();
-        showToast(`Breathing guide ${e.target.checked ? 'enabled' : 'disabled'}`);
+    if (btnAct1) {
+      btnAct1.addEventListener('click', () => {
+        showToast('App closed. Intentional choice logged.');
+        navigateTo('home');
       });
     }
 
-    const toggleHaptics = document.getElementById('toggleHaptics');
-    if (toggleHaptics) {
-      toggleHaptics.checked = appState.settings.haptics;
-      toggleHaptics.addEventListener('change', (e) => {
-        appState.settings.haptics = e.target.checked;
-        saveState();
-        showToast(`Haptic pulse ${e.target.checked ? 'enabled' : 'disabled'}`);
+    if (btnAct2) {
+      btnAct2.addEventListener('click', () => {
+        const app = getRule(activePreviewAppId);
+        const mins = app.advanced.action2.snoozeMinutes || 10;
+        showToast(`Reminder snoozed for ${mins} minutes.`);
+        navigateTo('home');
       });
     }
 
-    const toggleExtensions = document.getElementById('toggleExtensions');
-    if (toggleExtensions) {
-      toggleExtensions.checked = appState.settings.allowExtensions;
-      toggleExtensions.addEventListener('change', (e) => {
-        appState.settings.allowExtensions = e.target.checked;
-        saveState();
-        showToast(`Session extension ${e.target.checked ? 'allowed' : 'disabled'}`);
+    if (btnAct3) {
+      btnAct3.addEventListener('click', () => {
+        const app = getRule(activePreviewAppId);
+        showToast(`Reminders paused for ${app.name} for the rest of today.`);
+        navigateTo('home');
       });
     }
 
-    // Reset Demo Button
-    const btnReset = document.getElementById('btnResetDemo');
-    if (btnReset) {
-      btnReset.addEventListener('click', () => {
-        appState = JSON.parse(JSON.stringify(DEFAULT_DATA));
-        saveState();
-        renderGuardedApps();
-        updateDashboardMetrics();
-        showToast('Prototype data restored to default!');
+    if (btnEnable) {
+      btnEnable.addEventListener('click', () => {
+        currentConfigAppId = activePreviewAppId;
+        navigateTo('configure');
       });
     }
   }
 
-  // --- Theme Controller (Dual-Theme & System Preference) ---
+  // --- Theme Controller ---
   function setupTheme() {
     const themeButtons = document.querySelectorAll('.theme-btn');
     const settingThemeButtons = document.querySelectorAll('.segment-btn[data-theme-choice]');
@@ -512,32 +751,24 @@
 
       document.documentElement.setAttribute('data-theme', resolvedTheme);
 
-      // Save preference
       try {
         localStorage.setItem(THEME_STORAGE_KEY, themeChoice);
       } catch (e) {
         /* storage unavailable */
       }
 
-      // Update UI buttons in banner
       themeButtons.forEach((btn) => {
         btn.classList.toggle('active', btn.getAttribute('data-theme-val') === themeChoice);
       });
 
-      // Update UI buttons in settings
       settingThemeButtons.forEach((btn) => {
         btn.classList.toggle('active', btn.getAttribute('data-theme-choice') === themeChoice);
       });
     }
-
-    // Expose for external control / test harness
     window.applyTheme = applyTheme;
 
-    // Initialize with current preference
-    const initialPreference = getSavedThemePreference();
-    applyTheme(initialPreference);
+    applyTheme(getSavedThemePreference());
 
-    // Banner buttons
     themeButtons.forEach((btn) => {
       btn.addEventListener('click', (e) => {
         const val = e.currentTarget.getAttribute('data-theme-val');
@@ -546,7 +777,6 @@
       });
     });
 
-    // Settings segment buttons
     settingThemeButtons.forEach((btn) => {
       btn.addEventListener('click', (e) => {
         const val = e.currentTarget.getAttribute('data-theme-choice');
@@ -555,7 +785,6 @@
       });
     });
 
-    // Listen for OS scheme changes
     if (window.matchMedia) {
       window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
         if (getSavedThemePreference() === 'system') {
@@ -575,7 +804,7 @@
       });
     });
 
-    // Bottom Navigation Bar items
+    // Primary Bottom Navigation Bar items
     document.querySelectorAll('.nav-item').forEach((item) => {
       item.addEventListener('click', (e) => {
         const target = e.currentTarget.getAttribute('data-nav-target');
@@ -583,36 +812,51 @@
       });
     });
 
-    // Back buttons
-    const btnBackApps = document.getElementById('btnBackFromApps');
-    if (btnBackApps) btnBackApps.addEventListener('click', () => navigateTo('home'));
-
-    const btnBackSettings = document.getElementById('btnBackFromSettings');
-    if (btnBackSettings) btnBackSettings.addEventListener('click', () => navigateTo('home'));
-
-    const btnHomeSettings = document.getElementById('btnHomeSettings');
+    // Home buttons
+    const btnHomeSettings = document.getElementById('btnHomeToSettings');
     if (btnHomeSettings) btnHomeSettings.addEventListener('click', () => navigateTo('settings'));
 
-    // Manage apps button on home
-    const btnManageApps = document.getElementById('btnManageApps');
-    if (btnManageApps) btnManageApps.addEventListener('click', () => navigateTo('apps'));
+    const btnHomeManage = document.getElementById('btnHomeManageApps');
+    if (btnHomeManage) btnHomeManage.addEventListener('click', () => navigateTo('apps'));
 
-    // Save apps button in apps screen
-    const btnSaveApps = document.getElementById('btnSaveApps');
-    if (btnSaveApps) btnSaveApps.addEventListener('click', () => {
-      navigateTo('home');
-      showToast('Guarded apps saved');
-    });
+    const btnTestOpen = document.getElementById('btnTestOpeningNotice');
+    if (btnTestOpen) {
+      btnTestOpen.addEventListener('click', () => {
+        const active = appRules.find((r) => r.enabled) || appRules[0];
+        activePreviewAppId = active.id;
+        navigateTo('intervention');
+      });
+    }
 
-    // Test drives on home
-    const btnTestIntervention = document.getElementById('btnTestIntervention');
-    if (btnTestIntervention) btnTestIntervention.addEventListener('click', () => navigateTo('intervention'));
+    const btnTestRem = document.getElementById('btnTestReminderNotice');
+    if (btnTestRem) {
+      btnTestRem.addEventListener('click', () => {
+        const active = appRules.find((r) => r.enabled) || appRules[0];
+        activePreviewAppId = active.id;
+        navigateTo('reminder');
+      });
+    }
 
-    const btnTestReminder = document.getElementById('btnTestReminder');
-    if (btnTestReminder) btnTestReminder.addEventListener('click', () => navigateTo('reminder'));
+    // Welcome onboarding buttons
+    const btnWelcomeGetStarted = document.getElementById('btnWelcomeGetStarted');
+    if (btnWelcomeGetStarted) btnWelcomeGetStarted.addEventListener('click', () => navigateTo('apps'));
 
-    const btnTestFromApps = document.getElementById('btnTestInterventionFromApps');
-    if (btnTestFromApps) btnTestFromApps.addEventListener('click', () => navigateTo('intervention'));
+    const btnWelcomeSkip = document.getElementById('btnWelcomeSkip');
+    if (btnWelcomeSkip) btnWelcomeSkip.addEventListener('click', () => navigateTo('home'));
+
+    // Settings Reset All Demo Button
+    const btnResetAll = document.getElementById('btnResetAllDemo');
+    if (btnResetAll) {
+      btnResetAll.addEventListener('click', () => {
+        if (confirm('Reset all app rules to factory defaults?')) {
+          appRules = JSON.parse(JSON.stringify(DEFAULT_APP_RULES));
+          saveAppRules();
+          renderHomeOverview();
+          renderAppsList();
+          showToast('All rules reset to defaults');
+        }
+      });
+    }
 
     // Hash change routing
     window.addEventListener('hashchange', () => {
@@ -626,12 +870,9 @@
   // --- Bootstrap on DOM Ready ---
   document.addEventListener('DOMContentLoaded', () => {
     setupTheme();
-    setupOnboarding();
-    renderGuardedApps();
-    updateDashboardMetrics();
-    setupIntervention();
-    setupReminder();
-    setupSettings();
+    setupConfigureScreen();
+    setupInterventionPreview();
+    setupReminderPreview();
     setupGlobalBindings();
 
     // Check URL hash for initial screen, fallback to home
