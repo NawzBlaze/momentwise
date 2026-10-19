@@ -8,12 +8,25 @@ Morrow is an intentional phone-use companion being designed to help people inter
 
 ## Current Status: Pre-development
 
-This repository contains the **initial brand foundation and static public landing page**. 
+This repository contains the **brand foundation and adaptive static public landing page**. 
 
 The actual Morrow application has **not** been started or built yet. No mobile code, background accessibility services, app-monitoring logic, databases, or client-side application logic are present in this milestone.
 
 - **Public Landing Page:** [https://nawzblaze.github.io/morrow/](https://nawzblaze.github.io/morrow/)
 - **Repository:** [https://github.com/NawzBlaze/morrow](https://github.com/NawzBlaze/morrow)
+
+---
+
+## Brand Identity & Design System
+
+- **Product:** Morrow
+- **Tagline:** Make room for what matters.
+- **Logo Symbol:** An M-shaped silhouette cradling a rising sun, evoking morning clarity and dawn (*morrow*).
+- **Color Palette:**
+  - **Light Mode:** Warm cream (`#FAF7F2`), deep forest green (`#14291E`), and restrained sunrise gold (`#C28B38`).
+  - **Dark Mode:** Soft charcoal (`#0F1412`), comfortable off-white (`#EDF2EE`), muted green and sunrise gold accents (`#E2AC54`).
+- **Personality:** Minimal, premium, calm, thoughtful, and human.
+- **Adaptive Theme:** Supports automatic system theme detection (`prefers-color-scheme`) alongside an accessible manual theme switcher (System, Light, Dark) persisted in `localStorage` with zero-flash rendering.
 
 ---
 
@@ -49,14 +62,14 @@ morrow/
 │   └── workflows/
 │       └── pages.yml      # Automated GitHub Actions deployment to Pages
 ├── assets/
-│   └── favicon.svg        # Scalable SVG brand mark
+│   └── favicon.svg        # Scalable SVG brand mark (M + rising sun)
 ├── .gitignore             # Standard ignore rules
-├── index.html             # Accessible, semantic static landing page
-├── README.md              # Project documentation
+├── index.html             # Accessible, semantic static landing page with theme selector
+├── README.md              # Project documentation & brand system
 ├── robots.txt             # Search engine crawl directives
-├── script.js              # Build-free vanilla helper script
+├── script.js              # Vanilla JS for theme management and accessibility
 ├── sitemap.xml            # XML sitemap
-└── styles.css             # Responsive, accessible stylesheet (WCAG AAA contrast)
+└── styles.css             # Adaptive design tokens & stylesheet (WCAG AAA contrast)
 ```
 
 ---

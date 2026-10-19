@@ -1,32 +1,40 @@
 /* ==========================================================================
    Morrow — Stylesheet
-   Design Philosophy: Calm, modern, premium, minimal, and human.
+   Brand Identity: Warm cream, forest green, restrained sunrise gold.
+   Personality: Minimal, premium, calm, thoughtful, human.
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
    Design Tokens & CSS Custom Properties
    -------------------------------------------------------------------------- */
 :root {
-  /* Color Palette - Deep, serene slate with warm neutrality */
-  --color-bg: #090B0E;
-  --color-surface: #11151D;
-  --color-surface-hover: #161B26;
-  --color-surface-subtle: rgba(255, 255, 255, 0.02);
-  --color-border: #1E2533;
-  --color-border-subtle: #171D28;
-  --color-border-hover: #2D3748;
+  /* Default: Light Mode (Warm Cream + Forest Green + Sunrise Gold) */
+  --color-bg: #FAF7F2;
+  --color-surface: #FFFFFF;
+  --color-surface-hover: #F4F0E8;
+  --color-surface-subtle: #F0ECE2;
+  --color-border: #E5DFD5;
+  --color-border-subtle: #EDE7DC;
+  --color-border-hover: #D4CBBD;
 
   /* Typography Colors (High Contrast, WCAG AAA compliant) */
-  --color-text-primary: #F8FAFC;
-  --color-text-secondary: #94A3B8;
-  --color-text-tertiary: #64748B;
-  --color-text-muted: #475569;
+  --color-text-primary: #14291E;    /* Deep Forest Green */
+  --color-text-secondary: #365343;  /* Balanced Forest Green */
+  --color-text-tertiary: #5D7568;   /* Muted Green */
+  --color-text-muted: #7E9387;
 
-  /* Accent & Status */
-  --color-accent: #E2E8F0;
-  --color-status-dot: #10B981;
-  --color-status-glow: rgba(16, 185, 129, 0.2);
-  --color-focus: #38BDF8;
+  /* Accent & Brand Colors */
+  --color-accent: #C28B38;         /* Restrained Sunrise Gold */
+  --color-accent-hover: #A87428;
+  --color-accent-subtle: rgba(194, 139, 56, 0.12);
+  --color-status-dot: #1B7340;      /* Calm Forest Emerald */
+  --color-status-glow: rgba(27, 115, 64, 0.2);
+  --color-focus: #C28B38;
+  --color-shadow: rgba(20, 41, 30, 0.04);
+
+  /* Logo Specific Tokens */
+  --logo-m: #14291E;
+  --logo-sun: #C28B38;
 
   /* Typography */
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -55,6 +63,94 @@
   /* Transitions */
   --transition-fast: 150ms ease;
   --transition-normal: 250ms ease;
+  --theme-transition: background-color 200ms ease, color 200ms ease, border-color 200ms ease;
+}
+
+/* --------------------------------------------------------------------------
+   System Theme Preference: Automatic Dark Mode
+   -------------------------------------------------------------------------- */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    /* Soft Charcoal Surfaces + Comfortable Off-White + Muted Green & Gold */
+    --color-bg: #0F1412;
+    --color-surface: #171D1A;
+    --color-surface-hover: #1F2723;
+    --color-surface-subtle: #141A17;
+    --color-border: #26322C;
+    --color-border-subtle: #1E2822;
+    --color-border-hover: #37473E;
+
+    --color-text-primary: #EDF2EE;    /* Comfortable Off-White */
+    --color-text-secondary: #9EAEA3;  /* Soft Muted Sage */
+    --color-text-tertiary: #6D7F74;   /* Muted Green */
+    --color-text-muted: #526258;
+
+    --color-accent: #E2AC54;         /* Muted Sunrise Gold */
+    --color-accent-hover: #ECC073;
+    --color-accent-subtle: rgba(226, 172, 84, 0.14);
+    --color-status-dot: #34D399;      /* Luminous Green */
+    --color-status-glow: rgba(52, 211, 153, 0.25);
+    --color-focus: #E2AC54;
+    --color-shadow: rgba(0, 0, 0, 0.2);
+
+    --logo-m: #EDF2EE;
+    --logo-sun: #E2AC54;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Explicit Theme Overrides (Manual User Toggle via data-theme)
+   -------------------------------------------------------------------------- */
+[data-theme="light"] {
+  --color-bg: #FAF7F2;
+  --color-surface: #FFFFFF;
+  --color-surface-hover: #F4F0E8;
+  --color-surface-subtle: #F0ECE2;
+  --color-border: #E5DFD5;
+  --color-border-subtle: #EDE7DC;
+  --color-border-hover: #D4CBBD;
+
+  --color-text-primary: #14291E;
+  --color-text-secondary: #365343;
+  --color-text-tertiary: #5D7568;
+  --color-text-muted: #7E9387;
+
+  --color-accent: #C28B38;
+  --color-accent-hover: #A87428;
+  --color-accent-subtle: rgba(194, 139, 56, 0.12);
+  --color-status-dot: #1B7340;
+  --color-status-glow: rgba(27, 115, 64, 0.2);
+  --color-focus: #C28B38;
+  --color-shadow: rgba(20, 41, 30, 0.04);
+
+  --logo-m: #14291E;
+  --logo-sun: #C28B38;
+}
+
+[data-theme="dark"] {
+  --color-bg: #0F1412;
+  --color-surface: #171D1A;
+  --color-surface-hover: #1F2723;
+  --color-surface-subtle: #141A17;
+  --color-border: #26322C;
+  --color-border-subtle: #1E2822;
+  --color-border-hover: #37473E;
+
+  --color-text-primary: #EDF2EE;
+  --color-text-secondary: #9EAEA3;
+  --color-text-tertiary: #6D7F74;
+  --color-text-muted: #526258;
+
+  --color-accent: #E2AC54;
+  --color-accent-hover: #ECC073;
+  --color-accent-subtle: rgba(226, 172, 84, 0.14);
+  --color-status-dot: #34D399;
+  --color-status-glow: rgba(52, 211, 153, 0.25);
+  --color-focus: #E2AC54;
+  --color-shadow: rgba(0, 0, 0, 0.2);
+
+  --logo-m: #EDF2EE;
+  --logo-sun: #E2AC54;
 }
 
 /* --------------------------------------------------------------------------
@@ -76,6 +172,7 @@ html {
   -moz-osx-font-smoothing: grayscale;
   scroll-behavior: smooth;
   text-rendering: optimizeLegibility;
+  transition: var(--theme-transition);
 }
 
 body {
@@ -84,6 +181,7 @@ body {
   flex-direction: column;
   background-color: var(--color-bg);
   color: var(--color-text-primary);
+  transition: var(--theme-transition);
 }
 
 /* Focus styles for accessible navigation */
@@ -129,29 +227,38 @@ body {
 }
 
 /* --------------------------------------------------------------------------
-   Header
+   Header & Navigation
    -------------------------------------------------------------------------- */
 .site-header {
   position: sticky;
   top: 0;
-  background: rgba(9, 11, 14, 0.85);
+  background: rgba(250, 247, 242, 0.88);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--color-border-subtle);
   z-index: 100;
-  padding: 1.125rem 0;
+  padding: 1rem 0;
+  transition: var(--theme-transition);
+}
+
+[data-theme="dark"] .site-header,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .site-header {
+    background: rgba(15, 20, 18, 0.88);
+  }
 }
 
 .header-inner {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: var(--space-md);
 }
 
 .brand {
   display: inline-flex;
   align-items: center;
-  gap: 0.65rem;
+  gap: 0.75rem;
   color: var(--color-text-primary);
   text-decoration: none;
   transition: opacity var(--transition-fast);
@@ -162,14 +269,31 @@ body {
 }
 
 .brand-mark {
-  color: var(--color-text-primary);
   display: block;
+  flex-shrink: 0;
+}
+
+.brand-sun {
+  fill: var(--logo-sun);
+  transition: fill var(--transition-normal);
+}
+
+.brand-m {
+  stroke: var(--logo-m);
+  transition: stroke var(--transition-normal);
 }
 
 .brand-name {
   font-size: 1.15rem;
   font-weight: 600;
   letter-spacing: -0.02em;
+  color: var(--color-text-primary);
+}
+
+.header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .header-status {
@@ -183,6 +307,7 @@ body {
   font-size: 0.8rem;
   color: var(--color-text-secondary);
   font-weight: 500;
+  transition: var(--theme-transition);
 }
 
 .status-indicator {
@@ -191,6 +316,73 @@ body {
   border-radius: 50%;
   background-color: var(--color-status-dot);
   box-shadow: 0 0 8px var(--color-status-glow);
+  transition: background-color var(--transition-normal);
+}
+
+/* --------------------------------------------------------------------------
+   Theme Selector Component
+   -------------------------------------------------------------------------- */
+.theme-selector {
+  display: inline-flex;
+  align-items: center;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  padding: 2px;
+  gap: 2px;
+  transition: var(--theme-transition);
+}
+
+.theme-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.65rem;
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-family: var(--font-sans);
+  font-size: 0.775rem;
+  font-weight: 500;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+  line-height: 1;
+}
+
+.theme-option:hover {
+  color: var(--color-text-primary);
+}
+
+.theme-option[aria-checked="true"] {
+  background: var(--color-accent-subtle);
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+.theme-option:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 1px;
+}
+
+.theme-icon {
+  display: block;
+  flex-shrink: 0;
+}
+
+@media (max-width: 480px) {
+  .theme-label {
+    display: none;
+  }
+  .theme-option {
+    padding: 0.35rem 0.5rem;
+  }
+  .header-status .status-text {
+    display: none;
+  }
+  .header-status {
+    padding: 0.45rem;
+  }
 }
 
 /* --------------------------------------------------------------------------
@@ -221,6 +413,7 @@ body {
   padding: 0.35rem 0.85rem;
   border-radius: var(--radius-full);
   margin-bottom: var(--space-xl);
+  transition: var(--theme-transition);
 }
 
 .status-dot {
@@ -237,6 +430,7 @@ body {
   letter-spacing: -0.035em;
   color: var(--color-text-primary);
   margin-bottom: var(--space-lg);
+  transition: color var(--transition-normal);
 }
 
 .hero-lead {
@@ -248,6 +442,7 @@ body {
   max-width: 38ch;
   margin-left: auto;
   margin-right: auto;
+  transition: color var(--transition-normal);
 }
 
 /* Pause concept cue */
@@ -259,6 +454,8 @@ body {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   max-width: 520px;
+  box-shadow: 0 4px 16px var(--color-shadow);
+  transition: var(--theme-transition), box-shadow var(--transition-normal);
 }
 
 .pause-concept-inner {
@@ -285,6 +482,7 @@ body {
 .section {
   padding: var(--space-4xl) 0;
   border-bottom: 1px solid var(--color-border-subtle);
+  transition: border-color var(--transition-normal);
 }
 
 .section-header {
@@ -298,8 +496,10 @@ body {
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: var(--color-text-tertiary);
+  color: var(--color-accent);
+  font-weight: 600;
   margin-bottom: var(--space-xs);
+  transition: color var(--transition-normal);
 }
 
 .section-title {
@@ -309,12 +509,14 @@ body {
   line-height: 1.25;
   color: var(--color-text-primary);
   margin-bottom: var(--space-sm);
+  transition: color var(--transition-normal);
 }
 
 .section-subtitle {
   font-size: 1.05rem;
   color: var(--color-text-secondary);
   line-height: 1.55;
+  transition: color var(--transition-normal);
 }
 
 /* --------------------------------------------------------------------------
@@ -341,6 +543,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
+  box-shadow: 0 4px 16px var(--color-shadow);
+  transition: var(--theme-transition), box-shadow var(--transition-normal);
 }
 
 .content-block h3 {
@@ -348,12 +552,14 @@ body {
   font-weight: 600;
   color: var(--color-text-primary);
   letter-spacing: -0.015em;
+  transition: color var(--transition-normal);
 }
 
 .content-block p {
   color: var(--color-text-secondary);
   font-size: 1rem;
   line-height: 1.65;
+  transition: color var(--transition-normal);
 }
 
 /* --------------------------------------------------------------------------
@@ -378,21 +584,25 @@ body {
   padding: var(--space-xl);
   display: flex;
   flex-direction: column;
-  transition: border-color var(--transition-fast), background var(--transition-fast);
+  box-shadow: 0 4px 16px var(--color-shadow);
+  transition: var(--theme-transition), transform var(--transition-fast), box-shadow var(--transition-normal);
 }
 
 .principle-card:hover {
   border-color: var(--color-border-hover);
   background: var(--color-surface-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px var(--color-shadow);
 }
 
 .principle-number {
   font-family: var(--font-mono);
   font-size: 0.8rem;
   font-weight: 600;
-  color: var(--color-text-tertiary);
+  color: var(--color-accent);
   margin-bottom: var(--space-md);
   letter-spacing: 0.05em;
+  transition: color var(--transition-normal);
 }
 
 .principle-title {
@@ -401,12 +611,14 @@ body {
   color: var(--color-text-primary);
   letter-spacing: -0.015em;
   margin-bottom: var(--space-xs);
+  transition: color var(--transition-normal);
 }
 
 .principle-description {
   color: var(--color-text-secondary);
   font-size: 0.95rem;
   line-height: 1.6;
+  transition: color var(--transition-normal);
 }
 
 /* --------------------------------------------------------------------------
@@ -422,6 +634,7 @@ body {
   letter-spacing: -0.03em;
   color: var(--color-text-primary);
   margin-bottom: var(--space-md);
+  transition: color var(--transition-normal);
 }
 
 .closing-lead {
@@ -430,6 +643,7 @@ body {
   max-width: 48ch;
   margin: 0 auto var(--space-2xl);
   line-height: 1.6;
+  transition: color var(--transition-normal);
 }
 
 .repo-link {
@@ -444,7 +658,8 @@ body {
   font-size: 0.95rem;
   font-weight: 500;
   text-decoration: none;
-  transition: border-color var(--transition-fast), background var(--transition-fast), transform var(--transition-fast);
+  box-shadow: 0 4px 12px var(--color-shadow);
+  transition: var(--theme-transition), transform var(--transition-fast), box-shadow var(--transition-normal);
 }
 
 .repo-link:hover {
@@ -456,11 +671,12 @@ body {
 .repo-icon {
   display: block;
   color: var(--color-text-secondary);
+  transition: color var(--transition-normal);
 }
 
 .external-arrow {
-  color: var(--color-text-tertiary);
-  transition: transform var(--transition-fast);
+  color: var(--color-accent);
+  transition: transform var(--transition-fast), color var(--transition-normal);
 }
 
 .repo-link:hover .external-arrow {
@@ -475,6 +691,7 @@ body {
   padding: var(--space-2xl) 0;
   border-top: 1px solid var(--color-border-subtle);
   background: var(--color-bg);
+  transition: var(--theme-transition);
 }
 
 .footer-inner {
@@ -502,7 +719,7 @@ body {
 
 .footer-brand {
   font-weight: 600;
-  color: var(--color-text-secondary);
+  color: var(--color-text-primary);
 }
 
 .footer-right {
@@ -518,7 +735,7 @@ body {
 }
 
 .footer-link:hover {
-  color: var(--color-text-primary);
+  color: var(--color-accent);
 }
 
 .footer-divider {
