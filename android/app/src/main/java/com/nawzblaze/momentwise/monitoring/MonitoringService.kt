@@ -298,6 +298,8 @@ class MonitoringService : Service() {
         }
         val theme = app().container.appSettingsRepository.themeMode.first().name
         pauseVisible = true
+        Log.i(TAG, "showing $kind for ${rule.appId}")
+        noteDebug("showing $kind for ${rule.appId}")
         withContext(Dispatchers.Main) {
             PausePresenter.show(this@MonitoringService, request, theme)
         }
@@ -369,9 +371,11 @@ class MonitoringService : Service() {
             } else {
                 startForeground(NotificationChannels.MONITORING_NOTIFICATION_ID, notification)
             }
+            noteDebug("foreground started")
             true
         } catch (error: Exception) {
             Log.w(TAG, "startForeground failed", error)
+            noteDebug("foreground failed ${error.javaClass.simpleName}: ${error.message}")
             MonitorPresence.markStartFailed(this, System.currentTimeMillis())
             stopSelf()
             false
@@ -414,6 +418,15 @@ class MonitoringService : Service() {
             MonitorPresence.markStopped(this@MonitoringService)
             ServiceCompat.stopForeground(this@MonitoringService, ServiceCompat.STOP_FOREGROUND_REMOVE)
             stopSelf()
+        }
+    }
+
+    private fun noteDebug(line: String) {
+        if (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE == 0) return
+        try {
+            openFileOutput("debug-status.txt", MODE_APPEND).bufferedWriter().use { it.appendLine(line) }
+        } catch (_: Exception) {
+            // Diagnosis only. A missing note must not stop guarding.
         }
     }
 

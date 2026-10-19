@@ -48,6 +48,11 @@ class DebugRuleActivity : Activity() {
             MonitoringCoordinator.sync(app)
         }
         setContentView(TextView(this).apply { text = "Rule enabled" })
+        openFileOutput("debug-status.txt", MODE_PRIVATE).bufferedWriter().use {
+            it.appendLine(
+                "sync finished usage=${grants.usageAccess} notifications=${grants.notifications} overlay=${grants.overlay}",
+            )
+        }
         Log.i(TAG, "sync finished for $packageName")
     }
 
