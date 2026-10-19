@@ -89,9 +89,12 @@ jobs:
           open(out_path, "w", encoding="utf-8").write(text)
           print(text[-12000:])
           PY
-          if [ -n "$PR_NUMBER" ]; then
+          # Success is the check itself. Only publish the excerpt when Gradle fails,
+          # so a green run does not leave a log dump on the pull request.
+          if [ "$code" != "0" ] && [ -n "$PR_NUMBER" ]; then
             gh pr comment "$PR_NUMBER" --body-file "$RUNNER_TEMP/excerpt.md" || echo "PR comment failed"
           fi
+          if [ "$code" != "0" ]; then
           python3 - "$RUNNER_TEMP/excerpt.md" "$code" <<'PY'
           import json, os, subprocess, sys
           excerpt = open(sys.argv[1], encoding="utf-8").read()
@@ -119,6 +122,7 @@ jobs:
           else:
               print("check-run published")
           PY
+          fi
           {
             echo "## Gradle excerpt"
             echo

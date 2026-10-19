@@ -34,6 +34,9 @@ Debug APK: `android/app/build/outputs/apk/debug/app-debug.apk`.
 
 GitHub Actions workflow: [`.github/workflows/android.yml`](../.github/workflows/android.yml).
 That is the reproducible build for this milestone. A local SDK is not assumed.
+A green run means `testDebugUnitTest`, `assembleDebug`, and `lintDebug` succeeded
+on Ubuntu with JDK 17 and SDK 35. It is not a device or emulator result, and it
+does not exercise app detection or intervention — those are not implemented.
 
 ## Layout
 
