@@ -13,8 +13,10 @@ A single-module Jetpack Compose app:
 - Kotlin, Material 3 with the Momentwise palette (not dynamic colour).
 - System theme by default. Light and Dark are available from the first screen.
 - Welcome, Home, Apps, Configure Rule, opening-notice preview, reminder preview, Settings.
-- Per-app rules in DataStore. Validation and rule isolation have JVM unit tests.
-- No special permissions. App detection is not connected. The Apps list is the labelled sample catalog from the prototype.
+- Per-app rules in DataStore, keyed by package name. Validation, rule isolation, the usage-event reducer, and the reminder session clock have JVM unit tests.
+- Launchable apps from the device. Foundation sample ids are dropped, not copied onto real apps.
+- Usage Access, display over other apps, and notifications are explained before a rule is enabled. Decline leaves monitoring off.
+- A `specialUse` foreground service and a pause (overlay, or a notification if overlay is refused). Quit is a home intent. This has not been run on a device here.
 
 The intervention design, and why it is not built yet, is in
 [`ANDROID_IMPLEMENTATION_PLAN.md`](../ANDROID_IMPLEMENTATION_PLAN.md).
@@ -35,8 +37,9 @@ Debug APK: `android/app/build/outputs/apk/debug/app-debug.apk`.
 GitHub Actions workflow: [`.github/workflows/android.yml`](../.github/workflows/android.yml).
 That is the reproducible build for this milestone. A local SDK is not assumed.
 A green run means `testDebugUnitTest`, `assembleDebug`, and `lintDebug` succeeded
-on Ubuntu with JDK 17 and SDK 35. It is not a device or emulator result, and it
-does not exercise app detection or intervention — those are not implemented.
+on Ubuntu with JDK 17 and SDK 35. It is not a device or emulator result. It does
+not prove that a pause appears, that Quit returns home, or that a session
+survives process death.
 
 ## Layout
 

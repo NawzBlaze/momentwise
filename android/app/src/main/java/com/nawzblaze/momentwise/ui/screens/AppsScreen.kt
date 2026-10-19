@@ -1,5 +1,8 @@
 package com.nawzblaze.momentwise.ui.screens
 
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -13,69 +16,80 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nawzblaze.momentwise.MomentwiseViewModel
 import com.nawzblaze.momentwise.R
-import com.nawzblaze.momentwise.data.model.AppRule
+import com.nawzblaze.momentwise.data.CatalogEntry
 import com.nawzblaze.momentwise.ui.components.InfoNote
 import com.nawzblaze.momentwise.ui.components.MomentwiseTopBar
 import com.nawzblaze.momentwise.ui.components.RuleSwitch
 import com.nawzblaze.momentwise.ui.components.VerticalSpacer
 import com.nawzblaze.momentwise.ui.theme.LocalMomentwiseColors
-import kotlinx.coroutines.launch
 
 /**
- * Screen 3 — Apps.
- * Lists the guardable apps with per-app toggles; tapping a row opens its own
- * Configure Rule screen. First-time enablement routes straight into
- * configuration, exactly like the approved prototype.
- *
- * Honesty note: until device app detection is wired (later milestone), the list
- * shows the seeded sample catalog and says so explicitly in a banner.
+ * Apps the user can actually open. Enabling a rule goes through disclosure
+ * until the required grants exist. The list is not a usage report.
  */
 @Composable
 fun AppsScreen(
     viewModel: MomentwiseViewModel,
     snackbarHostState: SnackbarHostState,
     onConfigureRule: (String) -> Unit,
+    onRequestGuard: (String) -> Unit,
 ) {
-    val rules by viewModel.rules.collectAsStateWithLifecycle()
+    val catalog by viewModel.catalog.collectAsStateWithLifecycle()
+    val notePending by viewModel.sampleMigrationNotePending.collectAsStateWithLifecycle()
     val colors = LocalMomentwiseColors.current
-    val scope = rememberCoroutineScope()
-    val loadedRules = rules.orEmpty()
-    val activeCount = loadedRules.count { it.enabled }
+    val grants = rememberGrantStatus()
+    var query by remember { mutableStateOf("") }
+    val loaded = catalog.orEmpty()
+    val filtered = loaded.filter { entry ->
+        val q = query.trim()
+        q.isEmpty() ||
+            entry.rule.appName.contains(q, ignoreCase = true) ||
+            entry.rule.appId.contains(q, ignoreCase = true)
+    }
+    val installed = filtered.filter { it.installed }
+    val missing = filtered.filter { !it.installed }
+    val activeCount = loaded.count { it.rule.enabled }
 
     Column(
         Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(MaterialTheme.colorScheme.background),
     ) {
         MomentwiseTopBar(
             title = stringResource(R.string.apps_title),
             actions = {
                 Text(
-                    text = "$activeCount active",
+                    text = stringResource(R.string.apps_active_count, activeCount),
                     style = MaterialTheme.typography.labelMedium,
                     color = colors.accentText,
                     modifier = Modifier
@@ -85,87 +99,132 @@ fun AppsScreen(
                 )
             },
         )
-
-        Column(
-            Modifier
-                .weight(1f)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp),
+        LazyColumn(
+            modifier = Modifier.weight(1f),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            VerticalSpacer(16)
-            Text(
-                text = stringResource(R.string.apps_heading),
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
-            VerticalSpacer(6)
-            Text(
-                text = stringResource(R.string.apps_subtext),
-                style = MaterialTheme.typography.bodyMedium,
-                color = colors.textSecondary,
-            )
-            VerticalSpacer(14)
-
-            InfoNote(
-                icon = Icons.Filled.Info,
-                text = stringResource(R.string.apps_sample_banner),
-            )
-
-            VerticalSpacer(14)
-
-            if (rules == null) {
+            item {
                 Text(
-                    text = "Loading your rules…",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = colors.textTertiary,
+                    text = stringResource(R.string.apps_heading),
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onBackground,
                 )
-            }
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                loadedRules.forEach { rule ->
-                    val firstEnableMessage = stringResource(R.string.toast_first_enable, rule.appName)
-                    val guardedMessage = stringResource(R.string.toast_app_guarded, rule.appName)
-                    val inactiveMessage = stringResource(R.string.toast_app_inactive, rule.appName)
-                    AppRow(rule = rule, onConfigure = { onConfigureRule(rule.appId) }) { enabled ->
-                        viewModel.setRuleEnabled(rule.appId, enabled)
-                        val firstTimeConfigure = enabled && !rule.configuredEver
-                        if (firstTimeConfigure) onConfigureRule(rule.appId)
-                        scope.launch {
-                            snackbarHostState.showSnackbar(
-                                when {
-                                    firstTimeConfigure -> firstEnableMessage
-                                    enabled -> guardedMessage
-                                    else -> inactiveMessage
-                                }
-                            )
-                        }
+                VerticalSpacer(6)
+                Text(
+                    text = stringResource(R.string.apps_subtext),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.textSecondary,
+                )
+                VerticalSpacer(14)
+                if (notePending) {
+                    InfoNote(icon = Icons.Filled.Info, text = stringResource(R.string.apps_sample_removed))
+                    TextButton(onClick = viewModel::dismissSampleMigrationNote) {
+                        Text(stringResource(R.string.apps_sample_removed_dismiss))
                     }
+                    VerticalSpacer(8)
+                }
+                SearchField(query = query, onQueryChange = { query = it })
+                VerticalSpacer(8)
+            }
+            if (catalog == null) {
+                item {
+                    Text(
+                        text = stringResource(R.string.apps_loading),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.textTertiary,
+                    )
                 }
             }
-
-            VerticalSpacer(16)
-
-            InfoNote(
-                icon = Icons.Filled.Lightbulb,
-                text = stringResource(R.string.apps_tip),
-            )
-
-            VerticalSpacer(24)
+            items(installed, key = { it.rule.appId }) { entry ->
+                AppRow(
+                    entry = entry,
+                    onConfigure = { onConfigureRule(entry.rule.appId) },
+                    onToggle = { enabled ->
+                        if (!enabled) {
+                            viewModel.setDisplayedRuleEnabled(entry.rule, false)
+                        } else if (viewModel.needsDisclosure(grants.canMonitor)) {
+                            onRequestGuard(entry.rule.appId)
+                        } else {
+                            val firstTime = !entry.rule.configuredEver
+                            viewModel.setDisplayedRuleEnabled(entry.rule, true)
+                            if (firstTime) onConfigureRule(entry.rule.appId)
+                        }
+                    },
+                )
+            }
+            if (missing.isNotEmpty()) {
+                item {
+                    VerticalSpacer(8)
+                    Text(
+                        text = stringResource(R.string.apps_not_installed_heading),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = colors.textSecondary,
+                    )
+                }
+                items(missing, key = { "missing-${it.rule.appId}" }) { entry ->
+                    AppRow(
+                        entry = entry,
+                        onConfigure = { onConfigureRule(entry.rule.appId) },
+                        onToggle = { enabled ->
+                            if (!enabled) viewModel.setDisplayedRuleEnabled(entry.rule, false)
+                        },
+                    )
+                }
+            }
+            item {
+                VerticalSpacer(8)
+                InfoNote(icon = Icons.Filled.Info, text = stringResource(R.string.apps_tip))
+            }
         }
     }
 }
 
 @Composable
+private fun SearchField(query: String, onQueryChange: (String) -> Unit) {
+    val colors = LocalMomentwiseColors.current
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(colors.surfaceCard)
+            .border(1.dp, colors.border, RoundedCornerShape(10.dp))
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+    ) {
+        if (query.isEmpty()) {
+            Text(
+                text = stringResource(R.string.apps_search),
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textMuted,
+            )
+        }
+        BasicTextField(
+            value = query,
+            onValueChange = onQueryChange,
+            textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface),
+            cursorBrush = SolidColor(colors.accent),
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
+
+@Composable
 private fun AppRow(
-    rule: AppRule,
+    entry: CatalogEntry,
     onConfigure: () -> Unit,
     onToggle: (Boolean) -> Unit,
 ) {
+    val rule = entry.rule
     val colors = LocalMomentwiseColors.current
-    val statusText = rule.appsRowStatusLabel(
-        notGuarded = stringResource(R.string.apps_status_not_guarded),
-        openingOnly = stringResource(R.string.apps_status_opening_only),
-    )
-
+    val statusText = if (!entry.installed) {
+        stringResource(R.string.apps_status_not_installed)
+    } else {
+        rule.appsRowStatusLabel(
+            notGuarded = stringResource(R.string.apps_status_not_guarded),
+            openingOnly = stringResource(R.string.apps_status_opening_only),
+        )
+    }
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -180,56 +239,68 @@ private fun AppRow(
             .clickable(onClick = onConfigure)
             .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
-        // Letter badge stands in for real app icons until device detection is wired.
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .size(42.dp)
-                .clip(RoundedCornerShape(11.dp))
-                .background(if (rule.enabled) colors.accentSubtle else colors.surfaceSubtle),
-        ) {
-            Text(
-                text = rule.appName.firstOrNull()?.uppercase() ?: "?",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = if (rule.enabled) colors.accentText else colors.textTertiary,
-            )
-        }
+        AppIcon(packageName = rule.appId, label = rule.appName, enabled = rule.enabled)
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = rule.appName,
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    text = rule.category,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = colors.textMuted,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(999.dp))
-                        .background(colors.surfaceSubtle)
-                        .padding(horizontal = 8.dp, vertical = 2.dp),
-                )
-            }
+            Text(
+                text = rule.appName,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
             VerticalSpacer(2)
             Text(
                 text = statusText,
                 style = MaterialTheme.typography.bodySmall,
-                color = if (rule.enabled) colors.statusGreen else colors.textTertiary,
+                color = if (rule.enabled && entry.installed) colors.statusGreen else colors.textTertiary,
             )
         }
         IconButton(onClick = onConfigure, modifier = Modifier.size(34.dp)) {
             Icon(
                 Icons.Filled.Edit,
-                contentDescription = "Configure ${rule.appName}",
+                contentDescription = stringResource(R.string.apps_configure, rule.appName),
                 tint = colors.textTertiary,
                 modifier = Modifier.size(16.dp),
             )
         }
         Spacer(Modifier.width(4.dp))
-        RuleSwitch(checked = rule.enabled, onCheckedChange = onToggle)
+        RuleSwitch(
+            checked = rule.enabled,
+            onCheckedChange = onToggle,
+        )
+    }
+}
+
+@Composable
+private fun AppIcon(packageName: String, label: String, enabled: Boolean) {
+    val context = LocalContext.current
+    val colors = LocalMomentwiseColors.current
+    val bitmap = remember(packageName) {
+        runCatching {
+            val drawable = context.packageManager.getApplicationIcon(packageName)
+            val size = (42 * context.resources.displayMetrics.density).toInt().coerceAtLeast(1)
+            val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(bitmap)
+            drawable.setBounds(0, 0, size, size)
+            drawable.draw(canvas)
+            bitmap.asImageBitmap()
+        }.getOrNull()
+    }
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .size(42.dp)
+            .clip(RoundedCornerShape(11.dp))
+            .background(if (enabled) colors.accentSubtle else colors.surfaceSubtle),
+    ) {
+        if (bitmap != null) {
+            Image(bitmap, contentDescription = null, modifier = Modifier.size(42.dp).clip(RoundedCornerShape(11.dp)))
+        } else {
+            Text(
+                text = label.firstOrNull()?.uppercase() ?: "?",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = if (enabled) colors.accentText else colors.textTertiary,
+            )
+        }
     }
 }

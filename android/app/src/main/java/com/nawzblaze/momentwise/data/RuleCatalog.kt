@@ -47,5 +47,6 @@ object RuleCatalog {
             }
         }
 
-    fun resetAll(): List<AppRule> = RuleDefaults.sampleCatalog()
+    /** Clears saved rules. Does not restore the foundation sample catalog. */
+    fun resetAll(): List<AppRule> = emptyList()
 }

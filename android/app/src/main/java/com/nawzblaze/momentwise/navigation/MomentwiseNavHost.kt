@@ -10,6 +10,7 @@ import androidx.navigation.navArgument
 import com.nawzblaze.momentwise.MomentwiseViewModel
 import com.nawzblaze.momentwise.ui.screens.AppsScreen
 import com.nawzblaze.momentwise.ui.screens.ConfigureRuleScreen
+import com.nawzblaze.momentwise.ui.screens.DisclosureScreen
 import com.nawzblaze.momentwise.ui.screens.HomeScreen
 import com.nawzblaze.momentwise.ui.screens.OpeningNoticePreviewScreen
 import com.nawzblaze.momentwise.ui.screens.ReminderPreviewScreen
@@ -53,6 +54,27 @@ fun MomentwiseNavHost(
                 onConfigureRule = { appId ->
                     navController.navigate(Destinations.configure(appId))
                 },
+                onRequestGuard = { appId ->
+                    navController.navigate(Destinations.guard(appId))
+                },
+            )
+        }
+
+        composable(
+            route = Destinations.GUARD,
+            arguments = listOf(navArgument(Destinations.GUARD_ARG) { type = NavType.StringType }),
+        ) { backStackEntry ->
+            val appId = backStackEntry.arguments?.getString(Destinations.GUARD_ARG).orEmpty()
+            DisclosureScreen(
+                viewModel = viewModel,
+                appId = appId,
+                onGuarded = { firstTime ->
+                    navController.popBackStack()
+                    if (firstTime) {
+                        navController.navigate(Destinations.configure(appId))
+                    }
+                },
+                onDecline = { navController.popBackStack() },
             )
         }
 

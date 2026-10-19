@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.PauseCircle
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Settings
@@ -29,6 +30,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -55,8 +57,8 @@ import com.nawzblaze.momentwise.ui.theme.LocalMomentwiseColors
  * Screen 2 — Home overview.
  * Deliberately simple: a rule summary, quick previews of the two configured
  * experiences, and a how-it-works reference. No invented usage statistics —
- * counters shown are configuration facts (how many rules are active), and the
- * seeded sample state is labelled as such.
+ * counters shown are configuration facts (how many rules are active). They are
+ * not usage statistics.
  */
 @Composable
 fun HomeScreen(
@@ -68,7 +70,9 @@ fun HomeScreen(
     onConfigureRule: (String) -> Unit,
 ) {
     val rules by viewModel.rules.collectAsStateWithLifecycle()
+    val session by viewModel.session.collectAsStateWithLifecycle()
     val colors = LocalMomentwiseColors.current
+    val grants = rememberGrantStatus()
     val loadedRules = rules.orEmpty()
     val activeRules = loadedRules.filter { it.enabled }
 
@@ -121,10 +125,10 @@ fun HomeScreen(
                 SectionEyebrow(stringResource(R.string.home_summary_eyebrow))
                 VerticalSpacer(6)
                 val heading = when {
-                    rules == null -> "Loading rules…"
-                    activeRules.isEmpty() -> "No rules configured"
-                    activeRules.size == 1 -> "1 active rule (sample)"
-                    else -> "${activeRules.size} active rules (sample)"
+                    rules == null -> stringResource(R.string.apps_loading)
+                    activeRules.isEmpty() -> stringResource(R.string.home_summary_none)
+                    activeRules.size == 1 -> stringResource(R.string.home_summary_one)
+                    else -> stringResource(R.string.home_summary_many, activeRules.size)
                 }
                 Text(
                     text = heading,
@@ -133,10 +137,11 @@ fun HomeScreen(
                 )
                 VerticalSpacer(6)
                 Text(
-                    text = if (rules == null || activeRules.isNotEmpty()) {
-                        stringResource(R.string.home_summary_desc_sample)
-                    } else {
-                        stringResource(R.string.home_summary_desc_empty)
+                    text = when {
+                        activeRules.isEmpty() -> stringResource(R.string.home_summary_desc_empty)
+                        grants.pauseAppearsOnItsOwn -> stringResource(R.string.home_summary_desc_overlay)
+                        grants.canMonitor -> stringResource(R.string.home_summary_desc_notification)
+                        else -> stringResource(R.string.home_summary_desc_blocked)
                     },
                     style = MaterialTheme.typography.bodyMedium,
                     color = colors.textSecondary,
@@ -237,10 +242,19 @@ fun HomeScreen(
 
             VerticalSpacer(16)
 
+            if (session.sessionDroppedOnBoot) {
+                InfoNote(
+                    icon = Icons.Outlined.Info,
+                    text = stringResource(R.string.home_boot_dropped),
+                )
+                TextButton(onClick = viewModel::acknowledgeBootDrop) {
+                    Text(stringResource(R.string.home_boot_dropped_dismiss))
+                }
+                VerticalSpacer(12)
+            }
             InfoNote(
                 icon = Icons.Outlined.PauseCircle,
-                text = "Native app detection is not connected in this foundation build. " +
-                    "Everything shown is your real configuration, exercised through in-app previews.",
+                text = stringResource(R.string.home_limits),
             )
 
             VerticalSpacer(24)

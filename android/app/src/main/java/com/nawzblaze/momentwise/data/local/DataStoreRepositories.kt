@@ -9,10 +9,12 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.nawzblaze.momentwise.data.AppRuleRepository
 import com.nawzblaze.momentwise.data.AppSettingsRepository
+import com.nawzblaze.momentwise.data.GuardSessionRepository
 import com.nawzblaze.momentwise.data.RuleCatalog
-import com.nawzblaze.momentwise.data.RuleDefaults
+import com.nawzblaze.momentwise.data.SampleCatalogMigration
 import com.nawzblaze.momentwise.data.model.AppRule
 import com.nawzblaze.momentwise.data.model.ThemeMode
+import com.nawzblaze.momentwise.intervention.GuardSnapshot
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -22,29 +24,32 @@ private val Context.momentwiseDataStore: DataStore<Preferences> by preferencesDa
     name = "momentwise_settings"
 )
 
+private object Keys {
+    val RULES_JSON = stringPreferencesKey("app_rules_json.v1")
+    val THEME_MODE = stringPreferencesKey("theme_mode.v1")
+    val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed.v1")
+    val SAMPLE_MIGRATED = booleanPreferencesKey("sample_catalog_migrated.v1")
+    val SAMPLE_NOTE = booleanPreferencesKey("sample_migration_note.v1")
+    val DISCLOSURE_ACCEPTED = booleanPreferencesKey("guarding_disclosure_accepted.v1")
+    val GUARD_SESSION = stringPreferencesKey("guard_session_json.v1")
+}
+
 /**
- * DataStore-backed rule storage. Rules are persisted as one JSON array under a
- * versioned key; first launch seeds the clearly-labelled sample catalog until
- * device app detection is wired in a later milestone.
+ * Saved rules, keyed by package name. The foundation sample catalog is not
+ * seeded. Known sample ids are dropped on read and by [LocalPersistence.migrateFoundationSamples].
  */
 class DataStoreAppRuleRepository(
     private val dataStore: DataStore<Preferences>,
 ) : AppRuleRepository {
 
-    private object Keys {
-        val RULES_JSON = stringPreferencesKey("app_rules_json.v1")
-    }
-
     override val rules: Flow<List<AppRule>> = dataStore.data.map { prefs ->
-        AppRuleJson.decodeList(prefs[Keys.RULES_JSON])
-            ?.takeIf { it.isNotEmpty() }
-            ?: RuleDefaults.sampleCatalog()
+        SampleCatalogMigration.dropSampleIds(AppRuleJson.decodeList(prefs[Keys.RULES_JSON]).orEmpty())
     }
 
     override suspend fun ruleFor(appId: String): AppRule? =
         rules.first().find { it.appId == appId }
 
-    override suspend fun upsertRule(rule: AppRule) = mutate { RuleCatalog.upsert(it, rule) }
+    override suspend fun upsertRule(rule: AppRule) = mutate { RuleCatalog.upsert(it, rule.copy(isSample = false)) }
 
     override suspend fun setRuleEnabled(appId: String, enabled: Boolean) =
         mutate { RuleCatalog.setEnabled(it, appId, enabled) }
@@ -53,28 +58,24 @@ class DataStoreAppRuleRepository(
         mutate { RuleCatalog.resetOne(it, appId) }
 
     override suspend fun resetAllToDefaults() {
-        mutate { RuleCatalog.resetAll() }
+        dataStore.edit { prefs ->
+            prefs[Keys.RULES_JSON] = AppRuleJson.encodeList(emptyList())
+        }
     }
 
     private suspend fun mutate(transform: (List<AppRule>) -> List<AppRule>) {
         dataStore.edit { prefs ->
-            val current = AppRuleJson.decodeList(prefs[Keys.RULES_JSON])
-                ?.takeIf { it.isNotEmpty() }
-                ?: RuleDefaults.sampleCatalog()
+            val current = SampleCatalogMigration.dropSampleIds(
+                AppRuleJson.decodeList(prefs[Keys.RULES_JSON]).orEmpty(),
+            )
             prefs[Keys.RULES_JSON] = AppRuleJson.encodeList(transform(current))
         }
     }
 }
 
-/** DataStore-backed app settings (theme mode, onboarding). */
 class DataStoreAppSettingsRepository(
     private val dataStore: DataStore<Preferences>,
 ) : AppSettingsRepository {
-
-    private object Keys {
-        val THEME_MODE = stringPreferencesKey("theme_mode.v1")
-        val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed.v1")
-    }
 
     override val themeMode: Flow<ThemeMode> = dataStore.data.map { prefs ->
         ThemeMode.fromStorageKey(prefs[Keys.THEME_MODE])
@@ -84,6 +85,14 @@ class DataStoreAppSettingsRepository(
         prefs[Keys.ONBOARDING_COMPLETED] ?: false
     }
 
+    override val sampleMigrationNotePending: Flow<Boolean> = dataStore.data.map { prefs ->
+        prefs[Keys.SAMPLE_NOTE] ?: false
+    }
+
+    override val guardingDisclosureAccepted: Flow<Boolean> = dataStore.data.map { prefs ->
+        prefs[Keys.DISCLOSURE_ACCEPTED] ?: false
+    }
+
     override suspend fun setThemeMode(mode: ThemeMode) {
         dataStore.edit { it[Keys.THEME_MODE] = mode.name }
     }
@@ -91,16 +100,57 @@ class DataStoreAppSettingsRepository(
     override suspend fun setOnboardingCompleted(completed: Boolean) {
         dataStore.edit { it[Keys.ONBOARDING_COMPLETED] = completed }
     }
+
+    override suspend fun setSampleMigrationNotePending(pending: Boolean) {
+        dataStore.edit { it[Keys.SAMPLE_NOTE] = pending }
+    }
+
+    override suspend fun setGuardingDisclosureAccepted(accepted: Boolean) {
+        dataStore.edit { it[Keys.DISCLOSURE_ACCEPTED] = accepted }
+    }
 }
 
-/**
- * Creates the DataStore-backed repositories. Called once from
- * [com.nawzblaze.momentwise.MomentwiseApplication].
- */
+class DataStoreGuardSessionRepository(
+    private val dataStore: DataStore<Preferences>,
+) : GuardSessionRepository {
+
+    override val session: Flow<GuardSnapshot> = dataStore.data.map { prefs ->
+        GuardSnapshotJson.decode(prefs[Keys.GUARD_SESSION])
+    }
+
+    override suspend fun current(): GuardSnapshot = session.first()
+
+    override suspend fun save(snapshot: GuardSnapshot) {
+        dataStore.edit { it[Keys.GUARD_SESSION] = GuardSnapshotJson.encode(snapshot) }
+    }
+
+    override suspend fun update(transform: (GuardSnapshot) -> GuardSnapshot) {
+        dataStore.edit { prefs ->
+            val current = GuardSnapshotJson.decode(prefs[Keys.GUARD_SESSION])
+            prefs[Keys.GUARD_SESSION] = GuardSnapshotJson.encode(transform(current))
+        }
+    }
+}
+
 object LocalPersistence {
     fun appRuleRepository(context: Context): AppRuleRepository =
         DataStoreAppRuleRepository(context.momentwiseDataStore)
 
     fun appSettingsRepository(context: Context): AppSettingsRepository =
         DataStoreAppSettingsRepository(context.momentwiseDataStore)
+
+    fun guardSessions(context: Context): GuardSessionRepository =
+        DataStoreGuardSessionRepository(context.momentwiseDataStore)
+
+    /** Drops persisted foundation sample ids once. Real package rules are kept. */
+    suspend fun migrateFoundationSamples(context: Context) {
+        context.momentwiseDataStore.edit { prefs ->
+            if (prefs[Keys.SAMPLE_MIGRATED] == true) return@edit
+            val decoded = AppRuleJson.decodeList(prefs[Keys.RULES_JSON]).orEmpty()
+            val dropped = decoded.any { SampleCatalogMigration.isFoundationSample(it) }
+            prefs[Keys.RULES_JSON] = AppRuleJson.encodeList(SampleCatalogMigration.dropSampleIds(decoded))
+            prefs[Keys.SAMPLE_MIGRATED] = true
+            if (dropped) prefs[Keys.SAMPLE_NOTE] = true
+        }
+    }
 }

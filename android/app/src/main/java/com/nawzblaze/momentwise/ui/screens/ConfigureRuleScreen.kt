@@ -80,9 +80,11 @@ fun ConfigureRuleScreen(
     onTestPreview: () -> Unit,
 ) {
     val rules by viewModel.rules.collectAsStateWithLifecycle()
-    val rule = rules?.find { it.appId == appId }
+    val catalog by viewModel.catalog.collectAsStateWithLifecycle()
+    val rule = catalog?.find { it.rule.appId == appId }?.rule
+        ?: rules?.find { it.appId == appId }
 
-    if (rules == null) {
+    if (rules == null && catalog == null) {
         Box(
             Modifier
                 .fillMaxSize()

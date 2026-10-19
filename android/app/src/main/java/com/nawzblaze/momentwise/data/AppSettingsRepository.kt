@@ -10,7 +10,11 @@ import kotlinx.coroutines.flow.Flow
 interface AppSettingsRepository {
     val themeMode: Flow<ThemeMode>
     val onboardingCompleted: Flow<Boolean>
+    val sampleMigrationNotePending: Flow<Boolean>
+    val guardingDisclosureAccepted: Flow<Boolean>
 
     suspend fun setThemeMode(mode: ThemeMode)
     suspend fun setOnboardingCompleted(completed: Boolean)
+    suspend fun setSampleMigrationNotePending(pending: Boolean)
+    suspend fun setGuardingDisclosureAccepted(accepted: Boolean)
 }

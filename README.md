@@ -6,11 +6,11 @@ Momentwise is an intentional phone-use companion being designed to help people i
 
 ---
 
-## Current Status: Android foundation started
+## Current Status: Android intervention coded, not device-proven
 
 The public site and the browser prototype are still the brand and interaction reference. They are unchanged.
 
-A native Android project now lives in [`android/`](android/). It is a Jetpack Compose foundation: theme, navigation, per-app rules, on-device storage, and unit tests for the configuration logic. It does **not** detect other apps, draw over them, or schedule real reminders. Those constraints, and the planned approach, are in [`ANDROID_IMPLEMENTATION_PLAN.md`](ANDROID_IMPLEMENTATION_PLAN.md).
+The native project in [`android/`](android/) now lists launchable apps, explains Usage Access, display-over-other-apps, and notifications before a rule is enabled, and can run a foreground monitor plus a pause. Quit returns to the home screen. It does not force-stop other apps. None of that has been run on a device or emulator in this workspace. Constraints and the honest limits are in [`ANDROID_IMPLEMENTATION_PLAN.md`](ANDROID_IMPLEMENTATION_PLAN.md).
 
 Proposed application ID: `com.nawzblaze.momentwise`. The app is not published under that ID.
 

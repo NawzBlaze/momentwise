@@ -4,9 +4,28 @@ This document records the platform constraints for Momentwise's core behaviour
 (detecting that a chosen app was opened, showing a configured pause, and
 checking in later) and the least intrusive design that can satisfy it.
 
-It is a plan, not a claim that the behaviour already works. The foundation
-milestone does not request special permissions and does not monitor other apps.
-See [What this milestone does and does not do](#what-this-milestone-does-and-does-not-do).
+It is a plan, not a claim that the behaviour already works on a device.
+The intervention code is now in the app. It has not been run on an emulator
+or on API 34 / 35 hardware in this workspace. Treat every runtime claim below
+as unverified until that happens.
+
+## Intervention status (19 October 2026)
+
+Implemented in the project, not device-proven:
+
+- Launchable apps from `PackageManager` (`MAIN` / `LAUNCHER`). Saved rules stay keyed by package name. Foundation sample ids (`instagram`, `tiktok`, `x`, `youtube`, `reddit`, `threads`) are dropped and are not copied onto real packages.
+- Disclosure before a rule is enabled, with a decline path. Usage Access, display over other apps, and notifications are explained separately. Overlay can be skipped; the pause then uses a notification.
+- Monitoring foreground service (`specialUse`) polls `queryEvents` only while a rule is enabled and Usage Access plus notifications are allowed. The event reducer is unit-tested: empty window, self-package, duplicate resume, app switch, launcher leave.
+- Pause UI: opaque overlay when display-over-other-apps is allowed, otherwise a notification that opens `PauseActivity` in its own task. Quit is `ACTION_MAIN` + `CATEGORY_HOME`. It does not force-stop.
+- Reminder session and dismiss-for-today are persisted. A boot receiver drops an in-progress session and can restart monitoring. Process-death recovery is coded and unit-tested, not exercised on a device.
+
+Not done, on purpose:
+
+- No privacy policy and no Play declaration package. Those wait until the pause is demonstrated on at least one API 34 device and one API 35 device.
+- No Accessibility Service, no exact alarm, no battery-optimization prompt, no `QUERY_ALL_PACKAGES`.
+- No claim that the overlay exemption works on Android 15. The overlay is the pause itself, so a background activity start is not required for that path. That choice is still unverified on hardware.
+
+The foundation section below describes what the first milestone shipped. Later sections are still the constraints this code is trying to honour.
 
 Proposed application ID: `com.nawzblaze.momentwise`.
 This ID is a proposal for the unpublished foundation build. The app is not
@@ -223,13 +242,12 @@ Before a listing, not before this foundation:
 - No exact-alarm declaration.
 - Prominent disclosure screens with a real decline path. Not bundled into the theme picker or a terms checkbox.
 
-## Next milestone
+## What is still next
 
-1. Replace the sample catalog with launchable apps from `PackageManager` (`MAIN` / `LAUNCHER` query). Keep saved rules keyed by package name. Migrate or drop sample ids explicitly.
-2. Add the disclosure screens for Usage Access, display-over-other-apps, and notifications. Still do not request them until a rule is enabled, and still allow decline.
-3. Add the monitoring foreground service behind those grants, with the cached-event detector and unit tests for the event reducer (empty window, self-package, duplicate resume, app switch).
-4. Add the pause activity and the home-intent Quit path. Wire it only when the grants exist; otherwise keep today's labelled preview.
-5. Persist reminder sessions and the dismissed-for-today flag. Add the boot receiver. Test process death on an emulator before claiming recovery.
-6. Write the privacy policy and the Play declaration notes next to this file, after the above is demonstrated on at least one API 34 and one API 35 device.
+Items 1–5 of the intervention milestone are coded. They are not done until a device says so.
 
-Do not start that work by adding the permissions to the manifest "so the demo can ask for them". The disclosures come first.
+1. Run the pause on at least one API 34 device and one API 35 device. Confirm Usage Access events, the overlay path, the notification fallback, home-intent Quit, and that an empty event window does not flicker the pause.
+2. Kill the process during an active session and confirm the clock resumes only if that package is still in front. Reboot and confirm the session is dropped and the note appears.
+3. Only after that, write the privacy policy and the Play `specialUse` / Usage Access declaration notes next to this file.
+
+Do not treat a green GitHub Actions run as that proof.

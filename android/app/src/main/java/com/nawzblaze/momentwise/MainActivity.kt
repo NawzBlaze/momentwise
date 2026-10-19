@@ -27,18 +27,25 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.nawzblaze.momentwise.monitoring.MonitoringCoordinator
 import com.nawzblaze.momentwise.navigation.Destinations
 import com.nawzblaze.momentwise.navigation.MomentwiseNavHost
 import com.nawzblaze.momentwise.ui.theme.MomentwiseTheme
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
@@ -58,6 +65,19 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MomentwiseRoot(viewModel: MomentwiseViewModel) {
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.refreshInstalledApps()
+                val app = context.applicationContext as MomentwiseApplication
+                app.applicationScope.launch { MonitoringCoordinator.sync(app) }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     MomentwiseTheme(themeMode = themeMode) {
         val onboardingCompleted by viewModel.onboardingCompleted.collectAsStateWithLifecycle()

@@ -19,6 +19,10 @@ object Destinations {
     const val PREVIEW_REMINDER = "preview/reminder/{$PREVIEW_REMINDER_ARG}"
     fun previewReminder(appId: String) = "preview/reminder/$appId"
 
+    const val GUARD_ARG = "appId"
+    const val GUARD = "guard/{$GUARD_ARG}"
+    fun guard(appId: String) = "guard/$appId"
+
     /** Destinations that show the primary bottom navigation. */
     val BOTTOM_NAV_ROUTES = setOf(HOME, APPS, SETTINGS)
 }
