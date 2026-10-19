@@ -1,0 +1,147 @@
+package com.nawzblaze.momentwise.monitoring
+
+import android.content.Context
+import android.graphics.PixelFormat
+import android.os.Build
+import android.view.Gravity
+import android.view.WindowManager
+import android.widget.FrameLayout
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.ViewCompositionStrategy
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.LifecycleRegistry
+import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.ViewModelStoreOwner
+import androidx.lifecycle.setViewTreeLifecycleOwner
+import androidx.lifecycle.setViewTreeViewModelStoreOwner
+import androidx.savedstate.SavedStateRegistry
+import androidx.savedstate.SavedStateRegistryController
+import androidx.savedstate.SavedStateRegistryOwner
+import androidx.savedstate.setViewTreeSavedStateRegistryOwner
+import com.nawzblaze.momentwise.MomentwiseApplication
+import com.nawzblaze.momentwise.R
+import com.nawzblaze.momentwise.data.model.ThemeMode
+import com.nawzblaze.momentwise.intervention.PauseRequest
+import com.nawzblaze.momentwise.ui.screens.PauseScreen
+import com.nawzblaze.momentwise.ui.theme.MomentwiseTheme
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+
+/**
+ * Opaque full-screen pause hosted in a [WindowManager] overlay.
+ * Touches do not pass through to the app underneath.
+ */
+object PauseOverlay {
+
+    private var host: OverlayHost? = null
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
+    fun show(context: Context, request: PauseRequest, themeModeName: String): Boolean {
+        val appContext = context.applicationContext
+        val windowManager = appContext.getSystemService(WindowManager::class.java) ?: return false
+        dismiss(appContext)
+        return try {
+            val themed = android.view.ContextThemeWrapper(appContext, R.style.Theme_Momentwise)
+            val overlay = OverlayHost(themed)
+            overlay.resume()
+            val composeView = ComposeView(themed).apply {
+                setViewTreeLifecycleOwner(overlay)
+                setViewTreeSavedStateRegistryOwner(overlay)
+                setViewTreeViewModelStoreOwner(overlay)
+                setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
+                setContent {
+                    val mode = ThemeMode.fromStorageKey(themeModeName)
+                    MomentwiseTheme(themeMode = mode) {
+                        PauseScreen(
+                            request = request,
+                            onQuit = { perform(appContext) { it.quit() } },
+                            onSecondary = {
+                                perform(appContext) { controller ->
+                                    if (request.kind == PauseRequest.Kind.OPENING) {
+                                        controller.continueIntoApp()
+                                    } else {
+                                        controller.snooze(request)
+                                    }
+                                }
+                            },
+                            onDismissReminder = { perform(appContext) { it.dismissForToday(request) } },
+                        )
+                    }
+                }
+            }
+            overlay.addView(composeView)
+            val params = WindowManager.LayoutParams(
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                    WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
+                PixelFormat.TRANSLUCENT,
+            ).apply {
+                gravity = Gravity.CENTER
+                if (Build.VERSION.SDK_INT >= 28) {
+                    layoutInDisplayCutoutMode =
+                        WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+                }
+            }
+            windowManager.addView(overlay, params)
+            host = overlay
+            true
+        } catch (_: Exception) {
+            dismiss(appContext)
+            false
+        }
+    }
+
+    fun dismiss(context: Context) {
+        val windowManager = context.applicationContext.getSystemService(WindowManager::class.java)
+        val current = host ?: return
+        host = null
+        if (current.isAttachedToWindow && windowManager != null) {
+            runCatching { windowManager.removeViewImmediate(current) }
+        }
+        current.destroy()
+    }
+
+    private fun perform(context: Context, block: suspend (InterventionController) -> Unit) {
+        val app = context.applicationContext as MomentwiseApplication
+        val controller = InterventionController(
+            context = app,
+            rules = app.container.appRuleRepository,
+            sessions = app.container.guardSessions,
+        )
+        scope.launch { block(controller) }
+    }
+}
+
+private class OverlayHost(context: Context) :
+    FrameLayout(context),
+    LifecycleOwner,
+    SavedStateRegistryOwner,
+    ViewModelStoreOwner {
+
+    private val registry = LifecycleRegistry(this)
+    private val savedStateController = SavedStateRegistryController.create(this)
+    override val viewModelStore = ViewModelStore()
+    override val lifecycle: Lifecycle get() = registry
+    override val savedStateRegistry: SavedStateRegistry get() = savedStateController.savedStateRegistry
+
+    init {
+        savedStateController.performRestore(null)
+        registry.currentState = Lifecycle.State.CREATED
+    }
+
+    fun resume() {
+        registry.currentState = Lifecycle.State.RESUMED
+    }
+
+    fun destroy() {
+        if (registry.currentState != Lifecycle.State.DESTROYED) {
+            registry.currentState = Lifecycle.State.DESTROYED
+        }
+        viewModelStore.clear()
+    }
+}

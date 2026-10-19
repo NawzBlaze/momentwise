@@ -1,0 +1,190 @@
+<resources>
+    <string name="app_name">Momentwise</string>
+    <string name="tagline">Make room for what matters.</string>
+    <string name="secondary_line">Make your next tap intentional.</string>
+
+    <!-- Shared -->
+    <string name="nav_home">Home</string>
+    <string name="nav_apps">Apps</string>
+    <string name="nav_settings">Settings</string>
+    <string name="action_save_rule">Save rule</string>
+    <string name="action_test_rule_preview">Test rule preview</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_back">Back</string>
+
+    <!-- Welcome / onboarding -->
+    <string name="welcome_title">A quiet pause before distracting apps</string>
+    <string name="welcome_body">Momentwise doesn\'t block apps or lock you out. It gives you a calm moment to ask why you tapped an app, and gentle reminders so you don\'t lose an hour by accident.</string>
+    <string name="welcome_point_1"><b>Choose your apps:</b> Pick which apps pause when opened.</string>
+    <string name="welcome_point_2"><b>Customise your prompt:</b> Write your own question and response options.</string>
+    <string name="welcome_point_3"><b>Respectful reminders:</b> Set how often to check in, or turn them off completely.</string>
+    <string name="welcome_get_started">Configure Your First App</string>
+    <string name="welcome_skip">Go to Overview</string>
+
+    <!-- Home -->
+    <string name="home_summary_eyebrow">Your rules</string>
+    <string name="home_summary_none">No rules configured</string>
+    <string name="home_summary_one">1 active rule</string>
+    <string name="home_summary_many">%1$d active rules</string>
+    <string name="home_summary_desc_empty">Select an app in the Apps tab to configure a mindful pause rule.</string>
+    <string name="home_summary_desc_overlay">Monitoring is on. A pause can appear when a guarded app opens. It may be about a second late, and some phones delay it further.</string>
+    <string name="home_summary_desc_notification">Monitoring is on. The pause will not appear by itself until display over other apps is allowed. You will get a notification to tap.</string>
+    <string name="home_summary_desc_blocked">A rule is saved, but monitoring is off until Usage Access and notifications are allowed.</string>
+    <string name="home_limits">Quit returns you to the home screen. It does not force-stop the other app. A reminder is not an exact alarm, and a force-stop or a phone battery manager can stop monitoring until you open Momentwise again.</string>
+    <string name="home_boot_dropped">A check-in was in progress before the phone restarted. That session was dropped. The next time a guarded app opens, the pause starts again.</string>
+    <string name="home_boot_dropped_dismiss">Dismiss</string>
+    <string name="home_manage_apps">Manage Apps</string>
+    <string name="home_test_section_title">Test Your Active Rules</string>
+    <string name="home_test_section_meta">In-app preview</string>
+    <string name="home_test_section_sub">Experience how your configured notices and button options will look and feel when opened.</string>
+    <string name="home_test_opening">Test Opening Notice</string>
+    <string name="home_test_reminder">Test In-App Reminder</string>
+    <string name="home_how_title">How Momentwise Works</string>
+    <string name="home_how_step_1"><b>Enable an app:</b> Pick distracting social or news apps in the Apps tab.</string>
+    <string name="home_how_step_2"><b>Set your prompt:</b> Write a question that makes you pause before opening.</string>
+    <string name="home_how_step_3"><b>Check in gracefully:</b> If you stay in the app, a gentle nudge helps you leave.</string>
+
+    <!-- Apps -->
+    <string name="apps_title">Apps</string>
+    <string name="apps_heading">Configure App Rules</string>
+    <string name="apps_subtext">These are apps you can open on this device. Each rule is stored only here. This list is not a usage report.</string>
+    <string name="apps_sample_removed">The earlier sample apps were removed. Their settings were not copied onto real apps. Choose the apps installed on this device.</string>
+    <string name="apps_sample_removed_dismiss">Got it</string>
+    <string name="apps_search">Search apps</string>
+    <string name="apps_loading">Loading…</string>
+    <string name="apps_active_count">%1$d active</string>
+    <string name="apps_configure">Configure %1$s</string>
+    <string name="apps_not_installed_heading">Not installed</string>
+    <string name="apps_status_not_installed">Not on this device</string>
+    <string name="apps_tip">Each app has its own independent rule, opening prompt, and reminder schedule. Enabling one asks for access only after you read why.</string>
+    <string name="apps_status_not_guarded">Not guarded</string>
+    <string name="apps_status_opening_only">Rule active • Opening pause only</string>
+
+    <!-- Configure -->
+    <string name="configure_section_opening">When you open this app</string>
+    <string name="configure_opening_help">This message appears the moment you tap the app icon.</string>
+    <string name="configure_section_options">Response options</string>
+    <string name="configure_options_help">Give yourself two clear choices when the notice appears.</string>
+    <string name="configure_option_1_pill">Option 1</string>
+    <string name="configure_option_2_pill">Option 2</string>
+    <string name="configure_option_1_action">Action: Leave app</string>
+    <string name="configure_option_2_action">Action: Continue</string>
+    <string name="configure_button_label">Button label</string>
+    <string name="configure_option_1_behavior"><b>Behavior:</b> Sends you to the home screen. It does not force-stop the other app. The other app may already be open when the pause appears.</string>
+    <string name="configure_option_2_behavior"><b>Behavior:</b> Dismisses the pause so you can continue. Starts the reminder interval if one is set. It does not relaunch the app.</string>
+    <string name="configure_section_reminders">Reminders</string>
+    <string name="configure_reminders_help">Choose how often Momentwise checks in while you stay in this app.</string>
+    <string name="configure_freq_never">Never</string>
+    <string name="configure_freq_custom">Custom</string>
+    <string name="configure_custom_interval_label">Check in every (minutes):</string>
+    <string name="configure_custom_unit">minutes</string>
+    <string name="configure_reminder_notice_label">Reminder notice</string>
+    <string name="configure_reminder_notice_help">Appears on the check-in card when the time expires.</string>
+    <string name="configure_reminders_disabled_note">No reminders will be scheduled while in this app. The opening notice will still pause when launched.</string>
+    <string name="configure_advanced_title">Advanced reminder options</string>
+    <string name="configure_advanced_help">Personalise what happens when a reminder appears.</string>
+    <string name="configure_advanced_notice_synced">Synced with the reminder notice above.</string>
+    <string name="configure_advanced_action_1">Action 1: Exit app</string>
+    <string name="configure_advanced_action_2">Action 2: Snooze</string>
+    <string name="configure_advanced_action_3">Action 3: Dismiss for today</string>
+    <string name="configure_snooze_label">Snooze (min)</string>
+    <string name="configure_dismiss_desc">Dismissing pauses further reminders for this app until tomorrow. It does not permanently disable your rule.</string>
+    <string name="configure_reset_app">Reset this app to defaults</string>
+
+    <!-- Opening-notice preview -->
+    <string name="preview_opening_testing">Testing:</string>
+    <string name="preview_opening_edit_rule">Edit rule</string>
+    <string name="preview_opening_breath">Take a slow breath</string>
+    <string name="preview_opening_quit_desc">Step away &amp; put phone down</string>
+    <string name="preview_opening_quit_result_title">Room made for what matters</string>
+    <string name="preview_opening_quit_result_back">Back to Apps</string>
+    <string name="preview_opening_continue_result_title">Intentional session started</string>
+    <string name="preview_opening_test_checkin">Test Check-in Now</string>
+    <string name="preview_opening_back_home">Back to Home</string>
+    <string name="preview_opening_disclaimer">In-app preview. It does not start a live session or leave the other app.</string>
+
+    <!-- Reminder preview -->
+    <string name="preview_reminder_brand">Momentwise • Mindful Check-in</string>
+    <string name="preview_reminder_disabled_title">Reminders are turned off</string>
+    <string name="preview_reminder_edit_schedule">Edit Reminder Schedule</string>
+    <string name="preview_reminder_disclaimer">In-app preview. It does not start a live reminder.</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_theme_name">App Theme</string>
+    <string name="settings_theme_desc">Choose between System, Light, or Dark mode. System follows your device setting.</string>
+    <string name="settings_theme_system">System</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_platform">Android Platform</string>
+    <string name="settings_respectful_name">Respectful by Design</string>
+    <string name="settings_respectful_desc">Leaving an app returns you cleanly to your device home screen. Momentwise respects user autonomy and platform conventions — it never forcibly terminates other apps.</string>
+    <string name="settings_architecture_name">On-Device by Design</string>
+    <string name="settings_architecture_desc">Rules, sessions, and which app is in front stay on this device. Nothing is sent off the phone. Monitoring runs only while a rule is enabled. This has not been proven on a physical API 34 or 35 device in this workspace.</string>
+    <string name="settings_prototype_controls">Data</string>
+    <string name="settings_reset_all_name">Reset all app rules</string>
+    <string name="settings_reset_all_desc">Clear saved rules and any in-progress check-in on this device.</string>
+    <string name="settings_reset_all_action">Reset Data</string>
+    <string name="settings_reset_confirm_title">Reset all app rules?</string>
+    <string name="settings_reset_confirm_body">This clears saved rules and any in-progress check-in stored on this device. It does not change other apps.</string>
+    <string name="settings_reset_confirm">Reset</string>
+    <string name="settings_version_value">0.2.0-intervention</string>
+    <string name="settings_version_label">Version</string>
+    <string name="preview_quit_body">You paused and chose not to open %1$s. In the native app this returns you to your home screen. It does not force-stop the other app.</string>
+    <string name="preview_continue_with_reminder">Preview only. Continuing into %1$s would schedule a check-in in %2$d minutes. This preview does not start one.</string>
+    <string name="preview_continue_without_reminder">Continuing into %1$s. No mid-session reminders are scheduled.</string>
+    <string name="preview_reminder_disabled_body">You configured %1$s with reminder frequency Never. Only the opening notice pauses when the app is launched.</string>
+    <string name="preview_reminder_scheduled">Scheduled check-in after %1$d minutes in %2$s</string>
+    <string name="preview_simulated_background">Simulated background</string>
+    <string name="settings_storage_label">Storage</string>
+    <string name="settings_storage_value">On-device (DataStore)</string>
+
+    <!-- Snackbars / feedback -->
+    <string name="toast_rule_saved">Saved rule for %1$s</string>
+    <string name="toast_fix_errors">Please fix the errors above.</string>
+    <string name="toast_app_guarded">%1$s is now guarded</string>
+    <string name="toast_app_inactive">%1$s is now inactive</string>
+    <string name="toast_defaults_restored">Defaults restored for %1$s</string>
+    <string name="toast_all_reset">All rules reset to defaults</string>
+    <string name="toast_theme_changed">Theme: %1$s</string>
+    <string name="toast_first_enable">%1$s enabled. Set your opening rule.</string>
+    <string name="toast_preview_quit">Exit action: in the native app this returns you to your home screen.</string>
+    <string name="toast_preview_continue">Continue action: the app would open normally.</string>
+    <string name="toast_preview_snoozed">Reminder snoozed for %1$d minutes.</string>
+    <string name="toast_preview_dismissed">Reminders paused for %1$s for the rest of today.</string>
+    <string name="toast_preview_app_closed">App closed. Intentional choice logged.</string>
+
+    <!-- Access and pause -->
+    <string name="settings_access">Access</string>
+    <string name="settings_access_name">What Momentwise can see</string>
+    <string name="settings_access_desc">These are off until you allow them. Declining leaves Momentwise as a configuration app. Opening a system screen does not grant access by itself.</string>
+    <string name="grant_allowed">Allowed</string>
+    <string name="grant_not_allowed">Not allowed</string>
+    <string name="grant_notification_fallback">Not allowed — a notification will be used instead</string>
+    <string name="disclosure_title">Before guarding</string>
+    <string name="disclosure_heading">Pause %1$s only if you want Momentwise to notice it</string>
+    <string name="disclosure_intro">Momentwise does not block the app or lock you out. To show your pause, it needs to know when that app is in front. You can decline and keep editing rules.</string>
+    <string name="disclosure_usage_title">Usage Access</string>
+    <string name="disclosure_usage_body">Used only to see which app is in the foreground, on this phone, so your pause can appear. It is not used to read messages, build a usage dashboard, or send anything off the device. Android asks for this in Settings, not in a normal permission dialog.</string>
+    <string name="disclosure_usage_action">Review Usage Access</string>
+    <string name="disclosure_overlay_title">Display over other apps</string>
+    <string name="disclosure_overlay_body">Lets the pause appear by itself, as Momentwise\'s own full screen. It is not a click-through layer, and it is not kept invisible just to hold a privilege. If you skip this, you can still guard the app — the pause arrives as a notification you tap.</string>
+    <string name="disclosure_overlay_action">Review overlay access</string>
+    <string name="disclosure_notifications_title">Notifications</string>
+    <string name="disclosure_notifications_body">A quiet ongoing notification while guarding is on, and a notification you can tap if the pause cannot appear on its own. No streaks, no marketing.</string>
+    <string name="disclosure_notifications_action">Allow notifications</string>
+    <string name="disclosure_limits">The pause can be about a second late. Some phones delay or stop a foreground service despite the notification. Quit goes to the home screen and does not force-stop the other app. A check-in in progress does not survive a reboot as proof you were still in the app.</string>
+    <string name="disclosure_guard">Guard %1$s</string>
+    <string name="disclosure_guard_waiting">Usage Access and notifications are still needed</string>
+    <string name="disclosure_decline">Not now</string>
+    <string name="channel_monitoring_name">Guarding</string>
+    <string name="channel_monitoring_desc">Shown while at least one app is guarded.</string>
+    <string name="channel_pause_name">Pause</string>
+    <string name="channel_pause_desc">A pause you can open when it could not appear on its own.</string>
+    <string name="monitor_notification_title">Momentwise is guarding</string>
+    <string name="monitor_notification_body">Watching the apps you chose. Not a usage report.</string>
+    <string name="pause_notification_title">A pause is waiting</string>
+    <string name="pause_from_notification">Opened from a notification, because the pause could not appear on its own.</string>
+    <string name="pause_quit_honesty">Quit returns you to the home screen. It does not force-stop the other app, stop its audio, or clear its back stack.</string>
+</resources>
