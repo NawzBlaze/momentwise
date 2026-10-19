@@ -50,11 +50,11 @@ internal object GuardSnapshotJson {
     }
 
     private fun JSONObject.putNullable(key: String, value: String?) {
-        if (value == null) put(key, NULL) else put(key, value)
+        if (value == null) put(key, JSONObject.NULL) else put(key, value)
     }
 
     private fun JSONObject.putNullable(key: String, value: Long?) {
-        if (value == null) put(key, NULL) else put(key, value)
+        if (value == null) put(key, JSONObject.NULL) else put(key, value)
     }
 
     private fun JSONObject.optNullableLong(key: String): Long? =

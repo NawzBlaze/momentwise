@@ -18,6 +18,10 @@ import com.nawzblaze.momentwise.intervention.PauseRequest
  */
 object PausePresenter {
 
+    /** Cleared by the monitoring service so a later pause is not blocked. */
+    @Volatile
+    var onDismissed: (() -> Unit)? = null
+
     fun show(context: Context, request: PauseRequest, themeModeName: String) {
         if (GrantChecks.read(context).overlay) {
             val shown = PauseOverlay.show(context, request, themeModeName)

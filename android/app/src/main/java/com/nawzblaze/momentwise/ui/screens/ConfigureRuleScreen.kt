@@ -78,6 +78,7 @@ fun ConfigureRuleScreen(
     snackbarHostState: SnackbarHostState,
     onBack: () -> Unit,
     onTestPreview: () -> Unit,
+    onRequestGuard: () -> Unit,
 ) {
     val rules by viewModel.rules.collectAsStateWithLifecycle()
     val catalog by viewModel.catalog.collectAsStateWithLifecycle()
@@ -107,6 +108,7 @@ fun ConfigureRuleScreen(
         snackbarHostState = snackbarHostState,
         onBack = onBack,
         onTestPreview = onTestPreview,
+        onRequestGuard = onRequestGuard,
     )
 }
 
@@ -117,14 +119,17 @@ private fun ConfigureRuleForm(
     snackbarHostState: SnackbarHostState,
     onBack: () -> Unit,
     onTestPreview: () -> Unit,
+    onRequestGuard: () -> Unit,
 ) {
     val appId = rule.appId
+    val grants = rememberGrantStatus()
     val colors = LocalMomentwiseColors.current
     val scope = rememberCoroutineScope()
     var draft by rememberSaveable(appId, stateSaver = AppRuleDraftSaver) {
         mutableStateOf(AppRuleDraft.fromRule(rule))
     }
     var enabled by rememberSaveable(appId) { mutableStateOf(rule.enabled) }
+    LaunchedEffect(rule.enabled) { enabled = rule.enabled }
     var showErrors by rememberSaveable(appId) { mutableStateOf(false) }
     // Advanced options are collapsed by default, per the approved specification.
     var advancedExpanded by rememberSaveable(appId) { mutableStateOf(false) }
@@ -143,9 +148,12 @@ private fun ConfigureRuleForm(
                 RuleSwitch(
                     checked = enabled,
                     onCheckedChange = { next ->
+                        if (next && viewModel.needsDisclosure(grants.canMonitor)) {
+                            onRequestGuard()
+                            return@RuleSwitch
+                        }
                         enabled = next
-                        // The header switch commits immediately, matching the prototype.
-                        viewModel.setRuleEnabled(appId, next)
+                        viewModel.setDisplayedRuleEnabled(rule.copy(enabled = next), next)
                         scope.launch {
                             snackbarHostState.showSnackbar(
                                 "${rule.appName} rule ${if (next) "activated" else "paused"}"

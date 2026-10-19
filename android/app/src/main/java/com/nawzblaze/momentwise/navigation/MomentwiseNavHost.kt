@@ -96,6 +96,7 @@ fun MomentwiseNavHost(
                 snackbarHostState = snackbarHostState,
                 onBack = { navController.popBackStack() },
                 onTestPreview = { navController.navigate(Destinations.previewOpening(appId)) },
+                onRequestGuard = { navController.navigate(Destinations.guard(appId)) },
             )
         }
 
