@@ -162,8 +162,10 @@ class ServiceStartGateTest {
         val meanMillis = (System.nanoTime() - started) / 1_000_000.0 / repeats
         val meanText = String.format(Locale.US, "%.3f", meanMillis)
         val line = "POLL_MEASURE events=200 repeats=$repeats meanMillis=$meanText intervalMillis=${UsagePoll.INTERVAL_MILLIS}"
-        File("build").mkdirs()
-        File("build/poll-measure.txt").writeText(line)
+        listOf(File("build"), File("app/build"), File("android/app/build")).forEach { dir ->
+            dir.mkdirs()
+            File(dir, "poll-measure.txt").writeText(line)
+        }
         assertTrue(line, meanMillis < UsagePoll.INTERVAL_MILLIS)
     }
 }

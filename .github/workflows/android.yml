@@ -136,14 +136,18 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HEAD_SHA: ${{ github.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          file=app/build/poll-measure.txt
-          if [ ! -f "$file" ]; then
+          file=$(find . -name poll-measure.txt -print -quit)
+          if [ -z "$file" ]; then
             echo "No poll measurement was written."
             exit 0
           fi
           text=$(cat "$file")
           echo "$text"
+          if [ -n "${PR_NUMBER:-}" ]; then
+            gh pr comment "$PR_NUMBER" --body "$(printf '%s\n' '<!-- momentwise-poll-measure -->' "$text" '' 'Pure reducer on the CI JVM. Not UsageStats IPC, and not a phone measurement.')" || echo "poll comment failed"
+          fi
           python3 - "$text" <<'PY'
           import json, os, subprocess, sys
           text = sys.argv[1]
