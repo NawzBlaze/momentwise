@@ -32,10 +32,6 @@
   --color-focus: #C28B38;
   --color-shadow: rgba(20, 41, 30, 0.04);
 
-  /* Logo Specific Tokens */
-  --logo-m: #14291E;
-  --logo-sun: #C28B38;
-
   /* Typography */
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
@@ -92,9 +88,6 @@
     --color-status-glow: rgba(52, 211, 153, 0.25);
     --color-focus: #E2AC54;
     --color-shadow: rgba(0, 0, 0, 0.2);
-
-    --logo-m: #EDF2EE;
-    --logo-sun: #E2AC54;
   }
 }
 
@@ -122,9 +115,6 @@
   --color-status-glow: rgba(27, 115, 64, 0.2);
   --color-focus: #C28B38;
   --color-shadow: rgba(20, 41, 30, 0.04);
-
-  --logo-m: #14291E;
-  --logo-sun: #C28B38;
 }
 
 [data-theme="dark"] {
@@ -148,9 +138,6 @@
   --color-status-glow: rgba(52, 211, 153, 0.25);
   --color-focus: #E2AC54;
   --color-shadow: rgba(0, 0, 0, 0.2);
-
-  --logo-m: #EDF2EE;
-  --logo-sun: #E2AC54;
 }
 
 /* --------------------------------------------------------------------------
@@ -271,16 +258,13 @@ body {
 .brand-mark {
   display: block;
   flex-shrink: 0;
+  width: 34px;
+  height: 26px;
+  transition: transform var(--transition-fast), opacity var(--transition-fast);
 }
 
-.brand-sun {
-  fill: var(--logo-sun);
-  transition: fill var(--transition-normal);
-}
-
-.brand-m {
-  stroke: var(--logo-m);
-  transition: stroke var(--transition-normal);
+.brand:hover .brand-mark {
+  transform: translateY(-1px);
 }
 
 .brand-name {
