@@ -149,7 +149,7 @@ fun OpeningNoticePreviewScreen(
             Image(
                 painter = painterResource(R.drawable.ic_logo),
                 contentDescription = null,
-                modifier = Modifier.width(72.dp).height(55.dp),
+                modifier = Modifier.size(72.dp),
             )
         }
         VerticalSpacer(10)

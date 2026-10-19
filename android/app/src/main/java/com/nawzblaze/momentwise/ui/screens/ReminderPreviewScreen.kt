@@ -151,7 +151,7 @@ fun ReminderPreviewScreen(
                     Image(
                         painter = painterResource(R.drawable.ic_logo),
                         contentDescription = null,
-                        modifier = Modifier.width(22.dp).height(17.dp),
+                        modifier = Modifier.size(22.dp),
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(

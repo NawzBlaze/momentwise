@@ -93,8 +93,7 @@ fun HomeScreen(
                 painter = painterResource(R.drawable.ic_logo),
                 contentDescription = null,
                 modifier = Modifier
-                    .width(26.dp)
-                    .height(20.dp),
+                    .size(26.dp),
             )
             Spacer(Modifier.width(10.dp))
             Text(

@@ -94,5 +94,5 @@ android/app/src/main/java/com/nawzblaze/momentwise/
 └── ui/screens/      The seven product screens
 ```
 
-The approved mark is `res/drawable/ic_logo.xml`, converted from `assets/logo.svg`
-without redrawing the geometry.
+The approved mark is `res/drawable-nodpi/ic_logo.png`, the supplied icon.
+The launcher foreground is that same icon.

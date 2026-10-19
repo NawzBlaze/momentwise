@@ -67,11 +67,7 @@ momentwise/
 │       ├── pages.yml           # Automated GitHub Actions deployment to Pages
 │       └── android.yml         # Android unit tests, debug APK, and lint
 ├── assets/
-│   ├── favicon.svg             # Favicon-optimized SVG brand mark (16x16 / 32x32 crisp)
-│   ├── logo.svg                # Primary full-colour vector mark (transparent background)
-│   ├── logo-light-bg.svg       # Light-surface presentation squircle
-│   ├── logo-dark-bg.svg        # Dark-surface presentation squircle
-│   └── logo-monochrome.svg     # Single-tone monochrome mark (currentColor)
+│   └── logo.png                # Approved icon: forest-green M and golden sunrise
 ├── prototype/                  # Interactive Mobile UI Prototype (Concept Preview)
 │   ├── assets/                 # Brand assets copy for prototype preview
 │   ├── app.js                  # Prototype navigation router & state machine
@@ -111,13 +107,7 @@ A browser-runnable, high-fidelity clickable prototype of the proposed Momentwise
 
 ## Brand Assets
 
-The approved brand vector assets are located in [`assets/`](assets/):
-
-1. **`assets/logo.svg`**: Primary full-colour vector mark on transparent background. Features the layered forest-green folds, sunrise disc, atmospheric glow, and illuminated ridge crests.
-2. **`assets/logo-light-bg.svg`**: Full-colour mark presented on a warm cream (`#FAF7F2`) squircle for app-icon or light-mode preview cards.
-3. **`assets/logo-dark-bg.svg`**: Full-colour mark presented on a soft charcoal (`#0F1412`) squircle for app-icon or dark-mode preview cards.
-4. **`assets/logo-monochrome.svg`**: Single-tone silhouette using `currentColor` for monochrome printing, single-ink placements, or high-contrast interfaces.
-5. **`assets/favicon.svg`**: Production favicon vector asset tuned for crisp legibility at small sizes (16×16 and 32×32).
+The approved mark is [`assets/logo.png`](assets/logo.png): the supplied cream icon, a flowing forest-green M with a golden sunrise. The site, prototype, and Android app use that file. It is not a redraw.
 
 ---
 
