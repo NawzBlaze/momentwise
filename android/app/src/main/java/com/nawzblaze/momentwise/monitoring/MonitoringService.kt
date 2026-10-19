@@ -77,13 +77,17 @@ class MonitoringService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        MonitorPresence.markStartAttempt(this, System.currentTimeMillis())
+        // startForeground before SharedPreferences. The first prefs read can
+        // hit disk, and API 34 kills the process if this call is late.
         if (!startAsForeground()) return START_NOT_STICKY
+        MonitorPresence.markStartAttempt(this, System.currentTimeMillis())
         PausePresenter.onDismissed = { pauseVisible = false }
         PausePresenter.onShown = { pauseVisible = true }
         startCollectors()
         synchronized(gate) {
-            if (pollJob?.isActive == true && !stopRequested) return START_STICKY
+            if (!PollSupervisor.shouldLaunch(pollJob?.isActive == true, stopRequested)) {
+                return START_STICKY
+            }
             stopRequested = false
             startGeneration += 1
             pollJob?.cancel()
@@ -138,7 +142,7 @@ class MonitoringService : Service() {
         while (coroutineContext[Job]?.isActive != false && !stopRequested) {
             tick()
             if (stopRequested) break
-            delay(POLL_INTERVAL_MILLIS)
+            delay(UsagePoll.INTERVAL_MILLIS)
         }
     }
 
@@ -436,7 +440,6 @@ class MonitoringService : Service() {
 
     companion object {
         private const val TAG = "Momentwise"
-        private const val POLL_INTERVAL_MILLIS = 1_000L
         private const val LAUNCHER_CACHE_MILLIS = 30_000L
         private const val BEAT_EVERY_TICKS = 5
 

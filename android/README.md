@@ -39,11 +39,14 @@ GitHub Actions workflow: [`.github/workflows/android.yml`](../.github/workflows/
 That is the reproducible build for this milestone. A local SDK is not assumed.
 A green unit-test run means `testDebugUnitTest`, `assembleDebug`, `assembleRelease`,
 `assembleDebugAndroidTest`, and `lintDebug` succeeded on Ubuntu with JDK 17 and
-SDK 35. `assembleRelease` without signing secrets produces an unsigned APK. That
-is not a public release. A separate emulator workflow runs
-`connectedDebugAndroidTest` on API 34 and API 35 when it is green. A green
-emulator run is still not a physical-device result, and it does not prove that a
-pause appears over another app.
+SDK 35. The debug APK artifact is named `momentwise-debug-apk`. It is a zip of
+`app-debug.apk`, not a signed release. `assembleRelease` without signing secrets
+produces an unsigned APK. That is not a public release. A separate emulator
+workflow runs `connectedDebugAndroidTest` on API 34 and API 35 when it is green.
+That run includes a test which starts `com.nawzblaze.momentwise.fixture`, a
+separate package, and reads the opening notice from the system notification
+dump with overlay denied. It is not Instagram, not a full-screen overlay, and
+not a physical-device result.
 
 ## Signed release
 
@@ -56,7 +59,12 @@ The release workflow is `.github/workflows/android-release.yml`. It runs on a
 - `MOMENTWISE_KEY_PASSWORD`
 
 Do not commit the keystore or the passwords. Do not generate a new key on every
-build. After a signed `Momentwise.apk` is attached to a GitHub Release and the
+build. The workflow checks that each secret is non-empty and exits 1 before any
+APK is built if one is missing. It does not print secret values. `gh secret list`
+from this review environment returns HTTP 403, so that command cannot confirm
+whether the secrets are set. The workflow run is the presence check.
+
+After a signed `Momentwise.apk` is attached to a GitHub Release and the
 URL below downloads, the website can point at it:
 
 `https://github.com/NawzBlaze/momentwise/releases/latest/download/Momentwise.apk`
@@ -71,11 +79,11 @@ This is a code diagnosis, not a log from the phone that failed.
 - If the process is dead when the guarded app opens, a later start looks at the last 60 seconds. If that app is still the last resume and no opening was shown, the opening is shown then. It is not a second opening after Anyways.
 - Home used to say monitoring was on whenever a rule was enabled and the grants were present. The guarding notification can be gone while that is still true. Home and Settings now use a service heartbeat. A stale heartbeat is shown as stopped, with a start-again action. There is no restart loop.
 - The guarding channel was low importance, and Android will not raise an existing channel. New installs use a default-importance silent channel so the ongoing notification is less likely to be hidden. That has not been confirmed on the phone that failed.
-- A one-second poll remains. Each tick no longer re-reads the rule store or queries the launcher package. CPU, memory, and frame time were not measured here.
+- A one-second poll remains. It is the latency bound, not a scan of usage history. Usage Access has no resume callback, and events are often written late, so a shorter interval would not remove that delay. Each tick reads a bounded 20-second window and drops timestamps already applied. The launcher package is cached for 30 seconds. A unit test times the pure reducer on a dense 200-event window and requires the mean to stay under that one-second interval. That number is JVM reducer cost, not UsageStats IPC, not frame time, and not a phone.
 
 ## On-device intervention checklist
 
-Not run in this workspace. There is no phone and no emulator here. A welcome-screen instrumentation test does not prove any of the following. On one API 34 device and one API 35 device, record the Android version, the permissions actually granted, the target app, and what happened.
+Not run on a physical device in this workspace. There is no phone here. A welcome-screen test does not prove any of the following. The emulator cross-app test, when green, only shows that a fixture package produced the notification fallback. On one API 34 device and one API 35 device, record the Android version, the permissions actually granted, the target app, and what happened.
 
 1. Install a debug build. Do not treat it as the public release.
 2. Decline Usage Access. Enable a rule only after the explanation. Confirm the app does not crash and does not pretend the pause will appear.

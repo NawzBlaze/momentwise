@@ -4,13 +4,19 @@ import android.os.ParcelFileDescriptor
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Opens a second package and checks that the system shows the pause notice.
- * This is not a welcome-screen test. It does not claim a physical-device result.
+ * Launches a second installed package and reads the opening notice from the
+ * system notification dump. Overlay stays denied, so this is the notification
+ * fallback, not a full-screen pause, and not an injected usage event.
+ *
+ * Limitations, on purpose: the target is `com.nawzblaze.momentwise.fixture`,
+ * not Instagram or any other real app. A GitHub-hosted emulator pass does not
+ * establish physical-device reliability, battery survival, or exact timing.
  */
 @RunWith(AndroidJUnit4::class)
 class CrossAppPauseTest {
@@ -18,6 +24,7 @@ class CrossAppPauseTest {
     @Test
     fun openingTheFixtureShowsThePauseNotification() {
         val target = "com.nawzblaze.momentwise.fixture"
+        assertNotEquals(APP, target)
 
         val grant = shell("pm grant $APP android.permission.POST_NOTIFICATIONS")
         assertFalse("Notification grant failed: ${oneLine(grant)}", grant.contains("Exception") || grant.contains("Error"))
@@ -41,7 +48,12 @@ class CrossAppPauseTest {
 
         shell("input keyevent KEYCODE_HOME")
         val opened = shell("am start -W -n $target/.FixtureActivity")
-        assertTrue("Fixture did not open: $opened", opened.contains("ok") || opened.contains("Status: ok"))
+        assertTrue(
+            "Fixture did not open as its own package: $opened",
+            opened.contains("$target/.FixtureActivity") || opened.contains(target),
+        )
+        assertFalse("The start targeted Momentwise itself: $opened", opened.contains("$APP/.MainActivity"))
+        assertTrue("Fixture did not open: $opened", opened.contains("Status: ok") || opened.contains("ok"))
 
         assertTrue(
             "Opening notice was not delivered. ${diagnostics()}",

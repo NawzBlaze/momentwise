@@ -1,6 +1,7 @@
 package com.nawzblaze.momentwise.debug
 
 import android.app.Activity
+import android.content.Context
 import android.os.Bundle
 import android.util.Log
 import android.widget.TextView
@@ -8,6 +9,7 @@ import com.nawzblaze.momentwise.MomentwiseApplication
 import com.nawzblaze.momentwise.data.RuleDefaults
 import com.nawzblaze.momentwise.monitoring.GrantChecks
 import com.nawzblaze.momentwise.monitoring.MonitoringCoordinator
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.runBlocking
 import kotlin.concurrent.thread
 
@@ -16,6 +18,10 @@ import kotlin.concurrent.thread
  * while the process is backgrounded, and Android 12+ then rejects the
  * foreground-service start. This activity does the same rule write while
  * Momentwise is in front. Debug source set only.
+ *
+ * The worker does not block the main thread: API 34 kills the process if
+ * [android.app.Service.startForeground] cannot run. It also does not keep the
+ * Activity, so a destroyed screen cannot race the file write.
  */
 class DebugRuleActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -29,12 +35,29 @@ class DebugRuleActivity : Activity() {
             finish()
             return
         }
-        val app = application as MomentwiseApplication
         setContentView(TextView(this).apply { text = "Enabling rule" })
-        // Must not block the main thread. startForegroundService posts
-        // onStartCommand there, and API 34 kills the process if that call
-        // does not reach startForeground in time.
-        thread(name = "debug-rule") {
+        val started = startEnable(application as MomentwiseApplication, packageName, label)
+        if (!started) Log.i(TAG, "enable already running")
+    }
+
+    companion object {
+        const val TAG = "MomentwiseDebug"
+        private val running = AtomicBoolean(false)
+
+        /** @return false when a worker is already in flight. One worker only. */
+        fun startEnable(app: MomentwiseApplication, packageName: String, label: String): Boolean {
+            if (!running.compareAndSet(false, true)) return false
+            thread(name = "debug-rule") {
+                try {
+                    enable(app, packageName, label)
+                } finally {
+                    running.set(false)
+                }
+            }
+            return true
+        }
+
+        private fun enable(app: MomentwiseApplication, packageName: String, label: String) {
             val grants = GrantChecks.read(app)
             Log.i(
                 TAG,
@@ -53,16 +76,12 @@ class DebugRuleActivity : Activity() {
                 )
                 MonitoringCoordinator.sync(app)
             }
-            openFileOutput("debug-status.txt", MODE_PRIVATE).bufferedWriter().use {
+            app.openFileOutput("debug-status.txt", Context.MODE_APPEND).bufferedWriter().use {
                 it.appendLine(
                     "sync finished usage=${grants.usageAccess} notifications=${grants.notifications} overlay=${grants.overlay}",
                 )
             }
             Log.i(TAG, "sync finished for $packageName")
         }
-    }
-
-    companion object {
-        const val TAG = "MomentwiseDebug"
     }
 }
