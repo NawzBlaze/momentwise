@@ -10,6 +10,14 @@ concurrency:
   group: android-${{ github.ref }}
   cancel-in-progress: true
 
+# pull-requests + checks write so a failed Gradle run can publish its tail.
+# Actions log blobs are not readable from every review environment.
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+  actions: write
+
 jobs:
   check:
     name: Unit tests, debug APK, lint
@@ -29,17 +37,94 @@ jobs:
         with:
           packages: platforms;android-35 build-tools;35.0.0
 
-      - name: Unit tests
+      - name: Unit tests, assemble, lint
+        id: gradle
         working-directory: android
-        run: ./gradlew :app:testDebugUnitTest --stacktrace --no-daemon
-
-      - name: Assemble debug APK
-        working-directory: android
-        run: ./gradlew :app:assembleDebug --stacktrace --no-daemon
-
-      - name: Lint
-        working-directory: android
-        run: ./gradlew :app:lintDebug --stacktrace --no-daemon
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          set +e
+          ./gradlew :app:testDebugUnitTest :app:assembleDebug :app:lintDebug --continue --stacktrace --no-daemon > "$RUNNER_TEMP/gradle.log" 2>&1
+          code=$?
+          python3 - "$RUNNER_TEMP/gradle.log" "$RUNNER_TEMP/excerpt.md" "$code" <<'PY'
+          import sys
+          log_path, out_path, code = sys.argv[1], sys.argv[2], sys.argv[3]
+          log = open(log_path, errors="replace").read()
+          lines = log.splitlines()
+          keys = (
+              "e: ",
+              "FAILED",
+              "FAILURE:",
+              "What went wrong",
+              "Execution failed",
+              "Caused by:",
+              "error:",
+              "ERROR:",
+              "Unresolved reference",
+              "tests completed",
+              "BUILD ",
+          )
+          picked = [ln for ln in lines if any(k in ln for k in keys) and not ln.startswith("Downloading ")]
+          # Keep the signal, not the download progress.
+          body = [
+              "<!-- momentwise-gradle-log -->",
+              f"Gradle exit code: {code}",
+              "",
+              "### Matching lines",
+              "```",
+              *(picked[-180:] or ["(no matching lines)"]),
+              "```",
+              "",
+              "### Tail",
+              "```",
+              *lines[-80:],
+              "```",
+              "",
+          ]
+          text = "\n".join(body)
+          if len(text) > 60000:
+              text = text[:200] + "\n\n...(truncated)...\n\n" + text[-58000:]
+          open(out_path, "w", encoding="utf-8").write(text)
+          print(text[-12000:])
+          PY
+          if [ -n "$PR_NUMBER" ]; then
+            gh pr comment "$PR_NUMBER" --body-file "$RUNNER_TEMP/excerpt.md" || echo "PR comment failed"
+          fi
+          python3 - "$RUNNER_TEMP/excerpt.md" "$code" <<'PY'
+          import json, os, subprocess, sys
+          excerpt = open(sys.argv[1], encoding="utf-8").read()
+          code = sys.argv[2]
+          payload = {
+              "name": "Gradle log excerpt",
+              "head_sha": os.environ["HEAD_SHA"],
+              "status": "completed",
+              "conclusion": "success" if code == "0" else "failure",
+              "output": {
+                  "title": "Gradle excerpt",
+                  "summary": excerpt[:65000],
+              },
+          }
+          repo = os.environ["GITHUB_REPOSITORY"]
+          proc = subprocess.run(
+              ["gh", "api", f"repos/{repo}/check-runs", "--input", "-"],
+              input=json.dumps(payload),
+              text=True,
+              capture_output=True,
+          )
+          if proc.returncode != 0:
+              print(proc.stderr[-2000:])
+              print("check-run publish failed")
+          else:
+              print("check-run published")
+          PY
+          {
+            echo "## Gradle excerpt"
+            echo
+            cat "$RUNNER_TEMP/excerpt.md"
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "$code"
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4

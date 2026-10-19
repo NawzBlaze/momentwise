@@ -66,6 +66,9 @@ dependencies {
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+    // JVM unit tests see stub org.json inside android.jar (methods throw or
+    // return defaults). The device build keeps using the framework copy.
+    testImplementation(libs.org.json)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
 }
