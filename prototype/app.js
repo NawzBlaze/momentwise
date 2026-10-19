@@ -194,12 +194,12 @@
 
     const count = activeRules.length;
     if (headingEl) {
-      headingEl.textContent = count === 0 ? 'No Apps Guarded' : `${count} App${count === 1 ? '' : 's'} Guarded`;
+      headingEl.textContent = count === 0 ? 'No Rules Configured' : `${count} Active Rule${count === 1 ? '' : 's'} (Demo)`;
     }
     if (subEl) {
       subEl.textContent = count === 0
-        ? 'Enable an app in the Apps tab to set up a conscious opening pause.'
-        : 'Opening pauses and mindful check-ins are active for your selected apps.';
+        ? 'Select an app in the Apps tab to configure a mindful pause rule.'
+        : 'Simulated opening pauses and check-in reminders configured in this browser demo.';
     }
 
     if (chipsContainer) {

@@ -28,6 +28,7 @@
 
   /* Accent & Action Colors */
   --color-accent: #C28B38;         /* Restrained Sunrise Gold */
+  --color-accent-text: #8F5D15;    /* High Contrast Sunrise Amber (WCAG AA 5.25:1) */
   --color-accent-hover: #A87428;
   --color-accent-subtle: rgba(194, 139, 56, 0.12);
   --color-status-green: #1B7340;   /* Calm Forest Emerald */
@@ -87,10 +88,11 @@
     --color-text-primary: #EDF2EE;    /* Comfortable Off-White */
     --color-text-secondary: #9EAEA3;  /* Soft Muted Sage */
     --color-text-tertiary: #6D7F74;   /* Muted Green */
-    --color-text-muted: #526258;
+    --color-text-muted: #71847A;      /* WCAG AA (4.68:1 on #0F1412) */
     --color-text-inverse: #0F1412;
 
     --color-accent: #E2AC54;         /* Muted Sunrise Gold */
+    --color-accent-text: #E2AC54;    /* WCAG AA (9.09:1 on #0F1412) */
     --color-accent-hover: #ECC073;
     --color-accent-subtle: rgba(226, 172, 84, 0.16);
     --color-status-green: #34D399;   /* Luminous Emerald */
@@ -129,6 +131,7 @@
   --color-text-inverse: #FAF7F2;
 
   --color-accent: #C28B38;
+  --color-accent-text: #8F5D15;
   --color-accent-hover: #A87428;
   --color-accent-subtle: rgba(194, 139, 56, 0.12);
   --color-status-green: #1B7340;
@@ -159,10 +162,11 @@
   --color-text-primary: #EDF2EE;
   --color-text-secondary: #9EAEA3;
   --color-text-tertiary: #6D7F74;
-  --color-text-muted: #526258;
+  --color-text-muted: #71847A;
   --color-text-inverse: #0F1412;
 
   --color-accent: #E2AC54;
+  --color-accent-text: #E2AC54;
   --color-accent-hover: #ECC073;
   --color-accent-subtle: rgba(226, 172, 84, 0.16);
   --color-status-green: #34D399;
@@ -193,9 +197,17 @@
   display: none !important;
 }
 
-html, body {
+html {
+  height: 100%;
+}
+
+body {
   width: 100%;
-  min-height: 100%;
+  height: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
   font-family: var(--font-sans);
   background: var(--stage-bg);
   background-image: var(--stage-gradient);
@@ -203,6 +215,7 @@ html, body {
   line-height: 1.45;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
 }
 
 /* --------------------------------------------------------------------------
@@ -211,8 +224,8 @@ html, body {
 .prototype-banner {
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
-  position: sticky;
-  top: 0;
+  position: relative;
+  flex-shrink: 0;
   z-index: 100;
   padding: 8px 16px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
@@ -346,8 +359,10 @@ html, body {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: var(--space-lg) var(--space-md);
-  min-height: calc(100vh - 50px);
+  padding: var(--space-md);
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .phone-frame {
@@ -437,8 +452,28 @@ html, body {
 .screen-scroll-body {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: var(--space-sm) var(--space-md);
   -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+
+.screen-scroll-body::-webkit-scrollbar {
+  width: 5px;
+}
+
+.screen-scroll-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.screen-scroll-body::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: var(--radius-full);
+}
+
+.screen-scroll-body::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border-hover);
 }
 
 .form-scroll-body {
@@ -715,7 +750,7 @@ html, body {
 .section-field-label {
   font-size: 0.78rem;
   font-weight: 700;
-  color: var(--color-accent);
+  color: var(--color-accent-text);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -732,17 +767,17 @@ html, body {
   font-family: inherit;
   font-size: 0.88rem;
   color: var(--color-text-primary);
-  background: var(--color-bg);
-  border: 1.5px solid var(--color-border);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
-  padding: 0.6rem 0.75rem;
+  padding: 0.62rem 0.8rem;
   outline: none;
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .form-input:focus {
   border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px var(--color-accent-subtle);
+  box-shadow: 0 0 0 2px var(--color-accent-subtle);
 }
 
 .input-compact {
@@ -1135,11 +1170,18 @@ html, body {
    SCREEN 4: APP CONFIGURATION
    -------------------------------------------------------------------------- */
 .option-config-card {
-  background: var(--color-bg);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  padding: var(--space-sm);
-  margin-bottom: 8px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--color-border-subtle);
+  border-radius: 0;
+  padding: var(--space-xs) 0 var(--space-sm) 0;
+  margin-bottom: var(--space-xs);
+}
+
+.option-config-card:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
 }
 
 .option-card-header {
@@ -1290,10 +1332,16 @@ html, body {
 }
 
 .advanced-option-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-sm);
-  padding: var(--space-xs);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--color-border-subtle);
+  border-radius: 0;
+  padding: var(--space-xs) 0 var(--space-sm) 0;
+}
+
+.advanced-option-card:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
 }
 
 .adv-card-header {
@@ -1303,7 +1351,7 @@ html, body {
 .adv-action-title {
   font-size: 0.74rem;
   font-weight: 700;
-  color: var(--color-accent);
+  color: var(--color-accent-text);
 }
 
 .adv-row-split {

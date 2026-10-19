@@ -25,6 +25,7 @@
 
   /* Accent & Brand Colors */
   --color-accent: #C28B38;         /* Restrained Sunrise Gold */
+  --color-accent-text: #8F5D15;    /* High Contrast Sunrise Amber (WCAG AA 5.25:1) */
   --color-accent-hover: #A87428;
   --color-accent-subtle: rgba(194, 139, 56, 0.12);
   --color-status-dot: #1B7340;      /* Calm Forest Emerald */
@@ -79,9 +80,10 @@
     --color-text-primary: #EDF2EE;    /* Comfortable Off-White */
     --color-text-secondary: #9EAEA3;  /* Soft Muted Sage */
     --color-text-tertiary: #6D7F74;   /* Muted Green */
-    --color-text-muted: #526258;
+    --color-text-muted: #71847A;      /* WCAG AA (4.68:1 on #0F1412) */
 
     --color-accent: #E2AC54;         /* Muted Sunrise Gold */
+    --color-accent-text: #E2AC54;    /* WCAG AA (9.09:1 on #0F1412) */
     --color-accent-hover: #ECC073;
     --color-accent-subtle: rgba(226, 172, 84, 0.14);
     --color-status-dot: #34D399;      /* Luminous Green */
@@ -109,6 +111,7 @@
   --color-text-muted: #7E9387;
 
   --color-accent: #C28B38;
+  --color-accent-text: #8F5D15;
   --color-accent-hover: #A87428;
   --color-accent-subtle: rgba(194, 139, 56, 0.12);
   --color-status-dot: #1B7340;
@@ -129,9 +132,10 @@
   --color-text-primary: #EDF2EE;
   --color-text-secondary: #9EAEA3;
   --color-text-tertiary: #6D7F74;
-  --color-text-muted: #526258;
+  --color-text-muted: #71847A;
 
   --color-accent: #E2AC54;
+  --color-accent-text: #E2AC54;
   --color-accent-hover: #ECC073;
   --color-accent-subtle: rgba(226, 172, 84, 0.14);
   --color-status-dot: #34D399;
@@ -496,6 +500,76 @@ body {
   color: var(--color-text-tertiary);
 }
 
+.nav-prototype-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.32rem 0.75rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  font-size: 0.78rem;
+  color: var(--color-text-primary);
+  font-weight: 600;
+  text-decoration: none;
+  transition: all var(--transition-fast);
+}
+
+.nav-prototype-pill:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent-text);
+  background: var(--color-surface-hover);
+}
+
+.hero-actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  margin-top: var(--space-xl);
+}
+
+.hero-cta-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.4rem;
+  background: var(--color-text-primary);
+  color: var(--color-bg);
+  border-radius: var(--radius-full);
+  font-size: 0.92rem;
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: 0 4px 14px rgba(20, 41, 30, 0.15);
+  transition: all var(--transition-fast);
+}
+
+.hero-cta-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(20, 41, 30, 0.22);
+}
+
+.hero-secondary-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.75rem 1.2rem;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  font-size: 0.92rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all var(--transition-fast);
+}
+
+.hero-secondary-btn:hover {
+  border-color: var(--color-accent);
+  background: var(--color-surface-hover);
+}
+
 /* --------------------------------------------------------------------------
    Section Common
    -------------------------------------------------------------------------- */
@@ -516,7 +590,7 @@ body {
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: var(--color-accent);
+  color: var(--color-accent-text);
   font-weight: 600;
   margin-bottom: var(--space-xs);
   transition: color var(--transition-normal);

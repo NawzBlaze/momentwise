@@ -126,15 +126,21 @@
               
               <ul class="welcome-list">
                 <li>
-                  <span class="welcome-bullet-icon">✦</span>
+                  <span class="welcome-bullet-icon" aria-hidden="true">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" focusable="false"><path d="M12 2 L14.5 9.5 L22 12 L14.5 14.5 L12 22 L9.5 14.5 L2 12 L9.5 9.5 Z"/></svg>
+                  </span>
                   <span><strong>Choose your apps:</strong> Pick which apps pause when opened.</span>
                 </li>
                 <li>
-                  <span class="welcome-bullet-icon">✦</span>
+                  <span class="welcome-bullet-icon" aria-hidden="true">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" focusable="false"><path d="M12 2 L14.5 9.5 L22 12 L14.5 14.5 L12 22 L9.5 14.5 L2 12 L9.5 9.5 Z"/></svg>
+                  </span>
                   <span><strong>Customise your prompt:</strong> Write your own question and response options.</span>
                 </li>
                 <li>
-                  <span class="welcome-bullet-icon">✦</span>
+                  <span class="welcome-bullet-icon" aria-hidden="true">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" focusable="false"><path d="M12 2 L14.5 9.5 L22 12 L14.5 14.5 L12 22 L9.5 14.5 L2 12 L9.5 9.5 Z"/></svg>
+                  </span>
                   <span><strong>Respectful reminders:</strong> Set how often to check in, or turn them off completely.</span>
                 </li>
               </ul>
@@ -169,9 +175,9 @@
           <div class="screen-scroll-body">
             <!-- Calm Greeting & Status Summary -->
             <div class="home-summary-card">
-              <span class="summary-eyebrow">Status Overview</span>
-              <h2 class="summary-title" id="homeActiveRulesHeading">2 Apps Guarded</h2>
-              <p class="summary-desc" id="homeActiveRulesSub">Opening pauses and check-in reminders are currently active for your selected apps.</p>
+              <span class="summary-eyebrow">Demo Configuration</span>
+              <h2 class="summary-title" id="homeActiveRulesHeading">2 Active Rules (Demo)</h2>
+              <p class="summary-desc" id="homeActiveRulesSub">Simulated opening pauses and check-in reminders configured in this browser demo.</p>
               
               <div class="home-active-chips" id="homeActiveChips">
                 <!-- Dynamically populated with active app chips -->
@@ -289,7 +295,9 @@
 
             <!-- Tip card -->
             <div class="tip-card">
-              <span class="tip-icon">💡</span>
+              <span class="tip-icon" aria-hidden="true">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-7 7c0 2.5 1.5 4.5 3 6h8c1.5-1.5 3-3.5 3-6a7 7 0 0 0-7-7z"/></svg>
+              </span>
               <p class="tip-text">Each app has its own independent rule, opening prompt, and reminder schedule.</p>
             </div>
 
@@ -420,7 +428,9 @@
               </div>
 
               <div class="reminder-disabled-note" id="reminderDisabledNote">
-                <span class="note-icon">ℹ️</span>
+                <span class="note-icon" aria-hidden="true">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                </span>
                 <span>No reminders will be scheduled while in this app. The opening notice will still pause when launched.</span>
               </div>
             </div>
@@ -557,7 +567,9 @@
 
             <!-- Success / Stepped Away Feedback Panel -->
             <div class="preview-result-panel" id="previewResultQuit" hidden>
-              <div class="result-icon-box">🌿</div>
+              <div class="result-icon-box" aria-hidden="true">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
               <h3 class="result-title">Room made for what matters</h3>
               <p class="result-desc">You paused and chose not to open <strong id="quitAppName">Instagram</strong>. In native Android, this returns to your home screen.</p>
               <button type="button" class="btn btn-primary btn-block" id="btnReturnFromQuit">Back to Apps</button>
@@ -565,7 +577,9 @@
 
             <!-- Continued Feedback Panel -->
             <div class="preview-result-panel" id="previewResultContinue" hidden>
-              <div class="result-icon-box">⏳</div>
+              <div class="result-icon-box" aria-hidden="true">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              </div>
               <h3 class="result-title">Intentional session started</h3>
               <p class="result-desc" id="continueReminderStatus">You chose to continue into Instagram. Reminders are configured.</p>
               <div class="result-actions-row">
@@ -605,7 +619,9 @@
 
             <!-- If reminders are disabled for this app -->
             <div class="reminder-disabled-panel" id="panelReminderDisabled" hidden>
-              <div class="disabled-icon">⏸️</div>
+              <div class="disabled-icon" aria-hidden="true">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M18.63 13A17.89 17.89 0 0 1 18 8"/><path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="M18 8a6 6 0 0 0-9.33-5"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+              </div>
               <h3 class="disabled-title">Reminders are turned off</h3>
               <p class="disabled-desc">You configured <strong id="disabledReminderAppName">Instagram</strong> with <em>Reminder frequency: Never</em>. Only the opening notice will pause when launched.</p>
               <button type="button" class="btn btn-secondary btn-sm" id="btnEnableReminderShortcut">Edit Reminder Schedule</button>
@@ -689,8 +705,8 @@
               </div>
 
               <div class="setting-item-block">
-                <span class="setting-name">On-Device Privacy</span>
-                <p class="setting-desc">All rules and reminder schedules remain strictly on your phone. No tracking SDKs or remote telemetry are used.</p>
+                <span class="setting-name">Proposed Android Architecture</span>
+                <p class="setting-desc">In the planned Android release, all rules and reminder schedules will remain strictly on your device with no tracking or remote telemetry. This web prototype stores demo settings in your browser's LocalStorage only.</p>
               </div>
             </div>
 
