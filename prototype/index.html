@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Momentwise — Android UI Prototype</title>
+  <meta name="description" content="Interactive Android UI Prototype for Momentwise — An intentional phone-use companion that helps people interrupt mindless scrolling and make room for what matters.">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+
+  <!-- Immediate Anti-Flash Theme Script -->
+  <script>
+    (function () {
+      try {
+        var STORAGE_KEY = 'momentwise-prototype-theme';
+        var params = new URLSearchParams(window.location.search);
+        var paramTheme = params.get('theme');
+        var saved = paramTheme || localStorage.getItem(STORAGE_KEY);
+        var theme = saved;
+        if (!theme || theme === 'system') {
+          theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        document.documentElement.setAttribute('data-theme', theme);
+      } catch (e) {
+        /* fallback silently */
+      }
+    })();
+  </script>
+
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Desktop Companion Header & Controls -->
+  <aside class="prototype-banner" aria-label="Prototype Controls">
+    <div class="banner-inner">
+      <div class="banner-brand">
+        <a href="../" class="banner-home-link" title="Return to Momentwise website">
+          <img src="assets/favicon.svg" alt="Momentwise logo" width="22" height="22">
+          <span class="banner-name">Momentwise</span>
+        </a>
+        <span class="banner-badge">Android UI Prototype</span>
+      </div>
+
+      <nav class="banner-nav" aria-label="Quick screen navigation">
+        <span class="banner-label">Screens:</span>
+        <button type="button" class="screen-chip" data-screen-target="welcome">Onboarding</button>
+        <button type="button" class="screen-chip active" data-screen-target="home">Dashboard</button>
+        <button type="button" class="screen-chip" data-screen-target="apps">Guarded Apps</button>
+        <button type="button" class="screen-chip" data-screen-target="intervention">Intervention</button>
+        <button type="button" class="screen-chip" data-screen-target="reminder">In-App Reminder</button>
+        <button type="button" class="screen-chip" data-screen-target="settings">Settings</button>
+      </nav>
+
+      <div class="banner-actions">
+        <!-- Theme Selector -->
+        <div class="theme-switch-group" role="radiogroup" aria-label="Color theme selection">
+          <button type="button" class="theme-btn" data-theme-val="system" aria-label="System theme" title="System Theme">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            <span class="theme-text">Auto</span>
+          </button>
+          <button type="button" class="theme-btn" data-theme-val="light" aria-label="Light theme" title="Light Theme">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+            <span class="theme-text">Light</span>
+          </button>
+          <button type="button" class="theme-btn" data-theme-val="dark" aria-label="Dark theme" title="Dark Theme">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            <span class="theme-text">Dark</span>
+          </button>
+        </div>
+
+        <a href="../" class="btn-back-web" title="Return to public landing page">
+          <span>Exit Preview</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        </a>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Phone Stage -->
+  <main class="phone-stage">
+    <!-- Phone Mockup Frame -->
+    <div class="phone-frame" id="phoneFrame" role="region" aria-label="Simulated Android Device">
+      
+      <!-- Android Hardware Elements -->
+      <div class="phone-notch">
+        <div class="phone-speaker"></div>
+        <div class="phone-camera" title="Front Camera"></div>
+      </div>
+
+      <!-- Android Status Bar -->
+      <header class="phone-status-bar" aria-label="System status bar">
+        <div class="status-time" id="statusClock">9:41</div>
+        <div class="status-icons">
+          <!-- 5G / Signal -->
+          <svg class="status-icon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 3c-4.97 0-9 4.03-9 9 0 2.12.74 4.07 1.97 5.61L12 22l7.03-4.39C20.26 16.07 21 14.12 21 12c0-4.97-4.03-9-9-9z" opacity="0.3"/>
+            <path d="M2 20h20L12 4 2 20z"/>
+          </svg>
+          <!-- Wifi -->
+          <svg class="status-icon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 4C7.31 4 3.07 5.9 0 8.98L12 21 24 8.98A16.88 16.88 0 0 0 12 4z"/>
+          </svg>
+          <!-- Battery -->
+          <svg class="status-icon status-battery" width="16" height="14" viewBox="0 0 24 24" fill="currentColor">
+            <rect x="2" y="6" width="18" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
+            <path d="M22 10v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <rect x="4" y="8" width="12" height="8" rx="1" fill="currentColor"/>
+          </svg>
+        </div>
+      </header>
+
+      <!-- Simulated Android Display Viewport -->
+      <div class="phone-screen" id="phoneScreen">
+
+        <!-- ============================================================
+             SCREEN 1: WELCOME / ONBOARDING
+             ============================================================ -->
+        <section class="app-screen" id="screenWelcome" data-screen="welcome" aria-label="Welcome and Onboarding">
+          <div class="welcome-container">
+            <div class="welcome-header">
+              <div class="welcome-logo-wrap">
+                <img src="assets/logo.svg" alt="Momentwise Logo" class="welcome-logo" width="80" height="60">
+              </div>
+              <h1 class="welcome-title">Momentwise</h1>
+              <p class="welcome-tagline">Make room for what matters.</p>
+            </div>
+
+            <!-- Onboarding Step Carousel -->
+            <div class="onboarding-cards">
+              <div class="onboarding-slide active" data-slide="1">
+                <div class="slide-illustration">
+                  <div class="pulse-ring">
+                    <span class="pulse-icon">🌿</span>
+                  </div>
+                </div>
+                <h2 class="slide-title">A gentle pause before you open</h2>
+                <p class="slide-desc">Instead of blocking your apps or counting failures, Momentwise introduces a calm 3-second pause when you tap a distracting app.</p>
+              </div>
+
+              <div class="onboarding-slide" data-slide="2">
+                <div class="slide-illustration">
+                  <div class="pulse-ring gold-accent">
+                    <span class="pulse-icon">✨</span>
+                  </div>
+                </div>
+                <h2 class="slide-title">Clarify why you're here</h2>
+                <p class="slide-desc">Ask yourself one honest question: <em>Do I have a specific purpose right now, or am I just checking out of reflex?</em></p>
+              </div>
+
+              <div class="onboarding-slide" data-slide="3">
+                <div class="slide-illustration">
+                  <div class="pulse-ring green-accent">
+                    <span class="pulse-icon">⏳</span>
+                  </div>
+                </div>
+                <h2 class="slide-title">Kind, non-judgmental check-ins</h2>
+                <p class="slide-desc">Set an intentional time budget. When time expires, a thoughtful nudge helps you step away before scrolling takes over.</p>
+              </div>
+            </div>
+
+            <!-- Stepper Dots -->
+            <div class="onboarding-dots" role="tablist" aria-label="Onboarding steps">
+              <button type="button" class="dot active" data-slide-target="1" aria-label="Slide 1"></button>
+              <button type="button" class="dot" data-slide-target="2" aria-label="Slide 2"></button>
+              <button type="button" class="dot" data-slide-target="3" aria-label="Slide 3"></button>
+            </div>
+
+            <!-- Actions -->
+            <div class="welcome-actions">
+              <button type="button" class="btn btn-primary btn-block" id="btnNextOnboarding">
+                <span id="nextOnboardingText">Continue</span>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+              </button>
+              <button type="button" class="btn btn-ghost btn-block" id="btnSkipOnboarding">Skip to Dashboard</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================================
+             SCREEN 2: HOME DASHBOARD
+             ============================================================ -->
+        <section class="app-screen active" id="screenHome" data-screen="home" aria-label="Home Dashboard">
+          <!-- Top App Bar -->
+          <div class="app-topbar">
+            <div class="topbar-brand">
+              <img src="assets/favicon.svg" alt="" class="topbar-logo" width="24" height="24">
+              <span class="topbar-title">Momentwise</span>
+            </div>
+            <div class="topbar-actions">
+              <button type="button" class="icon-btn" id="btnHomeSettings" aria-label="Open Settings" title="Settings">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="screen-scroll-body">
+            <!-- Simulated Data Notice -->
+            <div class="demo-tag-strip" role="note">
+              <span class="demo-pill">DEMO DATA</span>
+              <span class="demo-tag-text">Simulated phone insights for concept review</span>
+            </div>
+
+            <!-- Daily Intentions Hero Card -->
+            <div class="dashboard-hero-card">
+              <div class="hero-card-header">
+                <div>
+                  <span class="hero-date" id="currentDateDisplay">Today's Presence</span>
+                  <h2 class="hero-greeting">Mindful Intentions</h2>
+                </div>
+                <div class="hero-streak">
+                  <span class="streak-flame">☀️</span>
+                  <span class="streak-num">Day 6</span>
+                </div>
+              </div>
+
+              <div class="hero-metrics-row">
+                <div class="metric-block">
+                  <span class="metric-val" id="metricPauses">7</span>
+                  <span class="metric-lbl">Mindful Pauses</span>
+                </div>
+                <div class="metric-divider"></div>
+                <div class="metric-block">
+                  <span class="metric-val" id="metricReclaimed">42m</span>
+                  <span class="metric-lbl">Time Reclaimed</span>
+                </div>
+                <div class="metric-divider"></div>
+                <div class="metric-block">
+                  <span class="metric-val" id="metricRate">71%</span>
+                  <span class="metric-lbl">Intentional Taps</span>
+                </div>
+              </div>
+
+              <div class="hero-quote">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" class="quote-icon"><path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-8.983z"/></svg>
+                <span>Make room for what matters today.</span>
+              </div>
+            </div>
+
+            <!-- Guarded Apps Section -->
+            <div class="section-group">
+              <div class="section-header">
+                <div>
+                  <h3 class="section-title">Guarded Apps</h3>
+                  <p class="section-sub" id="guardedCountSummary">3 apps will pause before opening</p>
+                </div>
+                <button type="button" class="btn-text-link" id="btnManageApps">Manage</button>
+              </div>
+
+              <div class="guarded-chips-row" id="guardedChipsContainer">
+                <!-- Dynamically rendered pills -->
+              </div>
+            </div>
+
+            <!-- Interactive Prototype Test Drives -->
+            <div class="section-group">
+              <h3 class="section-title">Interactive Experience Previews</h3>
+              <p class="section-sub">Test how Momentwise intervenes on an Android phone</p>
+
+              <div class="test-cards-grid">
+                <!-- Test Card 1: Intervention -->
+                <div class="test-card" id="cardLaunchIntervention">
+                  <div class="test-card-icon test-icon-pause">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><line x1="10" y1="15" x2="10" y2="9"/><line x1="14" y1="15" x2="14" y2="9"/></svg>
+                  </div>
+                  <div class="test-card-body">
+                    <h4 class="test-card-title">Test Intervention Screen</h4>
+                    <p class="test-card-desc">Simulate tapping Instagram. Experience the gentle pause and "What brought you here?" choice.</p>
+                    <button type="button" class="btn btn-secondary btn-sm" id="btnTestIntervention">Simulate App Launch</button>
+                  </div>
+                </div>
+
+                <!-- Test Card 2: In-App Reminder -->
+                <div class="test-card" id="cardLaunchReminder">
+                  <div class="test-card-icon test-icon-bell">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                  </div>
+                  <div class="test-card-body">
+                    <h4 class="test-card-title">Test In-App Reminder</h4>
+                    <p class="test-card-desc">Simulate a mid-session nudge after 10 minutes of scrolling to help you step away.</p>
+                    <button type="button" class="btn btn-secondary btn-sm" id="btnTestReminder">Simulate 10-Min Check-in</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Intentional Reflections Log -->
+            <div class="section-group">
+              <h3 class="section-title">Recent Mindful Choices</h3>
+              <div class="log-list">
+                <div class="log-item">
+                  <div class="log-icon success">✓</div>
+                  <div class="log-info">
+                    <span class="log-title">Stepped away from Instagram</span>
+                    <span class="log-meta">28m ago • Chose to step away</span>
+                  </div>
+                  <span class="log-badge">+10m saved</span>
+                </div>
+                <div class="log-item">
+                  <div class="log-icon purposeful">🎯</div>
+                  <div class="log-info">
+                    <span class="log-title">Replied to DM in X / Twitter</span>
+                    <span class="log-meta">2h ago • Intentional 5m session</span>
+                  </div>
+                  <span class="log-badge-subtle">On purpose</span>
+                </div>
+                <div class="log-item">
+                  <div class="log-icon success">✓</div>
+                  <div class="log-info">
+                    <span class="log-title">Reflex check caught in TikTok</span>
+                    <span class="log-meta">4h ago • Chose not to open</span>
+                  </div>
+                  <span class="log-badge">+20m saved</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="bottom-spacer"></div>
+          </div>
+
+          <!-- Bottom Navigation Bar -->
+          <nav class="app-bottom-nav" aria-label="App Navigation">
+            <button type="button" class="nav-item active" data-nav-target="home">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+              <span>Home</span>
+            </button>
+            <button type="button" class="nav-item" data-nav-target="apps">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+              <span>Apps</span>
+            </button>
+            <button type="button" class="nav-item" data-nav-target="intervention">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+              <span>Intervene</span>
+            </button>
+            <button type="button" class="nav-item" data-nav-target="settings">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              <span>Settings</span>
+            </button>
+          </nav>
+        </section>
+
+        <!-- ============================================================
+             SCREEN 3: APP SELECTION
+             ============================================================ -->
+        <section class="app-screen" id="screenApps" data-screen="apps" aria-label="Guarded Apps Selection">
+          <!-- Top App Bar -->
+          <div class="app-topbar">
+            <button type="button" class="icon-btn" id="btnBackFromApps" aria-label="Go back to Home">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+            </button>
+            <span class="topbar-title">Guarded Apps</span>
+            <div class="topbar-actions">
+              <span class="count-badge" id="appsGuardedCount">3</span>
+            </div>
+          </div>
+
+          <div class="screen-scroll-body">
+            <!-- Simulated Android Permission Notice -->
+            <div class="permission-card" role="region" aria-label="Demo Permission Info">
+              <div class="perm-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              </div>
+              <div class="perm-body">
+                <h4 class="perm-title">Android Accessibility & Usage Access (Demo)</h4>
+                <p class="perm-desc">The production Android app will request standard system permissions to detect app opens. <strong>No real device permissions are required or active in this web prototype.</strong></p>
+              </div>
+            </div>
+
+            <div class="list-explanation">
+              <p>Select which apps will trigger a mindful pause when opened.</p>
+            </div>
+
+            <!-- App List -->
+            <div class="apps-list" id="appsListContainer" role="list">
+              <!-- Dynamically rendered app rows with switches -->
+            </div>
+
+            <!-- Action buttons -->
+            <div class="apps-action-bar">
+              <button type="button" class="btn btn-primary btn-block" id="btnTestInterventionFromApps">
+                <span>Test Intervention Now</span>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+              <button type="button" class="btn btn-ghost btn-block" id="btnSaveApps">Return to Home</button>
+            </div>
+
+            <div class="bottom-spacer"></div>
+          </div>
+        </section>
+
+        <!-- ============================================================
+             SCREEN 4: INTERVENTION PREVIEW ("What brought you here?")
+             ============================================================ -->
+        <section class="app-screen" id="screenIntervention" data-screen="intervention" aria-label="Intervention Screen">
+          <div class="intervention-stage">
+            <!-- App Simulation Context Header -->
+            <div class="intervene-topbar">
+              <button type="button" class="icon-btn-ghost" id="btnExitIntervention" aria-label="Exit intervention">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+              <div class="intervene-context-pill">
+                <span class="pulse-dot"></span>
+                <span>Guarded App: <strong id="interveneAppName">Instagram</strong></span>
+              </div>
+            </div>
+
+            <!-- Breathing Halo & Logo -->
+            <div class="breathing-zone">
+              <div class="breathing-ring" id="breathingRing">
+                <div class="breathing-core">
+                  <img src="assets/logo.svg" alt="" width="56" height="42" class="intervene-logo">
+                </div>
+              </div>
+              <span class="breathing-label" id="breathingLabel">Take a slow breath</span>
+            </div>
+
+            <!-- Core Question -->
+            <div class="intervene-prompt-block">
+              <h2 class="intervene-question">What brought you here?</h2>
+              <p class="intervene-sub">Make your next tap intentional.</p>
+            </div>
+
+            <!-- Main Primary Choices View -->
+            <div class="choices-container" id="interveneChoices">
+              <!-- Choice 1: Purpose -->
+              <button type="button" class="choice-card" id="btnChoicePurpose">
+                <div class="choice-icon purpose-icon">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+                </div>
+                <div class="choice-content">
+                  <h3 class="choice-title">I have a purpose</h3>
+                  <p class="choice-desc">I know what I need to do and want to stay focused.</p>
+                </div>
+                <svg class="choice-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+
+              <!-- Choice 2: Just checking -->
+              <button type="button" class="choice-card" id="btnChoiceChecking">
+                <div class="choice-icon checking-icon">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </div>
+                <div class="choice-content">
+                  <h3 class="choice-title">Just checking</h3>
+                  <p class="choice-desc">I tapped out of habit, boredom, or reflex.</p>
+                </div>
+                <svg class="choice-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+            </div>
+
+            <!-- Subview A: Setting Intentional Purpose -->
+            <div class="subview-panel" id="subviewPurpose" hidden>
+              <div class="subview-header">
+                <h3 class="subview-title">Clarify your task</h3>
+                <p class="subview-sub">What do you want to accomplish?</p>
+              </div>
+
+              <!-- Quick intention chips -->
+              <div class="intent-chips-grid">
+                <button type="button" class="intent-chip active" data-task="Reply to a message">Reply to a message</button>
+                <button type="button" class="intent-chip" data-task="Post a photo / update">Post an update</button>
+                <button type="button" class="intent-chip" data-task="Look up a recipe / place">Look up information</button>
+                <button type="button" class="intent-chip" data-task="Check event details">Check specific event</button>
+              </div>
+
+              <!-- Time Limit Selection -->
+              <div class="time-limit-box">
+                <label class="time-limit-label" for="timeLimitSelect">Intentional session budget:</label>
+                <div class="time-chips-row" id="timeLimitSelect">
+                  <button type="button" class="time-chip active" data-mins="5">5 min</button>
+                  <button type="button" class="time-chip" data-mins="10">10 min</button>
+                  <button type="button" class="time-chip" data-mins="15">15 min</button>
+                </div>
+              </div>
+
+              <div class="subview-actions">
+                <button type="button" class="btn btn-primary btn-block" id="btnStartPurposeSession">
+                  <span>Enter App Intentionally</span>
+                </button>
+                <button type="button" class="btn btn-ghost btn-block" id="btnBackToInterventionChoices">Back to Choices</button>
+              </div>
+            </div>
+
+            <!-- Subview B: Mindful Reflection for "Just Checking" -->
+            <div class="subview-panel" id="subviewChecking" hidden>
+              <div class="reflection-box">
+                <span class="reflection-emoji">💭</span>
+                <h3 class="subview-title">That's completely human</h3>
+                <p class="reflection-body">Most mindless scrolling starts as an automatic muscle-memory reflex. Take one more breath: <strong>Is right now the best time for this?</strong></p>
+              </div>
+
+              <div class="subview-actions">
+                <!-- Option 1: Step Away (Primary) -->
+                <button type="button" class="btn btn-primary btn-block" id="btnStepAway">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 15l-6-6-6 6"/></svg>
+                  <span>Step Away & Put Phone Down</span>
+                </button>
+                
+                <!-- Option 2: Continue with reminder (Secondary) -->
+                <button type="button" class="btn btn-secondary btn-block" id="btnContinueWithReminder">
+                  <span>Open App with 5-Min Reminder</span>
+                </button>
+                
+                <button type="button" class="btn btn-ghost btn-block" id="btnBackToInterventionChoices2">Back to Choices</button>
+              </div>
+            </div>
+
+            <!-- Subview C: Positive Reinforcement (Stepped Away) -->
+            <div class="subview-panel" id="subviewSuccess" hidden>
+              <div class="celebrate-box">
+                <div class="celebrate-icon">🌟</div>
+                <h3 class="celebrate-title">Room made for what matters</h3>
+                <p class="celebrate-desc">You interrupted the scroll loop. Your future self thanks you for this mindful moment.</p>
+                <div class="celebrate-stat">
+                  <span>+1 Mindful Pause logged</span>
+                </div>
+              </div>
+
+              <div class="subview-actions">
+                <button type="button" class="btn btn-primary btn-block" id="btnCelebrateReturn">Return to Dashboard</button>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- ============================================================
+             SCREEN 5: IN-APP REMINDER PREVIEW
+             ============================================================ -->
+        <section class="app-screen" id="screenReminder" data-screen="reminder" aria-label="In-App Reminder Screen">
+          <div class="reminder-stage">
+            <!-- Simulated background app feed (dimmed & blurred) -->
+            <div class="simulated-app-background" aria-hidden="true">
+              <div class="sim-feed-bar">
+                <div class="sim-feed-logo">Instagram Feed</div>
+                <div class="sim-feed-time">10:14</div>
+              </div>
+              <div class="sim-feed-post">
+                <div class="sim-post-header">
+                  <div class="sim-avatar"></div>
+                  <div class="sim-user">travel_diaries</div>
+                </div>
+                <div class="sim-post-photo"></div>
+                <div class="sim-post-lines">
+                  <div class="sim-line"></div>
+                  <div class="sim-line short"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- The Momentwise Floating Gentle Reminder Overlay -->
+            <div class="reminder-dialog" role="dialog" aria-modal="true" aria-labelledby="reminderTitle">
+              <div class="reminder-handle"></div>
+              
+              <div class="reminder-brand-tag">
+                <img src="assets/favicon.svg" alt="" width="18" height="18">
+                <span>Momentwise • Mindful Check-in</span>
+              </div>
+
+              <div class="reminder-header">
+                <div class="reminder-icon-wrap">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                </div>
+                <div>
+                  <h3 class="reminder-title" id="reminderTitle">10 minutes have passed</h3>
+                  <p class="reminder-sub">Did you accomplish what you came here for?</p>
+                </div>
+              </div>
+
+              <div class="reminder-choices">
+                <!-- Choice 1: Exit App -->
+                <button type="button" class="btn btn-primary btn-block" id="btnReminderExit">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                  <span>Exit & Step Away</span>
+                </button>
+
+                <!-- Choice 2: A little longer -->
+                <button type="button" class="btn btn-secondary btn-block" id="btnReminderSnooze">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
+                  <span>A little longer (+5 min)</span>
+                </button>
+
+                <!-- Choice 3: Stop reminders for today -->
+                <button type="button" class="btn btn-ghost btn-block btn-subtle" id="btnReminderStop">
+                  <span>Stop reminders for today</span>
+                </button>
+              </div>
+
+              <p class="reminder-disclaimer">Prototype demo: Simulated overlay. In Android, Momentwise uses a non-intrusive floating pill or system notification.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================================
+             SCREEN 6: SETTINGS
+             ============================================================ -->
+        <section class="app-screen" id="screenSettings" data-screen="settings" aria-label="Settings">
+          <!-- Top App Bar -->
+          <div class="app-topbar">
+            <button type="button" class="icon-btn" id="btnBackFromSettings" aria-label="Go back to Home">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+            </button>
+            <span class="topbar-title">Settings</span>
+            <div class="topbar-actions"></div>
+          </div>
+
+          <div class="screen-scroll-body">
+            <!-- Section 1: Appearance -->
+            <div class="settings-group">
+              <h3 class="settings-group-title">Appearance</h3>
+              
+              <div class="setting-item-block">
+                <div class="setting-text">
+                  <span class="setting-name">App Theme</span>
+                  <span class="setting-desc">Choose between Light, Dark, or System mode.</span>
+                </div>
+                
+                <div class="segmented-control" role="radiogroup" aria-label="App Theme">
+                  <button type="button" class="segment-btn active" data-theme-choice="system">System</button>
+                  <button type="button" class="segment-btn" data-theme-choice="light">Light</button>
+                  <button type="button" class="segment-btn" data-theme-choice="dark">Dark</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Section 2: Intervention Preferences -->
+            <div class="settings-group">
+              <h3 class="settings-group-title">Intervention Preferences</h3>
+
+              <!-- Pause Duration -->
+              <div class="setting-item-block">
+                <div class="setting-text">
+                  <span class="setting-name">Mindful Pause Duration</span>
+                  <span class="setting-desc">How long the breathing circle holds before choices appear.</span>
+                </div>
+                <div class="segmented-control" id="pauseDurationSelector">
+                  <button type="button" class="segment-btn" data-duration="3">3 sec</button>
+                  <button type="button" class="segment-btn active" data-duration="5">5 sec</button>
+                  <button type="button" class="segment-btn" data-duration="8">8 sec</button>
+                </div>
+              </div>
+
+              <!-- Breathing Guide Switch -->
+              <div class="setting-row">
+                <div class="setting-text">
+                  <span class="setting-name">Breathing Circle Guide</span>
+                  <span class="setting-desc">Visual pulse to anchor your breath during app launches.</span>
+                </div>
+                <label class="switch-control">
+                  <input type="checkbox" id="toggleBreathingGuide" checked>
+                  <span class="switch-slider"></span>
+                </label>
+              </div>
+
+              <!-- Haptic Pulse Switch -->
+              <div class="setting-row">
+                <div class="setting-text">
+                  <span class="setting-name">Gentle Haptic Feedback</span>
+                  <span class="setting-desc">Subtle vibration when the intervention appears.</span>
+                </div>
+                <label class="switch-control">
+                  <input type="checkbox" id="toggleHaptics" checked>
+                  <span class="switch-slider"></span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Section 3: Reminders & Nudges -->
+            <div class="settings-group">
+              <h3 class="settings-group-title">Reminders & Intentions</h3>
+
+              <div class="setting-item-block">
+                <div class="setting-text">
+                  <span class="setting-name">Default Reminder Interval</span>
+                  <span class="setting-desc">Time before the first gentle check-in appears.</span>
+                </div>
+                <div class="segmented-control" id="reminderIntervalSelector">
+                  <button type="button" class="segment-btn" data-interval="5">5m</button>
+                  <button type="button" class="segment-btn active" data-interval="10">10m</button>
+                  <button type="button" class="segment-btn" data-interval="15">15m</button>
+                  <button type="button" class="segment-btn" data-interval="20">20m</button>
+                </div>
+              </div>
+
+              <div class="setting-row">
+                <div class="setting-text">
+                  <span class="setting-name">Allow Session Extensions</span>
+                  <span class="setting-desc">Allow "+5 min" snooze button on reminders.</span>
+                </div>
+                <label class="switch-control">
+                  <input type="checkbox" id="toggleExtensions" checked>
+                  <span class="switch-slider"></span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Section 4: Demo State & Reset -->
+            <div class="settings-group">
+              <h3 class="settings-group-title">Demo Controls</h3>
+
+              <div class="setting-row">
+                <div class="setting-text">
+                  <span class="setting-name">Reset Prototype Demo State</span>
+                  <span class="setting-desc">Restore sample stats, guarded apps, and defaults.</span>
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm" id="btnResetDemo">Reset Data</button>
+              </div>
+
+              <div class="setting-meta-row">
+                <span class="meta-label">Prototype Version</span>
+                <span class="meta-val">v0.1.0-preview</span>
+              </div>
+              <div class="setting-meta-row">
+                <span class="meta-label">Deployment Target</span>
+                <span class="meta-val">GitHub Pages</span>
+              </div>
+            </div>
+
+            <div class="bottom-spacer"></div>
+          </div>
+        </section>
+
+      </div><!-- /phone-screen -->
+
+      <!-- Android Bottom Navigation Bar / Gesture Bar -->
+      <footer class="phone-nav-bar" aria-label="System navigation">
+        <div class="nav-gesture-pill" title="Android Gesture Navigation Bar"></div>
+      </footer>
+
+      <!-- In-App Floating Toast / Snackbar Notification -->
+      <div class="app-toast" id="appToast" role="status" aria-live="polite">
+        <span class="toast-message" id="toastMessage">Settings updated</span>
+      </div>
+
+    </div><!-- /phone-frame -->
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

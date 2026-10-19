@@ -13,6 +13,7 @@ This repository contains the **brand foundation and adaptive static public landi
 The actual Momentwise application has **not** been started or built yet. No mobile code, background accessibility services, app-monitoring logic, databases, or client-side application logic are present in this milestone.
 
 - **Public Landing Page:** [https://nawzblaze.github.io/momentwise/](https://nawzblaze.github.io/momentwise/)
+- **Interactive Mobile UI Prototype:** [https://nawzblaze.github.io/momentwise/prototype/](https://nawzblaze.github.io/momentwise/prototype/)
 - **Repository:** [https://github.com/NawzBlaze/momentwise](https://github.com/NawzBlaze/momentwise)
 
 ---
@@ -68,6 +69,11 @@ momentwise/
 │   ├── logo-light-bg.svg       # Light-surface presentation squircle
 │   ├── logo-dark-bg.svg        # Dark-surface presentation squircle
 │   └── logo-monochrome.svg     # Single-tone monochrome mark (currentColor)
+├── prototype/                  # Interactive Mobile UI Prototype (Concept Preview)
+│   ├── assets/                 # Brand assets copy for prototype preview
+│   ├── app.js                  # Prototype navigation router & state machine
+│   ├── index.html              # Multi-screen Android mobile prototype shell
+│   └── styles.css              # Adaptive Android design system stylesheet
 ├── .gitignore                  # Standard ignore rules
 ├── index.html                  # Accessible, semantic static landing page with theme selector
 ├── README.md                   # Project documentation & brand system
@@ -76,6 +82,25 @@ momentwise/
 ├── sitemap.xml                 # XML sitemap
 └── styles.css                  # Adaptive design tokens & stylesheet (WCAG AAA contrast)
 ```
+
+---
+
+## Interactive Android UI Prototype
+
+A browser-runnable, high-fidelity clickable prototype of the proposed Momentwise mobile application is available at [`prototype/`](prototype/):
+
+- **Live Prototype URL:** [https://nawzblaze.github.io/momentwise/prototype/](https://nawzblaze.github.io/momentwise/prototype/)
+- **Screens Implemented:**
+  1. **Welcome / Onboarding:** Brand introduction, non-punitive value proposition, 3-step mindful concept walkthrough.
+  2. **Home Dashboard:** Sample intentionality metrics (pauses, reclaimed time, intentional sessions), guarded apps summary, and interactive test drives.
+  3. **Guarded Apps:** Interactive selection of apps to guard with persistent toggle switches and educational permission explainer.
+  4. **Intervention ("What brought you here?"):** The central Momentwise experience featuring a breathing circle halo, "I have a purpose" intention setting, and "Just checking" reflective exit.
+  5. **In-App Reminder:** Simulated mid-session check-in overlay with options to exit, extend (+5 min), or pause reminders for today.
+  6. **Settings:** Preferences for mindful pause duration (3s/5s/8s), breathing guide, haptic pulse, reminder interval, and theme engine.
+- **Adaptive Appearance:** Supports System (auto-detects OS color scheme), Light (warm cream and forest green), and Dark (soft charcoal and comfortable off-white) modes.
+- **Responsive Display:** On desktop displays, presents inside a simulated Android device mockup with quick-navigation controls; on mobile devices (≤560px), seamlessly fills the viewport natively.
+
+> **Important Disclosure:** This prototype uses browser-local storage and simulated sample metrics. No Android background services, accessibility APIs, device permissions, or real app monitoring are active.
 
 ---
 
