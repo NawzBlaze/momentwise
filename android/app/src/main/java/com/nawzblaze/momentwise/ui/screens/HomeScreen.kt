@@ -75,6 +75,9 @@ fun HomeScreen(
     val grants = rememberGrantStatus()
     val loadedRules = rules.orEmpty()
     val activeRules = loadedRules.filter { it.enabled }
+    val paused by viewModel.monitoringPaused.collectAsStateWithLifecycle()
+    val shouldRun = monitoringShouldRun(activeRules.size, paused, grants)
+    val monitorHealth = rememberMonitorHealth(shouldRun)
 
     Column(
         Modifier
@@ -138,6 +141,8 @@ fun HomeScreen(
                 Text(
                     text = when {
                         activeRules.isEmpty() -> stringResource(R.string.home_summary_desc_empty)
+                        monitorHealth == com.nawzblaze.momentwise.monitoring.MonitorHealth.STOPPED ->
+                            stringResource(R.string.home_summary_desc_stopped)
                         grants.pauseAppearsOnItsOwn -> stringResource(R.string.home_summary_desc_overlay)
                         grants.canMonitor -> stringResource(R.string.home_summary_desc_notification)
                         else -> stringResource(R.string.home_summary_desc_blocked)
@@ -155,6 +160,8 @@ fun HomeScreen(
                 } else {
                     ActiveRuleChips(activeRules = activeRules, onChipClick = onConfigureRule)
                 }
+                VerticalSpacer(14)
+                MonitoringStoppedNote(shouldRun = shouldRun, health = monitorHealth)
                 VerticalSpacer(14)
                 Button(
                     onClick = onNavigateApps,

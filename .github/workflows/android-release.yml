@@ -9,7 +9,7 @@ on:
       - "v*"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   signed-release:
@@ -83,3 +83,12 @@ jobs:
             Momentwise.apk
             Momentwise.apk.sha256
           if-no-files-found: error
+
+      - name: Publish GitHub Release
+        if: steps.secrets.outputs.ready == 'true' && github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" Momentwise.apk Momentwise.apk.sha256 \
+            --title "Momentwise ${GITHUB_REF_NAME}" \
+            --notes "$(printf '%s\n' 'Signed release. Not a Google Play listing.' 'Android will ask you to allow installation from this source.' '' 'SHA-256:' "$(cat Momentwise.apk.sha256)")"

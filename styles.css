@@ -88,6 +88,12 @@ a:hover { text-decoration-thickness: 2px; }
   letter-spacing: -0.02em;
 }
 .brand-mark { display: block; }
+.brand-tagline {
+  margin: 18px 0 0;
+  font-family: var(--font);
+  font-size: 1.35rem;
+  letter-spacing: -0.02em;
+}
 .site-nav { display: flex; gap: 18px; }
 .site-nav a {
   color: var(--text-soft);
@@ -159,6 +165,10 @@ h3 { font-size: 1.25rem; margin: 0 0 8px; }
   font-size: 0.98rem;
 }
 .button-primary { background: var(--text); color: var(--bg); }
+.button-primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 .button-secondary { color: var(--text); border: 1px solid var(--line); background: var(--surface); }
 .status-line { color: var(--text-faint); max-width: 38rem; font-size: 0.95rem; }
 .mark-panel {

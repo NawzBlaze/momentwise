@@ -63,6 +63,16 @@ URL below downloads, the website can point at it:
 
 That file is not published yet.
 
+## Why a configured phone can still miss the pause
+
+This is a code diagnosis, not a log from the phone that failed.
+
+- Usage events are often written several seconds after a resume. The old query advanced to "now" and looked back one second, so a late Instagram resume was never read. The monitor now re-reads a bounded 20-second window and ignores events it has already applied.
+- If the process is dead when the guarded app opens, a later start looks at the last 60 seconds. If that app is still the last resume and no opening was shown, the opening is shown then. It is not a second opening after Anyways.
+- Home used to say monitoring was on whenever a rule was enabled and the grants were present. The guarding notification can be gone while that is still true. Home and Settings now use a service heartbeat. A stale heartbeat is shown as stopped, with a start-again action. There is no restart loop.
+- The guarding channel was low importance, and Android will not raise an existing channel. New installs use a default-importance silent channel so the ongoing notification is less likely to be hidden. That has not been confirmed on the phone that failed.
+- A one-second poll remains. Each tick no longer re-reads the rule store or queries the launcher package. CPU, memory, and frame time were not measured here.
+
 ## On-device intervention checklist
 
 Not run in this workspace. There is no phone and no emulator here. A welcome-screen instrumentation test does not prove any of the following. On one API 34 device and one API 35 device, record the Android version, the permissions actually granted, the target app, and what happened.
@@ -78,6 +88,7 @@ Not run in this workspace. There is no phone and no emulator here. A welcome-scr
 9. Pause monitoring in Settings. Saved rules must remain. Opening a guarded app should not show a pause. Turn monitoring back on, leave, and open again: the pause should return.
 10. Revoke Usage Access while a rule is enabled. Monitoring should stop without deleting rules.
 11. Force-stop Momentwise while an opening pause is unanswered and the guarded app is still in front. Open Momentwise or let the service restart. The same pause should come back, not a second independent one.
+11a. After the guarding notification disappears, open Momentwise. Home should say monitoring is not running, not that it is on. Start monitoring again, leave, and open the guarded app.
 12. Reboot. An in-progress session should be dropped. The next open should be a new pause. Dismiss-for-today should still apply if the day has not changed.
 
 Expected limits: the monitor polls about once a second, so the pause is not instant. Vendor battery limits can stop the service. Quit cannot force-stop another app.

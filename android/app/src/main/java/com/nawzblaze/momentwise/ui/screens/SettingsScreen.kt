@@ -147,6 +147,13 @@ fun SettingsScreen(
             )
             VerticalSpacer(8)
             SectionCard {
+                val rules by viewModel.rules.collectAsStateWithLifecycle()
+                val shouldRun = monitoringShouldRun(
+                    enabledRuleCount = rules.orEmpty().count { it.enabled },
+                    paused = monitoringPaused,
+                    grants = grants,
+                )
+                val monitorHealth = rememberMonitorHealth(shouldRun)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(
@@ -163,16 +170,29 @@ fun SettingsScreen(
                         VerticalSpacer(4)
                         Text(
                             stringResource(
-                                if (monitoringPaused) R.string.settings_monitoring_off else R.string.settings_monitoring_on,
+                                when {
+                                    monitoringPaused -> R.string.settings_monitoring_off
+                                    monitorHealth == com.nawzblaze.momentwise.monitoring.MonitorHealth.STOPPED ->
+                                        R.string.home_summary_desc_stopped
+                                    else -> R.string.settings_monitoring_on
+                                },
                             ),
                             style = MaterialTheme.typography.bodySmall,
-                            color = if (monitoringPaused) colors.textTertiary else colors.statusGreen,
+                            color = if (monitoringPaused || monitorHealth == com.nawzblaze.momentwise.monitoring.MonitorHealth.STOPPED) {
+                                colors.textTertiary
+                            } else {
+                                colors.statusGreen
+                            },
                         )
                     }
                     RuleSwitch(
                         checked = monitoringPaused,
                         onCheckedChange = viewModel::setMonitoringPaused,
                     )
+                }
+                if (shouldRun && monitorHealth == com.nawzblaze.momentwise.monitoring.MonitorHealth.STOPPED) {
+                    VerticalSpacer(12)
+                    MonitoringStoppedNote(shouldRun = true, health = monitorHealth)
                 }
             }
 

@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Momentwise — Make room for what matters</title>
-  <meta name="description" content="Momentwise is an Android app that pauses a chosen app with your own notice, then lets you leave or continue. Rules stay on the device.">
+  <title>Momentwise | A More Intentional Way to Use Your Phone</title>
+  <meta name="description" content="Personal prompts and gentle reminders help you break automatic scrolling habits and choose how you spend your time.">
   <meta name="theme-color" content="#FAF7F2" id="meta-theme-color">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://nawzblaze.github.io/momentwise/">
@@ -14,7 +14,9 @@
   <meta name="twitter:title" content="Momentwise — Make room for what matters">
   <meta name="twitter:description" content="A quiet pause before a distracting app. Choose to leave, or continue on purpose.">
   <link rel="canonical" href="https://nawzblaze.github.io/momentwise/">
-  <link rel="icon" type="image/png" href="./assets/logo.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="./assets/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="./assets/favicon-192.png">
+  <link rel="apple-touch-icon" href="./assets/favicon-192.png">
   <script>
     (function() {
       try {
@@ -66,15 +68,16 @@
     <section class="hero" aria-labelledby="hero-title">
       <div class="container hero-grid">
         <div>
-          <p class="eyebrow">Android companion · not on Google Play</p>
-          <h1 id="hero-title">Make room for what matters.</h1>
-          <p class="lede">Momentwise interrupts the automatic open. You write the notice. You choose to leave, or to continue on purpose.</p>
-          <p class="secondary-line">Make your next tap intentional.</p>
+          <p class="eyebrow">INTRODUCING MOMENTWISE</p>
+          <h1 id="hero-title">Pause before you scroll.</h1>
+          <p class="lede">Personal prompts and gentle reminders help you break automatic scrolling habits and choose how you spend your time.</p>
           <div class="hero-actions">
-            <a class="button button-primary" href="https://github.com/NawzBlaze/momentwise" target="_blank" rel="noopener noreferrer">View source code</a>
-            <a class="button button-secondary" href="#install">Install status</a>
+            <button type="button" class="button button-primary" disabled aria-disabled="true">Download for Android</button>
+            <a class="button button-secondary" href="https://github.com/NawzBlaze/momentwise" target="_blank" rel="noopener noreferrer">View source code</a>
           </div>
-          <p class="status-line">A signed APK is not published yet. This page will not offer a download until that file exists and the link has been checked.</p>
+          <p class="status-line">Download for Android is not linked. A signed APK has not been published, and this page will not point at a missing file.</p>
+          <p class="brand-tagline">Make room for what matters.</p>
+          <p class="secondary-line">Make your next tap intentional.</p>
         </div>
         <figure class="mark-panel">
           <img src="./assets/logo.png" alt="Momentwise mark: a flowing forest-green M with a golden sunrise." width="220" height="220">
@@ -89,22 +92,22 @@
         <ol class="steps">
           <li>
             <span class="step-index">1</span>
-            <h3>Choose apps</h3>
+            <h3>Choose the apps you want to configure.</h3>
             <p>Pick launchable apps on the device. Each one has its own rule. Nothing is turned on for you.</p>
           </li>
           <li>
             <span class="step-index">2</span>
-            <h3>Write the pause</h3>
+            <h3>Set an opening notice and response actions.</h3>
             <p>The default notice is “What brought you here?” Quit leaves. Anyways continues. Renaming a button does not change what it does.</p>
           </li>
           <li>
             <span class="step-index">3</span>
-            <h3>Set a reminder</h3>
+            <h3>Choose whether and when reminders should appear.</h3>
             <p>Never, 5, 10, 15, 20 minutes, or a custom interval. Never still shows the opening pause.</p>
           </li>
           <li>
             <span class="step-index">4</span>
-            <h3>Use the app on purpose</h3>
+            <h3>Use your phone with more intention.</h3>
             <p>After Anyways, a later check-in can ask “You're still here?” Wait snoozes. Dismiss stops reminders for that app until tomorrow. The rule stays enabled.</p>
           </li>
         </ol>
@@ -114,7 +117,7 @@
     <section id="product" class="section section-alt" aria-labelledby="product-title">
       <div class="container">
         <h2 id="product-title">What is in the app</h2>
-        <p class="section-intro">These are implemented in the native project. The pause over another app has not been demonstrated on a physical phone in this workspace.</p>
+        <p class="section-intro">These are implemented in the native project. A pause over another app has not been verified on a physical phone from this workspace. There are no product screenshots here, because none were captured from the native app.</p>
         <ul class="feature-list">
           <li>
             <h3>Independent rules</h3>
@@ -191,7 +194,11 @@
         </details>
         <details>
           <summary>Which Android versions?</summary>
-          <p>The project targets API 35 and can install from API 26. The pause path has not been verified here on an API 34 or API 35 device. Vendor battery limits can stop a foreground service. If a grant is missing, the app says so instead of pretending the pause will appear.</p>
+          <p>The project targets API 35 and can install from API 26. Automated checks use GitHub-hosted emulators when those jobs pass. That is not a physical-device result. Vendor battery limits can stop a foreground service. If a grant is missing, or the guarding notification has stopped, the app says so instead of pretending the pause will appear.</p>
+        </details>
+        <details>
+          <summary>What if the guarding notification disappears?</summary>
+          <p>The Home and Settings screens read a heartbeat from the monitor, not only the saved rules. If the notification is gone, monitoring is shown as stopped and you can start it again from the app. Momentwise does not keep relaunching itself in the background. A phone battery manager can still stop it after you leave.</p>
         </details>
         <details>
           <summary>Where is the old prototype?</summary>
@@ -220,7 +227,7 @@
         <li><a href="#permissions">Permissions</a></li>
         <li><a href="#install">Install</a></li>
       </ul>
-      <p class="footer-note">Version in the app module: 0.3.1. Not a Play release. The pause has not been proven on hardware here.</p>
+      <p class="footer-note">Version in the app module: 0.4.0. Not a Play release. No signed APK is published. The pause has not been proven on hardware here.</p>
     </div>
   </footer>
   <script src="./script.js"></script>
