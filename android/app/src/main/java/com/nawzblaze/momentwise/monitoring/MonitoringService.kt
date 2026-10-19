@@ -17,6 +17,7 @@ import com.nawzblaze.momentwise.MomentwiseApplication
 import com.nawzblaze.momentwise.R
 import com.nawzblaze.momentwise.data.model.AppRule
 import com.nawzblaze.momentwise.intervention.DetectorSignal
+import com.nawzblaze.momentwise.intervention.EventWindow
 import com.nawzblaze.momentwise.intervention.DetectorState
 import com.nawzblaze.momentwise.intervention.GuardCommand
 import com.nawzblaze.momentwise.intervention.PauseActivity
@@ -30,6 +31,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -407,7 +409,7 @@ class MonitoringService : Service() {
         withContext(Dispatchers.Main) {
             val stillCurrent = synchronized(gate) { generation == startGeneration }
             if (!stillCurrent) return@withContext
-            MonitorPresence.markStopped(this)
+            MonitorPresence.markStopped(this@MonitoringService)
             ServiceCompat.stopForeground(this@MonitoringService, ServiceCompat.STOP_FOREGROUND_REMOVE)
             stopSelf()
         }
