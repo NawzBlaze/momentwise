@@ -24,7 +24,7 @@ object UsageEventReader {
             if (!isResume(event.eventType)) continue
             val packageName = event.packageName ?: continue
             if (packageName.isBlank()) continue
-            out += ForegroundEvent(packageName, event.timeStamp)
+            out += ForegroundEvent(packageName, event.timeStamp, event.className)
         }
         return out
     }

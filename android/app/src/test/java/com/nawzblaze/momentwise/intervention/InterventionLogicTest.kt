@@ -60,6 +60,48 @@ class UsageEventReducerTest {
     }
 
     @Test
+    fun openingMomentwiseItselfIsALeaveSoTheGuardedAppCanOpenAgain() {
+        val state = DetectorState(lastPackage = "com.instagram.android", lastEventTimeMillis = 10)
+        val left = UsageEventReducer.reduce(
+            state,
+            listOf(ForegroundEvent(self, 20)),
+            self,
+            ignored,
+            ignoreSelf = false,
+        )
+        assertEquals(DetectorSignal.LEFT, left.signal)
+        assertEquals(self, left.state.lastPackage)
+
+        val opened = UsageEventReducer.reduce(
+            left.state,
+            listOf(ForegroundEvent("com.instagram.android", 40)),
+            self,
+            ignored,
+            ignoreSelf = false,
+        )
+        assertEquals(DetectorSignal.OPENED, opened.signal)
+        assertEquals("com.instagram.android", opened.packageName)
+    }
+
+    @Test
+    fun pauseScreenDoesNotCountAsLeavingEvenAfterTheLatchDrops() {
+        val pauseClass = "com.nawzblaze.momentwise.intervention.PauseActivity"
+        val state = DetectorState(lastPackage = "com.instagram.android", lastEventTimeMillis = 10)
+        val result = UsageEventReducer.reduce(
+            state,
+            listOf(ForegroundEvent(self, 20, className = pauseClass)),
+            self,
+            ignored,
+            ignoreSelf = false,
+            pauseClassName = pauseClass,
+        )
+
+        assertEquals(DetectorSignal.NONE, result.signal)
+        assertEquals("com.instagram.android", result.state.lastPackage)
+        assertEquals(20, result.state.lastEventTimeMillis)
+    }
+
+    @Test
     fun appSwitchOpensTheNewPackage() {
         val state = DetectorState(lastPackage = "com.instagram.android", lastEventTimeMillis = 10)
         val result = UsageEventReducer.reduce(

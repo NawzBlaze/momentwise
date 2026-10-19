@@ -18,7 +18,7 @@ A single-module Jetpack Compose app:
 - Usage Access, display over other apps, and notifications are explained before a rule is enabled. Decline leaves monitoring off.
 - A `specialUse` foreground service and a pause (overlay, or a notification if overlay is refused). Quit is a home intent. This has not been run on a device here.
 
-The intervention design, and why it is not built yet, is in
+The intervention design, and what is still unverified on a device, is in
 [`ANDROID_IMPLEMENTATION_PLAN.md`](../ANDROID_IMPLEMENTATION_PLAN.md).
 
 ## Build

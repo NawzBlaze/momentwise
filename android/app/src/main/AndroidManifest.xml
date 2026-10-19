@@ -64,6 +64,10 @@
         </service>
 
         <receiver
+            android:name=".monitoring.PauseClearedReceiver"
+            android:exported="false" />
+
+        <receiver
             android:name=".monitoring.BootReceiver"
             android:exported="true"
             android:permission="android.permission.RECEIVE_BOOT_COMPLETED">

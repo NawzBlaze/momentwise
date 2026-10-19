@@ -19,11 +19,13 @@ class InterventionController(
 ) {
     suspend fun quit() {
         sessions.update { SessionClock.onQuit(it) }
-        PausePresenter.dismiss(context)
+        // Start home while the overlay, if any, is still visible. Some Android
+        // 15 builds only allow that background start when an overlay is already up.
         val home = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         runCatching { context.startActivity(home) }
+        PausePresenter.dismiss(context)
     }
 
     suspend fun continueIntoApp() {

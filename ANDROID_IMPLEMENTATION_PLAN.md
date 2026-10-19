@@ -15,8 +15,8 @@ Implemented in the project, not device-proven:
 
 - Launchable apps from `PackageManager` (`MAIN` / `LAUNCHER`). Saved rules stay keyed by package name. Foundation sample ids (`instagram`, `tiktok`, `x`, `youtube`, `reddit`, `threads`) are dropped and are not copied onto real packages.
 - Disclosure before a rule is enabled, with a decline path. Usage Access, display over other apps, and notifications are explained separately. Overlay can be skipped; the pause then uses a notification.
-- Monitoring foreground service (`specialUse`) polls `queryEvents` only while a rule is enabled and Usage Access plus notifications are allowed. The event reducer is unit-tested: empty window, self-package, duplicate resume, app switch, launcher leave.
-- Pause UI: opaque overlay when display-over-other-apps is allowed, otherwise a notification that opens `PauseActivity` in its own task. Quit is `ACTION_MAIN` + `CATEGORY_HOME`. It does not force-stop.
+- Monitoring foreground service (`specialUse`) polls `queryEvents` only while a rule is enabled and Usage Access plus notifications are allowed. The event reducer is unit-tested: empty window, self-package ignored while a pause is showing, self-package as a leave otherwise, duplicate resume, app switch, launcher leave.
+- Pause UI: opaque overlay when display-over-other-apps is allowed, otherwise a notification that opens `PauseActivity` in its own task. Quit is `ACTION_MAIN` + `CATEGORY_HOME`, sent before the overlay is removed. It does not force-stop. Opening Momentwise itself counts as leaving, so the next open of a guarded app is a new pause. While the pause is showing, Momentwise's own package is ignored so the pause does not retrigger.
 - Reminder session and dismiss-for-today are persisted. A boot receiver drops an in-progress session and can restart monitoring. Process-death recovery is coded and unit-tested, not exercised on a device.
 
 Not done, on purpose:

@@ -27,11 +27,14 @@ import kotlinx.coroutines.launch
 class PauseActivity : ComponentActivity() {
 
     private var request by mutableStateOf<PauseRequest?>(null)
+    private var pauseGeneration = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        PausePresenter.dismiss(this)
+        pauseGeneration = PausePresenter.currentGeneration()
+        PausePresenter.handOffToActivity(this)
+        PausePresenter.onShown?.invoke()
         request = fromIntent(intent)
         if (request == null) {
             finish()
@@ -66,7 +69,16 @@ class PauseActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        pauseGeneration = PausePresenter.currentGeneration()
+        PausePresenter.onShown?.invoke()
         request = fromIntent(intent)
+    }
+
+    override fun onDestroy() {
+        if (isFinishing && pauseGeneration == PausePresenter.currentGeneration()) {
+            PausePresenter.onDismissed?.invoke()
+        }
+        super.onDestroy()
     }
 
     private fun act(block: suspend (InterventionController) -> Unit) {

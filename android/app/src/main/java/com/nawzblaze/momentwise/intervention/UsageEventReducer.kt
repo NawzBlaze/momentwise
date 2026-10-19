@@ -4,12 +4,17 @@ package com.nawzblaze.momentwise.intervention
  * Pure reducer for Usage Access resume events.
  *
  * An empty window is a gap in the event log, not proof that the foreground
- * changed. Momentwise's own package is ignored so the pause does not retrigger
- * itself. A repeated resume of the same package is not a new opening.
+ * changed. A repeated resume of the same package is not a new opening.
+ *
+ * [ignoreSelf] is true only while Momentwise's own pause is showing, so that
+ * pause does not count as leaving the other app. When the user opens
+ * Momentwise itself, self is a leave — otherwise the next open of the guarded
+ * app looks like a duplicate and the pause never appears.
  */
 data class ForegroundEvent(
     val packageName: String,
     val timeMillis: Long,
+    val className: String? = null,
 )
 
 data class DetectorState(
@@ -41,6 +46,8 @@ object UsageEventReducer {
         events: List<ForegroundEvent>,
         selfPackage: String,
         ignoredPackages: Set<String>,
+        ignoreSelf: Boolean = true,
+        pauseClassName: String? = null,
     ): DetectorResult {
         val fresh = events
             .filter { it.timeMillis > state.lastEventTimeMillis && it.packageName.isNotBlank() }
@@ -56,10 +63,13 @@ object UsageEventReducer {
 
         for (event in fresh) {
             lastTime = event.timeMillis
-            if (event.packageName == selfPackage) continue
+            val isSelf = event.packageName == selfPackage
+            val isPauseUi = pauseClassName != null && event.className == pauseClassName
+            // The pause screen is Momentwise, but it is not the user leaving.
+            if (isSelf && (ignoreSelf || isPauseUi)) continue
             if (event.packageName == lastPackage) continue
             lastPackage = event.packageName
-            if (event.packageName in ignoredPackages) {
+            if (isSelf || event.packageName in ignoredPackages) {
                 signal = DetectorSignal.LEFT
                 signaledPackage = event.packageName
             } else {

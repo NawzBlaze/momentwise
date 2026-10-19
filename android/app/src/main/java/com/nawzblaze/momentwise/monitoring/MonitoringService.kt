@@ -3,6 +3,7 @@ package com.nawzblaze.momentwise.monitoring
 import android.app.Notification
 import android.app.Service
 import android.app.usage.UsageStatsManager
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
@@ -11,12 +12,14 @@ import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
+import com.nawzblaze.momentwise.MainActivity
 import com.nawzblaze.momentwise.MomentwiseApplication
 import com.nawzblaze.momentwise.R
 import com.nawzblaze.momentwise.data.model.AppRule
 import com.nawzblaze.momentwise.intervention.DetectorSignal
 import com.nawzblaze.momentwise.intervention.DetectorState
 import com.nawzblaze.momentwise.intervention.GuardCommand
+import com.nawzblaze.momentwise.intervention.PauseActivity
 import com.nawzblaze.momentwise.intervention.PauseRequest
 import com.nawzblaze.momentwise.intervention.SessionClock
 import com.nawzblaze.momentwise.intervention.UsageEventReducer
@@ -28,9 +31,9 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.coroutineContext
 
 /**
  * Polls Usage Access while at least one rule is enabled and the grants still
@@ -46,26 +49,24 @@ class MonitoringService : Service() {
     @Volatile
     private var pauseVisible = false
 
+    @Volatile
+    private var stopRequested = false
+
+    private val gate = Any()
+    private var startGeneration = 0
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        startAsForeground()
+        if (!startAsForeground()) return START_NOT_STICKY
         PausePresenter.onDismissed = { pauseVisible = false }
-        if (pollJob?.isActive == true) return START_STICKY
-        pollJob = scope.launch {
-            if (BootFlags.dropSessionOnNextStart) {
-                BootFlags.dropSessionOnNextStart = false
-                sessions().update { SessionClock.onBoot(it) }
-            }
-            if (!stillAllowed()) {
-                stopQuietly()
-                return@launch
-            }
-            seedWithoutFiring()
-            while (isActive) {
-                tick()
-                delay(POLL_INTERVAL_MILLIS)
-            }
+        PausePresenter.onShown = { pauseVisible = true }
+        synchronized(gate) {
+            if (pollJob?.isActive == true && !stopRequested) return START_STICKY
+            stopRequested = false
+            startGeneration += 1
+            pollJob?.cancel()
+            pollJob = scope.launch { runPoll() }
         }
         return START_STICKY
     }
@@ -77,6 +78,23 @@ class MonitoringService : Service() {
         super.onDestroy()
     }
 
+    private suspend fun runPoll() {
+        if (BootFlags.dropSessionOnNextStart) {
+            BootFlags.dropSessionOnNextStart = false
+            sessions().update { SessionClock.onBoot(it) }
+        }
+        if (!stillAllowed()) {
+            stopQuietly()
+            return
+        }
+        seedWithoutFiring()
+        while (coroutineContext[Job]?.isActive != false && !stopRequested) {
+            tick()
+            if (stopRequested) break
+            delay(POLL_INTERVAL_MILLIS)
+        }
+    }
+
     private suspend fun seedWithoutFiring() {
         val now = System.currentTimeMillis()
         val observed = readEvents(now - SEED_WINDOW_MILLIS, now)
@@ -85,6 +103,8 @@ class MonitoringService : Service() {
             events = observed,
             selfPackage = packageName,
             ignoredPackages = ignoredPackages(),
+            ignoreSelf = false,
+            pauseClassName = PauseActivity::class.java.name,
         ).state
         lastQueryMillis = now
         val snapshot = sessions().current()
@@ -93,6 +113,7 @@ class MonitoringService : Service() {
     }
 
     private suspend fun tick() {
+        if (stopRequested) return
         if (!stillAllowed()) {
             stopQuietly()
             return
@@ -107,7 +128,14 @@ class MonitoringService : Service() {
         val today = LocalDate.now().toString()
         val events = readEvents((lastQueryMillis - OVERLAP_MILLIS).coerceAtLeast(0), now)
         lastQueryMillis = now
-        val reduced = UsageEventReducer.reduce(detector, events, packageName, ignoredPackages())
+        val reduced = UsageEventReducer.reduce(
+            state = detector,
+            events = events,
+            selfPackage = packageName,
+            ignoredPackages = ignoredPackages(),
+            ignoreSelf = pauseVisible,
+            pauseClassName = PauseActivity::class.java.name,
+        )
         detector = reduced.state
         var snapshot = SessionClock.clearStaleDismissals(sessions().current(), today)
 
@@ -209,16 +237,22 @@ class MonitoringService : Service() {
         return anyEnabled && grants.canMonitor
     }
 
-    private fun startAsForeground() {
+    private fun startAsForeground(): Boolean {
         val notification = monitoringNotification()
-        if (Build.VERSION.SDK_INT >= 34) {
-            startForeground(
-                NotificationChannels.MONITORING_NOTIFICATION_ID,
-                notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
-            )
-        } else {
-            startForeground(NotificationChannels.MONITORING_NOTIFICATION_ID, notification)
+        return try {
+            if (Build.VERSION.SDK_INT >= 34) {
+                startForeground(
+                    NotificationChannels.MONITORING_NOTIFICATION_ID,
+                    notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
+                )
+            } else {
+                startForeground(NotificationChannels.MONITORING_NOTIFICATION_ID, notification)
+            }
+            true
+        } catch (_: Exception) {
+            stopSelf()
+            false
         }
     }
 
@@ -229,12 +263,32 @@ class MonitoringService : Service() {
             .setContentText(getString(R.string.monitor_notification_body))
             .setOngoing(true)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .setContentIntent(openAppPendingIntent())
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .build()
 
+    private fun openAppPendingIntent(): PendingIntent {
+        val open = Intent(this, MainActivity::class.java).addFlags(
+            Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP,
+        )
+        return PendingIntent.getActivity(
+            this,
+            1,
+            open,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+    }
+
     private suspend fun stopQuietly() {
+        val generation = synchronized(gate) {
+            if (stopRequested) return
+            stopRequested = true
+            startGeneration
+        }
         dismissPause()
         withContext(Dispatchers.Main) {
+            val stillCurrent = synchronized(gate) { generation == startGeneration }
+            if (!stillCurrent) return@withContext
             ServiceCompat.stopForeground(this@MonitoringService, ServiceCompat.STOP_FOREGROUND_REMOVE)
             stopSelf()
         }

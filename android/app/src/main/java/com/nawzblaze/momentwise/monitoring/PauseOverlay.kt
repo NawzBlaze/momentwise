@@ -46,6 +46,7 @@ object PauseOverlay {
         return try {
             val themed = android.view.ContextThemeWrapper(appContext, R.style.Theme_Momentwise)
             val overlay = OverlayHost(themed)
+            overlay.resume()
             val composeView = ComposeView(themed).apply {
                 setViewTreeLifecycleOwner(overlay)
                 setViewTreeSavedStateRegistryOwner(overlay)
@@ -87,7 +88,6 @@ object PauseOverlay {
                 }
             }
             windowManager.addView(overlay, params)
-            overlay.resume()
             host = overlay
             true
         } catch (_: Exception) {
@@ -100,10 +100,10 @@ object PauseOverlay {
         val windowManager = context.applicationContext.getSystemService(WindowManager::class.java)
         val current = host ?: return
         host = null
-        current.destroy()
         if (current.isAttachedToWindow && windowManager != null) {
-            runCatching { windowManager.removeView(current) }
+            runCatching { windowManager.removeViewImmediate(current) }
         }
+        current.destroy()
     }
 
     private fun perform(context: Context, block: suspend (InterventionController) -> Unit) {
