@@ -1,13 +1,12 @@
 package com.nawzblaze.momentwise
 
 import android.content.Intent
+import android.os.ParcelFileDescriptor
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
-import java.io.BufferedReader
-import java.io.InputStreamReader
 
 /**
  * Opens a second package and checks that the system shows the pause notice.
@@ -68,8 +67,8 @@ class CrossAppPauseTest {
 
     private fun shell(command: String): String {
         val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
-        val stream = automation.executeShellCommand(command)
-        return BufferedReader(InputStreamReader(stream)).readText()
+        val descriptor = automation.executeShellCommand(command)
+        return ParcelFileDescriptor.AutoCloseInputStream(descriptor).bufferedReader().use { it.readText() }
     }
 
     companion object {
