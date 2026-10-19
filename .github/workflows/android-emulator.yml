@@ -54,25 +54,18 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           API_LEVEL: ${{ matrix.api-level }}
         run: |
+          set +e
           log="${GITHUB_WORKSPACE}/emulator-test.log"
-          if [ ! -f "$log" ]; then
-            echo "No emulator log for API ${API_LEVEL}." > "$RUNNER_TEMP/emu.md"
-          else
-            python3 - "$log" "$RUNNER_TEMP/emu.md" "$API_LEVEL" <<'PY'
-            import sys
-            log, out, api = sys.argv[1], sys.argv[2], sys.argv[3]
-            lines = open(log, errors="replace").read().splitlines()
-            keys = ("FAILED", "FAILURE:", "What went wrong", "e: ", "Error", "Exception", "BUILD ")
-            picked = [ln for ln in lines if any(k in ln for k in keys)]
-            body = "\n".join([
-                f"<!-- momentwise-emulator-log api-{api} -->",
-                f"API {api} instrumentation failed.",
-                "",
-                "```",
-                *(picked[-80:] or lines[-40:]),
-                "```",
-            ])
-            open(out, "w", encoding="utf-8").write(body[:60000])
-            PY
-          fi
-          gh pr comment "$PR_NUMBER" --body-file "$RUNNER_TEMP/emu.md" || true
+          {
+            echo "<!-- momentwise-emulator-log api-${API_LEVEL} -->"
+            echo "API ${API_LEVEL} instrumentation failed."
+            echo
+            echo '```'
+            if [ -f "$log" ]; then
+              grep -E 'FAILED|FAILURE:|What went wrong|e: |error:|Exception|BUILD ' "$log" | tail -n 80
+            else
+              echo "No emulator log was written."
+            fi
+            echo '```'
+          } > "$RUNNER_TEMP/emu.md"
+          gh pr comment "$PR_NUMBER" --body-file "$RUNNER_TEMP/emu.md"
