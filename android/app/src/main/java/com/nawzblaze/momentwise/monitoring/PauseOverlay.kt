@@ -134,7 +134,7 @@ object PauseOverlay {
     }
 
     /** The system removed the window. Our own [dismiss] nulls [host] first, so it does not land here. */
-    internal fun systemRemoved(removed: OverlayHost) {
+    private fun systemRemoved(removed: OverlayHost) {
         val current = host ?: return
         if (current !== removed) return
         host = null
