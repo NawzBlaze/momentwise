@@ -59,7 +59,7 @@ class ActiveUseTest {
             today = today,
         )
         assertTrue((returned.useByPackage[instagram]?.accumulatedMillis ?: 0) < 5 * 60_000L)
-        val (due, command) = accrue(returned, start = 60_000, steps = 400)
+        val (due, command) = accrue(returned, fromElapsed = 60_000, steps = 400)
         assertTrue(command is GuardCommand.ShowReminder)
         assertTrue((due.useByPackage[instagram]?.accumulatedMillis ?: 0) >= 5 * 60_000L)
     }
@@ -145,9 +145,9 @@ class ActiveUseTest {
         ).first
     }
 
-    private fun accrue(start: GuardSnapshot, start: Long, steps: Int): Pair<GuardSnapshot, GuardCommand> {
+    private fun accrue(start: GuardSnapshot, fromElapsed: Long, steps: Int): Pair<GuardSnapshot, GuardCommand> {
         var snapshot = start
-        var elapsed = start
+        var elapsed = fromElapsed
         var command: GuardCommand = GuardCommand.None
         repeat(steps) {
             elapsed += 1_000
