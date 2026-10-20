@@ -621,7 +621,23 @@ class MonitoringService : Service() {
         sessions().update { current ->
             if (current == base || SessionClock.canReplace(current, base)) {
                 applied = true
-                stamped
+                val pkg = stamped.recentAwayPackage
+                    ?: current.lastGuardedPackage
+                    ?: current.activePackage
+                    ?: current.openingHandledForPackage
+                if (stamped.phase == GuardSnapshot.Phase.NONE &&
+                    stamped.quitSuppressedPackage == null &&
+                    pkg != null
+                ) {
+                    stamped.copy(
+                        recentAwayPackage = pkg,
+                        lastGuardedPackage = current.lastGuardedPackage ?: pkg,
+                        recentAwayAtElapsed = stamped.recentAwayAtElapsed
+                            ?: android.os.SystemClock.elapsedRealtime(),
+                    )
+                } else {
+                    stamped.copy(lastGuardedPackage = current.lastGuardedPackage ?: stamped.lastGuardedPackage)
+                }
             } else {
                 current
             }
