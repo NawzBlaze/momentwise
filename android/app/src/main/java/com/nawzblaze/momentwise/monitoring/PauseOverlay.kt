@@ -124,6 +124,10 @@ object PauseOverlay {
     }
 
     fun dismiss(context: Context) {
+        if (android.os.Looper.myLooper() != android.os.Looper.getMainLooper()) {
+            android.os.Handler(android.os.Looper.getMainLooper()).post { dismiss(context) }
+            return
+        }
         val windowManager = context.applicationContext.getSystemService(WindowManager::class.java)
         val current = host ?: return
         host = null
@@ -192,6 +196,10 @@ object PauseOverlay {
     }
 
     fun destroy() {
+        if (android.os.Looper.myLooper() != android.os.Looper.getMainLooper()) {
+            android.os.Handler(android.os.Looper.getMainLooper()).post { destroy() }
+            return
+        }
         if (registry.currentState != Lifecycle.State.DESTROYED) {
             registry.currentState = Lifecycle.State.DESTROYED
         }

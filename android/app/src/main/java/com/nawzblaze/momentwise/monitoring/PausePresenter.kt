@@ -78,6 +78,12 @@ object PausePresenter {
     }
 
     fun show(context: Context, request: PauseRequest, themeModeName: String, visitId: Long = 0L) {
+        if (android.os.Looper.myLooper() != android.os.Looper.getMainLooper()) {
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                show(context, request, themeModeName, visitId)
+            }
+            return
+        }
         shownGeneration += 1
         if (visitId != 0L) shownVisitId = visitId
         if (GrantChecks.read(context).overlay) {
@@ -95,6 +101,10 @@ object PausePresenter {
     }
 
     fun dismiss(context: Context, reason: PauseDismissReason = PauseDismissReason.WITHOUT_CHOICE) {
+        if (android.os.Looper.myLooper() != android.os.Looper.getMainLooper()) {
+            android.os.Handler(android.os.Looper.getMainLooper()).post { dismiss(context, reason) }
+            return
+        }
         noteCleared(reason)
         PauseOverlay.dismiss(context)
         cancelNotification(context)

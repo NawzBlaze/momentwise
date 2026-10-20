@@ -18,16 +18,18 @@ class DebugRuleBridge : BroadcastReceiver() {
         if (intent?.action != ACTION) return
         val packageName = (intent.getStringExtra(EXTRA_PACKAGE) ?: intent.getStringExtra("package"))
             ?.takeIf { it.isNotBlank() } ?: return
-        if (intent.getBooleanExtra(EXTRA_CONTINUE, false)) {
+        if (intent.getBooleanExtra(EXTRA_CONTINUE, false) || intent.getBooleanExtra(EXTRA_LEAVE, false)) {
             val pending = goAsync()
             val app = context.applicationContext as MomentwiseApplication
+            val leave = intent.getBooleanExtra(EXTRA_LEAVE, false)
             app.applicationScope.launch {
                 try {
-                    InterventionController(
+                    val controller = InterventionController(
                         context = app,
                         rules = app.container.appRuleRepository,
                         sessions = app.container.guardSessions,
-                    ).continueIntoApp(packageName)
+                    )
+                    if (leave) controller.quit() else controller.continueIntoApp(packageName)
                 } finally {
                     pending.finish()
                 }
@@ -61,5 +63,6 @@ class DebugRuleBridge : BroadcastReceiver() {
         const val EXTRA_PACKAGE = "target_package"
         const val EXTRA_LABEL = "label"
         const val EXTRA_CONTINUE = "inject_continue"
+        const val EXTRA_LEAVE = "inject_leave"
     }
 }

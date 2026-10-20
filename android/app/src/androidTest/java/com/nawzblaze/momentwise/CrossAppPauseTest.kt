@@ -76,8 +76,8 @@ class CrossAppPauseTest {
     }
 
     /**
-     * Home, then open the fixture again. A no-choice leave must not suppress
-     * the next opening. This is an emulator fixture, not a phone.
+     * Home while the card is up is the launcher, not a leave. Leave ends the
+     * visit. Opening the fixture again shows once. Emulator fixture, not a phone.
      */
     @Test
     fun leaveAndReopenShowsTheOpeningAgain() {
@@ -88,10 +88,20 @@ class CrossAppPauseTest {
             waitFor { statusFile().contains("intervention=overlay shown") && overlayWindowVisible() },
         )
         shell("input keyevent KEYCODE_HOME")
+        Thread.sleep(2_500)
         assertTrue(
-            "Overlay stayed up after Home. ${diagnostics()}",
+            "Home dismissed the opening. Launcher in front is not a leave. ${diagnostics()}",
+            overlayWindowVisible(),
+        )
+        shell(
+            "am broadcast -p $APP -a com.nawzblaze.momentwise.DEBUG_ENABLE_RULE " +
+                "--es target_package $target --ez inject_leave true",
+        )
+        assertTrue(
+            "Leave did not dismiss the overlay. ${diagnostics()}",
             waitFor { !overlayWindowVisible() },
         )
+        Thread.sleep(2_500)
         openFixture(target)
         val shownAgain = waitFor {
             overlayWindowVisible() &&
@@ -118,6 +128,12 @@ class CrossAppPauseTest {
         Thread.sleep(4_000)
         assertTrue(
             "Overlay disappeared within 4 seconds. ${diagnostics()}",
+            overlayWindowVisible(),
+        )
+        shell("input keyevent KEYCODE_HOME")
+        Thread.sleep(2_500)
+        assertTrue(
+            "Home dismissed the opening. Launcher in front is not a leave. ${diagnostics()}",
             overlayWindowVisible(),
         )
         val shows = statusFile().lineSequence().count { it.contains("intervention=overlay shown") }
