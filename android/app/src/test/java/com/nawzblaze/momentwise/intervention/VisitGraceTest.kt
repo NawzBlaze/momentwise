@@ -345,8 +345,10 @@ class VisitGraceTest {
             visitId = 4,
             lastGuardedPackage = instagram,
             recentAwayAtElapsed = 50_000,
+            continuedVisit = true,
         )
         assertFalse(SessionClock.needsOpening(ended, instagram, true, 70_000))
+        assertTrue(SessionClock.needsOpening(ended.copy(continuedVisit = false), instagram, true, 70_000))
     }
 
     private fun accrue(
