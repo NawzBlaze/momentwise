@@ -175,9 +175,28 @@ jobs:
               print("poll measurement published")
           PY
 
+      - name: Discard unsigned release output
+        if: success()
+        run: |
+          rm -f android/app/build/outputs/apk/release/app-release.apk \
+                android/app/build/outputs/apk/release/app-release-unsigned.apk
+          echo "Unsigned release output was not uploaded."
+
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
           name: momentwise-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+
+  signed-release:
+    name: Signed release APK
+    needs: check
+    permissions:
+      contents: read
+      pull-requests: write
+      checks: write
+    uses: ./.github/workflows/android-release.yml
+    secrets: inherit
+    with:
+      pr_number: ${{ github.event.pull_request.number }}

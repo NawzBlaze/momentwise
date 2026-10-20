@@ -1,15 +1,20 @@
 name: Android release
 
-# Builds a signed release only when a stable keystore is present as secrets.
-# It does not create a key, and it does not publish an unsigned or debug APK.
+# Signs with the existing keystore secret. It does not generate a keystore,
+# create a GitHub Release, or turn on the website download.
 on:
+  workflow_call:
+    inputs:
+      pr_number:
+        description: Pull request to comment on, when this is called from one.
+        required: false
+        type: string
   workflow_dispatch:
-  push:
-    tags:
-      - "v*"
 
 permissions:
-  contents: write
+  contents: read
+  pull-requests: write
+  checks: write
 
 jobs:
   signed-release:
@@ -20,80 +25,208 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Require signing secrets
-        id: secrets
         env:
-          KEYSTORE: ${{ secrets.MOMENTWISE_KEYSTORE_BASE64 }}
-          STORE_PASSWORD: ${{ secrets.MOMENTWISE_KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.MOMENTWISE_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.MOMENTWISE_KEY_PASSWORD }}
+          MOMENTWISE_KEYSTORE_BASE64: ${{ secrets.MOMENTWISE_KEYSTORE_BASE64 }}
+          MOMENTWISE_KEYSTORE_PASSWORD: ${{ secrets.MOMENTWISE_KEYSTORE_PASSWORD }}
+          MOMENTWISE_KEY_ALIAS: ${{ secrets.MOMENTWISE_KEY_ALIAS }}
+          MOMENTWISE_KEY_PASSWORD: ${{ secrets.MOMENTWISE_KEY_PASSWORD }}
         run: |
-          if [ -z "$KEYSTORE" ] || [ -z "$STORE_PASSWORD" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASSWORD" ]; then
-            echo "Signing secrets are not configured. No release APK will be published."
-            echo "Required secrets: MOMENTWISE_KEYSTORE_BASE64, MOMENTWISE_KEYSTORE_PASSWORD, MOMENTWISE_KEY_ALIAS, MOMENTWISE_KEY_PASSWORD."
+          set -euo pipefail
+          missing=0
+          for name in MOMENTWISE_KEYSTORE_BASE64 MOMENTWISE_KEYSTORE_PASSWORD MOMENTWISE_KEY_ALIAS MOMENTWISE_KEY_PASSWORD; do
+            eval "value=\${$name-}"
+            if [ -z "$value" ]; then
+              echo "Missing required secret: $name"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            echo "Signed release failed: the four signing secrets must already exist."
+            echo "This job does not generate a keystore and did not build an APK."
+            echo "Unit tests and the debug APK do not use these secrets."
+            {
+              echo "## Signed release blocked"
+              echo
+              echo "A required signing secret is missing. No keystore was generated and no APK was uploaded."
+            } >> "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
-          echo "ready=true" >> "$GITHUB_OUTPUT"
+          # Mask credential values before any later tool can print them.
+          echo "::add-mask::${MOMENTWISE_KEYSTORE_PASSWORD}"
+          echo "::add-mask::${MOMENTWISE_KEY_ALIAS}"
+          echo "::add-mask::${MOMENTWISE_KEY_PASSWORD}"
+          echo "Signing secrets are present. Values were not printed."
 
       - name: Set up JDK 17
-        if: steps.secrets.outputs.ready == 'true'
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
 
       - name: Set up Android SDK
-        if: steps.secrets.outputs.ready == 'true'
         uses: android-actions/setup-android@v3
         with:
           packages: platforms;android-35 build-tools;35.0.0
 
-      - name: Decode keystore
-        if: steps.secrets.outputs.ready == 'true'
+      - name: Decode existing keystore
         env:
-          KEYSTORE: ${{ secrets.MOMENTWISE_KEYSTORE_BASE64 }}
+          MOMENTWISE_KEYSTORE_BASE64: ${{ secrets.MOMENTWISE_KEYSTORE_BASE64 }}
         run: |
-          echo "$KEYSTORE" | base64 -d > "$RUNNER_TEMP/momentwise-release.jks"
-          test -s "$RUNNER_TEMP/momentwise-release.jks"
-
-      - name: Unit tests before signing
-        if: steps.secrets.outputs.ready == 'true'
-        working-directory: android
-        run: ./gradlew :app:testDebugUnitTest :app:lintDebug --no-daemon --stacktrace
+          set -euo pipefail
+          umask 077
+          install -d -m 700 "$RUNNER_TEMP/signing"
+          keystore="$RUNNER_TEMP/signing/momentwise-release.jks"
+          # Standard Base64 of the existing keystore file. Whitespace from the
+          # secret UI is ignored. This does not create a new key.
+          printf '%s' "$MOMENTWISE_KEYSTORE_BASE64" | tr -d '[:space:]' | base64 -d > "$keystore"
+          python3 - "$keystore" <<'PY'
+          import pathlib, sys
+          path = pathlib.Path(sys.argv[1])
+          data = path.read_bytes()
+          if data.startswith(b"\xfe\xed\xfe\xed"):
+              kind = "JKS"
+          elif data.startswith(b"\x30"):
+              kind = "PKCS12"
+          else:
+              sys.exit(
+                  "Decoded MOMENTWISE_KEYSTORE_BASE64 is not a JKS or PKCS12 keystore. "
+                  "Encode the existing keystore with standard Base64. Do not generate a new one."
+              )
+          print(f"Decoded existing keystore ({kind}, {len(data)} bytes). No new keystore was generated.")
+          PY
+          chmod 600 "$keystore"
 
       - name: Assemble signed release
-        if: steps.secrets.outputs.ready == 'true'
         working-directory: android
         env:
-          MOMENTWISE_KEYSTORE_PATH: ${{ runner.temp }}/momentwise-release.jks
+          MOMENTWISE_KEYSTORE_PATH: ${{ runner.temp }}/signing/momentwise-release.jks
           MOMENTWISE_KEYSTORE_PASSWORD: ${{ secrets.MOMENTWISE_KEYSTORE_PASSWORD }}
           MOMENTWISE_KEY_ALIAS: ${{ secrets.MOMENTWISE_KEY_ALIAS }}
           MOMENTWISE_KEY_PASSWORD: ${{ secrets.MOMENTWISE_KEY_PASSWORD }}
         run: ./gradlew :app:assembleRelease --no-daemon --stacktrace
 
-      - name: Verify signature and checksum
-        if: steps.secrets.outputs.ready == 'true'
-        run: |
-          APK="android/app/build/outputs/apk/release/app-release.apk"
-          test -f "$APK"
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$APK"
-          cp "$APK" Momentwise.apk
-          sha256sum Momentwise.apk | tee Momentwise.apk.sha256
-
-      - name: Upload signed APK
-        if: steps.secrets.outputs.ready == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: Momentwise-signed
-          path: |
-            Momentwise.apk
-            Momentwise.apk.sha256
-          if-no-files-found: error
-
-      - name: Publish GitHub Release
-        if: steps.secrets.outputs.ready == 'true' && github.ref_type == 'tag'
+      - name: Verify signature, package, and version
+        id: verify
         env:
+          PR_NUMBER: ${{ inputs.pr_number }}
+          HEAD_SHA: ${{ github.sha }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "${GITHUB_REF_NAME}" Momentwise.apk Momentwise.apk.sha256 \
-            --title "Momentwise ${GITHUB_REF_NAME}" \
-            --notes "$(printf '%s\n' 'Signed release candidate. Not a Google Play listing.' 'The opening-pause flash has not been confirmed on a physical phone by this workflow.' 'Android will ask you to allow installation from this source.' 'A debug build signed with a different key cannot be updated by this APK. Uninstalling a debug build deletes its local rules.' '' 'SHA-256:' "$(cat Momentwise.apk.sha256)")"
+          set -euo pipefail
+          bt="${ANDROID_HOME:?ANDROID_HOME is not set}/build-tools/35.0.0"
+          test -x "$bt/apksigner"
+          test -x "$bt/aapt"
+          apk="android/app/build/outputs/apk/release/app-release.apk"
+          if [ ! -f "$apk" ]; then
+            echo "Signed release APK is missing. Refusing to upload an unsigned file."
+            if [ -f android/app/build/outputs/apk/release/app-release-unsigned.apk ]; then
+              echo "Gradle produced app-release-unsigned.apk, so the release signing config was not applied."
+            fi
+            exit 1
+          fi
+          verify="$("$bt/apksigner" verify --verbose --print-certs "$apk")"
+          printf '%s\n' "$verify"
+          printf '%s\n' "$verify" | grep -Eq 'Verified using v[0-9.]+ scheme \([^)]+\): true'
+          if printf '%s\n' "$verify" | grep -q 'CN=Android Debug'; then
+            echo "Refusing an APK signed with the Android debug certificate."
+            exit 1
+          fi
+          if ! printf '%s\n' "$verify" | grep -q 'Signer #1 certificate SHA-256 digest:'; then
+            echo "apksigner did not print a signer certificate."
+            exit 1
+          fi
+          badging="$("$bt/aapt" dump badging "$apk")"
+          python3 - "$badging" <<'PY'
+          import re, sys
+          text = sys.argv[1]
+          line = next((ln for ln in text.splitlines() if ln.startswith("package: ")), "")
+          match = re.search(
+              r"name='([^']+)'\s+versionCode='([^']+)'\s+versionName='([^']+)'",
+              line,
+          )
+          if not match:
+              sys.exit("Could not read package id and version from the APK.")
+          package, version_code, version_name = match.group(1), match.group(2), match.group(3)
+          print(f"package={package}")
+          print(f"versionCode={version_code}")
+          print(f"versionName={version_name}")
+          if package != "com.nawzblaze.momentwise":
+              sys.exit(f"Unexpected package id: {package}")
+          if version_name != "1.0.0":
+              sys.exit(f"Unexpected versionName: {version_name}")
+          if version_code != "11":
+              sys.exit(f"Unexpected versionCode: {version_code}")
+          PY
+          install -d signed-artifact
+          cp "$apk" signed-artifact/momentwise-1.0.0-signed.apk
+          sha256sum signed-artifact/momentwise-1.0.0-signed.apk | tee signed-artifact/momentwise-1.0.0-signed.apk.sha256
+          digest="$(printf '%s\n' "$verify" | awk -F': ' '/Signer #1 certificate SHA-256 digest:/{print $2; exit}')"
+          cat > signed-artifact/signing-verification.txt <<EOF
+          package=com.nawzblaze.momentwise
+          versionName=1.0.0
+          versionCode=11
+          apksigner=verified
+          certificate_sha256=$digest
+          $(cat signed-artifact/momentwise-1.0.0-signed.apk.sha256)
+          EOF
+          # The certificate digest is public. Passwords and the keystore are not recorded.
+          {
+            echo "## Signed APK verification"
+            echo
+            echo '```'
+            cat signed-artifact/signing-verification.txt
+            echo '```'
+            echo
+            echo "This CI artifact is not a GitHub Release and is not the website download."
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "${PR_NUMBER:-}" ]; then
+            gh pr comment "$PR_NUMBER" --body "$(printf '%s\n' '<!-- momentwise-signed-verify -->' 'Signed release APK verified with apksigner. Not published.' '' '```' "$(cat signed-artifact/signing-verification.txt)" '```')" || echo "PR comment failed"
+          fi
+          python3 - <<'PY'
+          import json, os, pathlib, subprocess
+          text = pathlib.Path("signed-artifact/signing-verification.txt").read_text()
+          payload = {
+              "name": "Signed APK verification",
+              "head_sha": os.environ["HEAD_SHA"],
+              "status": "completed",
+              "conclusion": "success",
+              "output": {
+                  "title": "apksigner verified com.nawzblaze.momentwise 1.0.0",
+                  "summary": text + "\n\nCI artifact only. Not a GitHub Release and not the website download.",
+              },
+          }
+          repo = os.environ["GITHUB_REPOSITORY"]
+          proc = subprocess.run(
+              ["gh", "api", f"repos/{repo}/check-runs", "--input", "-"],
+              input=json.dumps(payload),
+              text=True,
+              capture_output=True,
+          )
+          if proc.returncode != 0:
+              print(proc.stderr[-2000:])
+              print("signed verification check-run failed")
+          else:
+              print("signed verification check-run published")
+          PY
+
+      - name: Upload signed APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: momentwise-signed-apk
+          path: |
+            signed-artifact/momentwise-1.0.0-signed.apk
+            signed-artifact/momentwise-1.0.0-signed.apk.sha256
+            signed-artifact/signing-verification.txt
+          if-no-files-found: error
+
+      - name: Remove keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/signing/momentwise-release.jks"
+
+      - name: Report signing failure
+        if: failure() && inputs.pr_number != ''
+        env:
+          PR_NUMBER: ${{ inputs.pr_number }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr comment "$PR_NUMBER" --body "$(printf '%s\n' '<!-- momentwise-signed-verify -->' 'Signed release job failed. No signed APK was uploaded and no GitHub Release was published.' 'Secret values are not included in this comment.')" || echo "PR comment failed"
