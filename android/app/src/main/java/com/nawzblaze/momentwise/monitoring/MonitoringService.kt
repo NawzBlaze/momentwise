@@ -1,5 +1,6 @@
 package com.nawzblaze.momentwise.monitoring
 
+import android.app.ActivityManager
 import android.app.Notification
 import android.app.Service
 import android.app.usage.UsageStatsManager
@@ -104,6 +105,9 @@ class MonitoringService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        // API 34 kills the process if startForeground is late. Do it before the
+        // receiver registration, and again in onStartCommand.
+        startAsForeground()
         val filter = IntentFilter(Intent.ACTION_SCREEN_ON)
         if (Build.VERSION.SDK_INT >= 33) {
             registerReceiver(screenReceiver, filter, RECEIVER_NOT_EXPORTED)
@@ -481,6 +485,7 @@ class MonitoringService : Service() {
         if (ticksSinceBeat < BEAT_EVERY_TICKS) return
         ticksSinceBeat = 0
         MonitorPresence.beat(this, nowMillis)
+        noteDebug("beat last=${detector.lastPackage} phase=${sessionCache.phase}")
     }
 
     private suspend fun stillAllowed(): Boolean {
@@ -568,12 +573,28 @@ class MonitoringService : Service() {
         fun start(context: Context) {
             val intent = Intent(context, MonitoringService::class.java)
             try {
-                ContextCompat.startForegroundService(context, intent)
+                if (processIsForeground(context)) {
+                    // The activity is up. startForegroundService's short deadline
+                    // is what API 34 turns into a process crash if the main thread
+                    // is busy. An ordinary start still promotes in onStartCommand.
+                    context.startService(intent)
+                } else {
+                    ContextCompat.startForegroundService(context, intent)
+                }
             } catch (error: Exception) {
                 // A background start can be rejected. The next time Momentwise
                 // is in the foreground, or the boot receiver, tries again.
                 Log.w(TAG, "foreground start rejected", error)
                 MonitorPresence.markStartFailed(context, System.currentTimeMillis())
+            }
+        }
+
+        private fun processIsForeground(context: Context): Boolean {
+            val manager = context.getSystemService(ActivityManager::class.java) ?: return false
+            val mine = android.os.Process.myPid()
+            return manager.runningAppProcesses.orEmpty().any { process ->
+                process.pid == mine &&
+                    process.importance <= ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND
             }
         }
 
