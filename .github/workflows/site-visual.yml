@@ -8,8 +8,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 concurrency:
   group: site-visual-${{ github.ref }}
@@ -22,9 +21,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref || github.ref }}
-          persist-credentials: true
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -55,33 +51,6 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
           exit "$code"
-
-      - name: Publish review screenshots
-        if: always() && github.event_name == 'pull_request'
-        run: |
-          if [ ! -d visual-review ] || [ -z "$(ls -A visual-review 2>/dev/null)" ]; then
-            echo "no review images"
-            exit 0
-          fi
-          git config user.name "momentwise-visual"
-          git config user.email "visual@users.noreply.github.com"
-          git add -f visual-review
-          if git diff --cached --quiet; then
-            echo "no screenshot changes"
-            exit 0
-          fi
-          git commit -m "Add browser screenshots for review [skip ci]"
-          git push origin HEAD:"${{ github.head_ref }}"
-
-      - name: Comment with the visual log
-        if: always() && github.event_name == 'pull_request'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          marker='<!-- momentwise-visual -->'
-          tail_text=$(tail -n 80 site-screenshots-log.txt 2>/dev/null || echo 'no visual log')
-          review_files=$(find visual-review -type f -printf '%f\n' 2>/dev/null | sort | head -40)
-          gh pr comment "${{ github.event.pull_request.number }}" --body "$(printf '%s\n' "$marker" 'Visual check log tail:' '```' "$tail_text" '```' '' 'Review files:' '```' "$review_files" '```')"
 
       - name: Upload screenshots and reports
         if: always()

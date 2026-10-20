@@ -8,7 +8,6 @@ import { spawnSync } from 'node:child_process';
 const root = process.cwd();
 const port = 4173;
 const outDir = path.join(root, 'site-screenshots');
-const reviewDir = path.join(root, 'visual-review');
 const verification = '01omZfSAZVcvwrjPL0O4zI9x9tx9-AXHt6KhZnlq8tw';
 const types = {
   '.html': 'text/html; charset=utf-8',
@@ -63,7 +62,6 @@ if (!playwrightEntry) {
   process.exit(1);
 }
 fs.mkdirSync(outDir, { recursive: true });
-fs.mkdirSync(reviewDir, { recursive: true });
 let chromium;
 try {
   const require = createRequire(import.meta.url);
@@ -158,7 +156,7 @@ async function measure(label) {
 async function shoot(name, full) {
   const jpeg = name.replace(/\.png$/, '.jpg');
   await page.screenshot({
-    path: path.join(reviewDir, jpeg),
+    path: path.join(outDir, jpeg),
     fullPage: full,
     type: 'jpeg',
     quality: 62,
@@ -232,7 +230,6 @@ await shoot('390-faq-open.png', true);
 if (missing.length) fail('failed responses: ' + missing.join(' | '));
 report.missing = missing;
 report.failures = failures.slice();
-fs.writeFileSync(path.join(reviewDir, 'report.json'), JSON.stringify(report, null, 2));
 fs.writeFileSync(path.join(outDir, 'report.json'), JSON.stringify(report, null, 2));
 
 await page.close().catch((error) => console.error('page close', error));
@@ -245,20 +242,20 @@ if (lighthouseBin) {
     `--chrome-path=${chromium.executablePath()}`,
     '--output=json',
     '--output=html',
-    `--output-path=${path.join(reviewDir, 'lighthouse')}`,
+    `--output-path=${path.join(outDir, 'lighthouse')}`,
     '--only-categories=performance,accessibility,best-practices,seo',
     '--chrome-flags=--headless=new --no-sandbox --disable-gpu',
     '--quiet',
   ], { stdio: 'inherit', timeout: 75000 });
-  const scorePath = path.join(reviewDir, 'lighthouse.report.json');
+  const scorePath = path.join(outDir, 'lighthouse.report.json');
   if (result.status !== 0 || !fs.existsSync(scorePath)) {
     const note = `lighthouse did not finish (status ${result.status}, signal ${result.signal || 'none'})`;
     console.error(note);
-    fs.writeFileSync(path.join(reviewDir, 'lighthouse-error.txt'), note);
+    fs.writeFileSync(path.join(outDir, 'lighthouse-error.txt'), note);
   } else {
     const lh = JSON.parse(fs.readFileSync(scorePath, 'utf8'));
     const scores = Object.fromEntries(Object.entries(lh.categories).map(([key, value]) => [key, Math.round(value.score * 100)]));
-    fs.writeFileSync(path.join(reviewDir, 'lighthouse-scores.json'), JSON.stringify(scores, null, 2));
+    fs.writeFileSync(path.join(outDir, 'lighthouse-scores.json'), JSON.stringify(scores, null, 2));
     console.log('lighthouse scores ' + JSON.stringify(scores));
   }
 } else {
