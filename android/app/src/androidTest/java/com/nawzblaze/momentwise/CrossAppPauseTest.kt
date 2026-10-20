@@ -182,14 +182,16 @@ class CrossAppPauseTest {
         Thread.sleep(3_000)
         openFixture(target)
         Thread.sleep(4_000)
-        assertFalse(
-            "A return within the grace minute showed another opening. ${diagnostics()}",
-            overlayWindowVisible(),
-        )
+        val notes = statusFile()
+        val showsAfter = notes.lineSequence().count { it.contains("intervention=overlay shown") }
         assertEquals(
-            "A return within the grace minute counted as a new opening. ${diagnostics()}",
+            "A return within the grace minute counted as a new opening. tail=${notes.takeLast(500)}",
             shows,
-            statusFile().lineSequence().count { it.contains("intervention=overlay shown") },
+            showsAfter,
+        )
+        assertFalse(
+            "A return within the grace minute showed another opening. shows=$showsAfter ${diagnostics()}",
+            overlayWindowVisible(),
         )
     }
 

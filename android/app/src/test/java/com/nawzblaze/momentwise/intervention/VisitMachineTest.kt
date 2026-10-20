@@ -113,6 +113,8 @@ class VisitMachineTest {
         visit.open(instagram)
         assertEquals(1, visit.shows)
         assertTrue(visit.snapshot.clearedWithoutChoice)
+        // The return cleared grace. Leave again, then stay away for the full minute.
+        visit.events(ForegroundEvent(launcher, visit.next()))
         visit.advance(VisitLifecycle.GRACE_MILLIS)
         visit.open(instagram)
         assertEquals(2, visit.shows)
@@ -284,7 +286,9 @@ class VisitMachineTest {
         visit.events(ForegroundEvent(instagram, visit.next()))
         visit.events(ForegroundEvent(chrome, visit.next()))
         assertEquals(1, visit.shows)
-        assertEquals(GuardSnapshot.Phase.NONE, visit.snapshot.phase)
+        assertEquals(GuardSnapshot.Phase.CONTINUING, visit.snapshot.phase)
+        assertEquals(instagram, visit.snapshot.activePackage)
+        assertTrue(visit.snapshot.backgroundedAtElapsed != null)
     }
 
     private inner class Script {

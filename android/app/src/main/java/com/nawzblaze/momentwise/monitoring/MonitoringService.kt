@@ -495,7 +495,10 @@ class MonitoringService : Service() {
                 if (pkg != null) {
                     pauseClearedByUser = false
                     val rule = ruleFor(pkg)
-                    noteDebug("opened pkg=$pkg rule=${rule != null} visit=${snapshot.visitId}")
+                    noteDebug(
+                        "opened pkg=$pkg rule=${rule != null} visit=${snapshot.visitId} " +
+                            "phase=${snapshot.phase} away=${snapshot.backgroundedAtElapsed}",
+                    )
                     if (rule != null &&
                         PauseShowPolicy.shouldShowNewOpening(pauseVisible, alreadyContinuing(pkg))
                     ) {
@@ -765,6 +768,9 @@ class MonitoringService : Service() {
         val (next, command) = SessionClock.onOpened(snapshot, foreground!!, true, LocalDate.now().toString())
         if (!persistIfUnchanged(snapshot, next)) return false
         if (command is GuardCommand.ShowOpening && rule != null) {
+            noteDebug(
+                "missed opening pkg=$foreground phase=${next.phase} away=${snapshot.backgroundedAtElapsed} visit=${next.visitId}",
+            )
             showPause(rule, PauseRequest.Kind.OPENING)
         }
         return command is GuardCommand.ShowOpening

@@ -106,10 +106,9 @@ object SessionClock {
         if (ready.clearedWithoutChoice && ready.activePackage == packageName) {
             return ready.copy(backgroundedAtElapsed = null) to GuardCommand.None
         }
-        if (ready.activePackage == packageName &&
-            ready.phase != GuardSnapshot.Phase.NONE &&
-            ready.openingHandledForPackage == packageName
-        ) {
+        // An open visit stays one visit even if the opening flag was not
+        // persisted. A new opening requires the visit to have ended first.
+        if (ready.activePackage == packageName && ready.phase != GuardSnapshot.Phase.NONE) {
             return ready.copy(backgroundedAtElapsed = null) to GuardCommand.None
         }
         val next = endSession(ready).copy(
