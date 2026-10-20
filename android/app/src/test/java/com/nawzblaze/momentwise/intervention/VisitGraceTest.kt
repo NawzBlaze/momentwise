@@ -256,6 +256,17 @@ class VisitGraceTest {
         assertEquals(AppUse.Phase.IDLE, used.useByPackage[instagram]?.phase)
     }
 
+    @Test
+    fun lastGuardedPackageCoversALostAwayPackage() {
+        val ended = GuardSnapshot(
+            phase = GuardSnapshot.Phase.NONE,
+            visitId = 4,
+            lastGuardedPackage = instagram,
+            recentAwayAtElapsed = 50_000,
+        )
+        assertFalse(SessionClock.needsOpening(ended, instagram, true, 70_000))
+    }
+
     private fun accrue(
         start: GuardSnapshot,
         fromElapsed: Long,

@@ -89,7 +89,8 @@ object SessionClock {
         elapsedRealtime: Long = Long.MIN_VALUE,
     ): Pair<GuardSnapshot, GuardCommand> {
         val cleared = clearStaleDismissals(snapshot, today)
-        if (cleared.recentAwayPackage == packageName &&
+        val awayPackage = cleared.recentAwayPackage ?: cleared.lastGuardedPackage
+        if (awayPackage == packageName &&
             VisitLifecycle.withinGrace(cleared.recentAwayAtElapsed, elapsedRealtime)
         ) {
             return cleared.copy(
@@ -162,7 +163,8 @@ object SessionClock {
     ): Boolean {
         if (foregroundPackage == null || !ruleEnabled) return false
         if (snapshot.quitSuppressedPackage == foregroundPackage) return false
-        if (snapshot.recentAwayPackage == foregroundPackage &&
+        val awayPackage = snapshot.recentAwayPackage ?: snapshot.lastGuardedPackage
+        if (awayPackage == foregroundPackage &&
             VisitLifecycle.withinGrace(snapshot.recentAwayAtElapsed, elapsedRealtime)
         ) {
             return false
