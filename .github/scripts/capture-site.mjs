@@ -1,3 +1,4 @@
+import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 import http from 'node:http';
 import fs from 'node:fs';
@@ -60,8 +61,21 @@ if (!playwrightEntry) {
   console.error('PLAYWRIGHT_MODULE is not set');
   process.exit(1);
 }
-const { chromium } = await import(pathToFileURL(playwrightEntry).href);
 fs.mkdirSync(outDir, { recursive: true });
+let chromium;
+try {
+  const require = createRequire(import.meta.url);
+  ({ chromium } = require(playwrightEntry));
+} catch (error) {
+  console.error('require(playwright) failed:', error);
+  const imported = await import(pathToFileURL(playwrightEntry).href);
+  chromium = imported.chromium || imported.default?.chromium;
+}
+if (!chromium) {
+  console.error('Playwright did not export chromium from ' + playwrightEntry);
+  process.exit(1);
+}
+console.log('chromium ' + chromium.executablePath());
 fs.writeFileSync(path.join(outDir, 'chrome-path.txt'), chromium.executablePath());
 
 const server = await startServer();

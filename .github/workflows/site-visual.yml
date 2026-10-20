@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write
 
 concurrency:
   group: site-visual-${{ github.ref }}
@@ -35,7 +36,29 @@ jobs:
         env:
           PLAYWRIGHT_MODULE: ${{ runner.temp }}/visual/node_modules/playwright/index.js
           LIGHTHOUSE_BIN: ${{ runner.temp }}/visual/node_modules/.bin/lighthouse
-        run: node .github/scripts/capture-site.mjs
+        run: |
+          set +e
+          node .github/scripts/capture-site.mjs > site-screenshots-log.txt 2>&1
+          code=$?
+          mkdir -p site-screenshots
+          cp site-screenshots-log.txt site-screenshots/console.txt
+          {
+            echo "## Visual log"
+            echo
+            echo '```'
+            tail -n 120 site-screenshots-log.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "$code"
+
+      - name: Comment with the visual log
+        if: always() && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          marker='<!-- momentwise-visual -->'
+          tail_text=$(tail -n 80 site-screenshots-log.txt 2>/dev/null || echo 'no visual log')
+          gh pr comment "${{ github.event.pull_request.number }}" --body "$(printf '%s\n' "$marker" 'Visual check log tail:' '```' "$tail_text" '```')"
 
       - name: Upload screenshots and reports
         if: always()
