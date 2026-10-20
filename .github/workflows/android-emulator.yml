@@ -82,7 +82,7 @@ jobs:
             echo
             echo '```'
             if [ -f "$log" ]; then
-              awk '/androidTest failure text/,0' "$log" | head -n 40
+              awk '/androidTest failure text/,0' "$log" | head -n 80
               echo
               grep -E 'FAILED|USAGE_QUERY|not delivered|not blocked|overlay shown|AssertionError' "$log" | tail -n 30
             else

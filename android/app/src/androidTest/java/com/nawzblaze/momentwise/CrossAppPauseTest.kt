@@ -78,24 +78,17 @@ class CrossAppPauseTest {
         shell("run-as $APP rm -f files/debug-status.txt")
         shell("appops set $APP GET_USAGE_STATS allow")
         shell("cmd appops set $APP GET_USAGE_STATS allow")
-        shell("logcat -c")
         val started = shell(
             "am start -W -n $APP/.debug.DebugRuleActivity --es measure_usage true",
         )
         assertTrue("Measure activity did not start: ${oneLine(started)}", started.contains("ok"))
         val recorded = waitFor {
-            val notes = shell("logcat -d -s MomentwiseDebug:I") + statusFile()
-            notes.contains("USAGE_QUERY meanMs=") || notes.contains("USAGE_QUERY error=")
+            statusFile().contains("USAGE_QUERY meanMs=") || statusFile().contains("USAGE_QUERY error=")
         }
-        val notes = shell("logcat -d -s MomentwiseDebug:I") + "\n" + statusFile()
+        val notes = statusFile()
         assertTrue(
             "Usage query was not recorded. start=${oneLine(started)} notes=${oneLine(notes)}",
-            recorded,
-        )
-        assertFalse(oneLine(notes), notes.contains("USAGE_QUERY error="))
-        assertTrue(
-            "Usage query mean was not recorded. ${oneLine(notes)}",
-            notes.contains("USAGE_QUERY meanMs="),
+            recorded && notes.contains("USAGE_QUERY meanMs=") && !notes.contains("USAGE_QUERY error="),
         )
     }
 
