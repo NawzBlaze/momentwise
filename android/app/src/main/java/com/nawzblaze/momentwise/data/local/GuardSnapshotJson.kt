@@ -25,6 +25,7 @@ internal object GuardSnapshotJson {
             putNullable("backgroundedAtElapsed", snapshot.backgroundedAtElapsed)
             putNullable("recentAwayPackage", snapshot.recentAwayPackage)
             putNullable("recentAwayAtElapsed", snapshot.recentAwayAtElapsed)
+            putNullable("lastGuardedPackage", snapshot.lastGuardedPackage)
             put("useByPackage", encodeUse(snapshot.useByPackage))
         }.toString()
     }
@@ -75,6 +76,7 @@ internal object GuardSnapshotJson {
                 backgroundedAtElapsed = json.optNullableLong("backgroundedAtElapsed"),
                 recentAwayPackage = json.optString("recentAwayPackage").ifBlank { null },
                 recentAwayAtElapsed = json.optNullableLong("recentAwayAtElapsed"),
+                lastGuardedPackage = json.optString("lastGuardedPackage").ifBlank { null },
             )
         } catch (_: Exception) {
             GuardSnapshot()

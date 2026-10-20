@@ -61,6 +61,8 @@ data class GuardSnapshot(
      */
     val recentAwayPackage: String? = null,
     val recentAwayAtElapsed: Long? = null,
+    /** Last guarded package this session knew. Not cleared when the visit ends. */
+    val lastGuardedPackage: String? = null,
 ) {
     enum class Phase { NONE, AWAITING_OPENING, CONTINUING }
 
@@ -140,6 +142,7 @@ object SessionClock {
             activePackage = packageName,
             phase = GuardSnapshot.Phase.AWAITING_OPENING,
             openingHandledForPackage = packageName,
+            lastGuardedPackage = packageName,
             visitId = ready.visitId + 1,
         )
         return next to GuardCommand.ShowOpening(packageName)
@@ -384,6 +387,7 @@ object SessionClock {
             clearedWithoutChoice = false,
             reminderHoldUntilMillis = null,
             backgroundedAtElapsed = null,
+            lastGuardedPackage = pkg ?: snapshot.lastGuardedPackage,
             useByPackage = use,
         )
     }
@@ -549,6 +553,7 @@ object SessionClock {
         }
         val pkg = snapshot.activePackage
             ?: snapshot.openingHandledForPackage
+            ?: snapshot.lastGuardedPackage
             ?: snapshot.recentAwayPackage
         return ended.copy(
             backgroundedAtElapsed = null,
@@ -568,6 +573,7 @@ object SessionClock {
         backgroundedAtElapsed = null,
         recentAwayPackage = snapshot.activePackage
             ?: snapshot.openingHandledForPackage
+            ?: snapshot.lastGuardedPackage
             ?: snapshot.recentAwayPackage,
         recentAwayAtElapsed = snapshot.backgroundedAtElapsed ?: snapshot.recentAwayAtElapsed,
     )

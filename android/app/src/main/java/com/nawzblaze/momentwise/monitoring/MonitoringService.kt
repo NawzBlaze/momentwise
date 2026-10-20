@@ -609,6 +609,8 @@ class MonitoringService : Service() {
             next.copy(
                 recentAwayPackage = base.activePackage
                     ?: base.openingHandledForPackage
+                    ?: base.lastGuardedPackage
+                    ?: next.lastGuardedPackage
                     ?: next.recentAwayPackage,
                 recentAwayAtElapsed = android.os.SystemClock.elapsedRealtime(),
             )
