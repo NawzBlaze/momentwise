@@ -133,16 +133,6 @@ object PauseOverlay {
         current.destroy()
     }
 
-    /** The system removed the window. Our own [dismiss] nulls [host] first, so it does not land here. */
-    private fun systemRemoved(removed: OverlayHost) {
-        val current = host ?: return
-        if (current !== removed) return
-        host = null
-        val visitId = removed.visitId
-        current.destroy()
-        PausePresenter.noteCleared(PauseDismissReason.WITHOUT_CHOICE, visitId)
-    }
-
     private fun perform(context: Context, block: suspend (InterventionController) -> Unit) {
         val app = context.applicationContext as MomentwiseApplication
         val controller = InterventionController(
@@ -152,9 +142,21 @@ object PauseOverlay {
         )
         scope.launch { block(controller) }
     }
-}
 
-private class OverlayHost(context: Context, val visitId: Long) :
+    /**
+     * The system removed the window. Our own [dismiss] nulls [host] first, so it does not land here.
+     * A detach during addView is ignored by [OverlayHost].
+     */
+    private fun noteRemoved(removed: OverlayHost) {
+        val current = host ?: return
+        if (current !== removed) return
+        host = null
+        val visitId = removed.visitId
+        current.destroy()
+        PausePresenter.noteCleared(PauseDismissReason.WITHOUT_CHOICE, visitId)
+    }
+
+    private class OverlayHost(context: Context, val visitId: Long) :
     FrameLayout(context),
     LifecycleOwner,
     SavedStateRegistryOwner,
@@ -186,7 +188,7 @@ private class OverlayHost(context: Context, val visitId: Long) :
         // addView can detach before the window is really up. That is not the
         // user closing the card, and it must not start a reshow loop.
         if (!sawAttach) return
-        PauseOverlay.systemRemoved(this)
+        PauseOverlay.noteRemoved(this)
     }
 
     fun destroy() {
@@ -194,5 +196,6 @@ private class OverlayHost(context: Context, val visitId: Long) :
             registry.currentState = Lifecycle.State.DESTROYED
         }
         viewModelStore.clear()
+    }
     }
 }
