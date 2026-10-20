@@ -53,9 +53,13 @@ not a physical-device result.
 
 ## Signed release
 
-`.github/workflows/android.yml` runs the unit-test job without signing secrets,
-then a separate job reads the signing secrets directly. Manual runs use
-`.github/workflows/android-release.yml`. Both jobs read only these Actions
+`.github/workflows/android.yml` does not read signing secrets. It runs tests,
+lint, and the unsigned/debug build. The only workflow that reads signing
+secrets is `.github/workflows/android-release.yml`, and only as a manual
+`workflow_dispatch` whose ref is `refs/heads/main`. A dispatch of any other
+branch fails in a job that does not read secrets. That workflow does not run
+on pull requests, does not use `pull_request_target`, does not generate a
+keystore, and does not publish a GitHub Release. It reads only these Actions
 secrets:
 
 - `MOMENTWISE_KEYSTORE_BASE64` — standard Base64 of the existing keystore file, one line, no `data:` prefix. Linux: `base64 -w 0 release.jks`. macOS: `base64 -b 0 -i release.jks`.

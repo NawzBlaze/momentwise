@@ -1,57 +1,98 @@
 name: Android release
 
-# Manual signed build. Pull requests use the signed-release job in android.yml.
-# Neither workflow generates a keystore, creates a GitHub Release, or enables
-# the website download.
+# Manual signing only. Do not add a pull-request trigger or a tag trigger.
+# This file must not create a GitHub Release or generate a keystore.
 on:
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: android-release-main
+  cancel-in-progress: false
+
 jobs:
+  refuse-unless-main:
+    name: Require main
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail before secrets unless this dispatch is main
+        run: |
+          set -euo pipefail
+          echo "event=${GITHUB_EVENT_NAME}"
+          echo "ref=${GITHUB_REF}"
+          if [ "${GITHUB_EVENT_NAME}" != "workflow_dispatch" ] || [ "${GITHUB_REF}" != "refs/heads/main" ]; then
+            echo "::error::Signed release is refused for ${GITHUB_REF}. Only workflow_dispatch on refs/heads/main may continue. No signing secret was read."
+            exit 1
+          fi
+          echo "Branch guard passed. This job does not read signing secrets."
+
   signed-release:
     name: Signed release APK
+    needs: refuse-unless-main
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    env:
-      MOMENTWISE_KEYSTORE_BASE64: ${{ secrets.MOMENTWISE_KEYSTORE_BASE64 }}
-      MOMENTWISE_KEYSTORE_PASSWORD: ${{ secrets.MOMENTWISE_KEYSTORE_PASSWORD }}
-      MOMENTWISE_KEY_ALIAS: ${{ secrets.MOMENTWISE_KEY_ALIAS }}
-      MOMENTWISE_KEY_PASSWORD: ${{ secrets.MOMENTWISE_KEY_PASSWORD }}
     steps:
-      - name: Checkout
+      - name: Confirm main before secrets
+        run: |
+          set -euo pipefail
+          if [ "${GITHUB_EVENT_NAME}" != "workflow_dispatch" ] || [ "${GITHUB_REF}" != "refs/heads/main" ]; then
+            echo "::error::Refusing ${GITHUB_REF} before any signing secret is read."
+            exit 1
+          fi
+
+      - name: Checkout main
+        if: success() && github.ref == 'refs/heads/main'
         uses: actions/checkout@v4
+        with:
+          ref: refs/heads/main
+          persist-credentials: false
 
       - name: Require signing secrets
+        if: success() && github.ref == 'refs/heads/main'
+        env:
+          MOMENTWISE_KEYSTORE_BASE64: ${{ secrets.MOMENTWISE_KEYSTORE_BASE64 }}
+          MOMENTWISE_KEYSTORE_PASSWORD: ${{ secrets.MOMENTWISE_KEYSTORE_PASSWORD }}
+          MOMENTWISE_KEY_ALIAS: ${{ secrets.MOMENTWISE_KEY_ALIAS }}
+          MOMENTWISE_KEY_PASSWORD: ${{ secrets.MOMENTWISE_KEY_PASSWORD }}
         run: bash .github/scripts/require-signing-secrets.sh
 
       - name: Set up JDK 17
+        if: success() && github.ref == 'refs/heads/main'
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
 
       - name: Set up Android SDK
+        if: success() && github.ref == 'refs/heads/main'
         uses: android-actions/setup-android@v3
         with:
           packages: platforms;android-35 build-tools;35.0.0
 
       - name: Decode existing keystore
+        if: success() && github.ref == 'refs/heads/main'
+        env:
+          MOMENTWISE_KEYSTORE_BASE64: ${{ secrets.MOMENTWISE_KEYSTORE_BASE64 }}
         run: bash .github/scripts/decode-keystore.sh
 
       - name: Assemble signed release
+        if: success() && github.ref == 'refs/heads/main'
         working-directory: android
         env:
           MOMENTWISE_KEYSTORE_PATH: ${{ runner.temp }}/signing/momentwise-release.jks
+          MOMENTWISE_KEYSTORE_PASSWORD: ${{ secrets.MOMENTWISE_KEYSTORE_PASSWORD }}
+          MOMENTWISE_KEY_ALIAS: ${{ secrets.MOMENTWISE_KEY_ALIAS }}
+          MOMENTWISE_KEY_PASSWORD: ${{ secrets.MOMENTWISE_KEY_PASSWORD }}
         run: ./gradlew :app:assembleRelease --no-daemon --stacktrace
 
       - name: Verify signature, package, and version
-        env:
-          HEAD_SHA: ${{ github.sha }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        if: success() && github.ref == 'refs/heads/main'
         run: bash .github/scripts/verify-signed-apk.sh
 
       - name: Upload signed APK
+        if: success() && github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@v4
         with:
           name: momentwise-signed-apk
@@ -62,5 +103,5 @@ jobs:
           if-no-files-found: error
 
       - name: Remove keystore
-        if: always()
+        if: always() && github.ref == 'refs/heads/main'
         run: rm -f "$RUNNER_TEMP/signing/momentwise-release.jks"
