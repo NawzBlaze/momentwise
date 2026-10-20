@@ -258,7 +258,14 @@ class MonitoringService : Service() {
                 resumeFromScreenOff = false
                 seedAndRecover()
             }
-            tick()
+            try {
+                tick()
+            } catch (error: kotlinx.coroutines.CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                Log.w(TAG, "tick failed", error)
+                noteDebug("tick failed ${error.javaClass.simpleName}: ${error.message}")
+            }
             if (stopRequested) break
             delay(UsagePoll.INTERVAL_MILLIS)
         }
@@ -314,7 +321,8 @@ class MonitoringService : Service() {
             ignoreSelf = false,
             pauseClassName = PauseActivity::class.java.name,
         ).state
-        val snapshot = sessionCache
+        val snapshot = sessions().current()
+        sessionCache = snapshot
         val reconciled = SessionClock.reconcileAfterRestart(snapshot, detector.lastPackage)
         persistIfUnchanged(snapshot, reconciled)
         noteDebug(
@@ -331,15 +339,27 @@ class MonitoringService : Service() {
             stopQuietly()
             return
         }
-        if (!rulesLoaded) return
-        val enabled = enabledRules
-        if (enabled.isEmpty()) {
-            stopQuietly()
-            return
+        if (!rulesLoaded || enabledRules.isEmpty()) {
+            val fresh = app().container.appRuleRepository.rules.first().filter { it.enabled }
+            if (fresh.isEmpty()) {
+                stopQuietly()
+                return
+            }
+            enabledRules = fresh
+            rulesLoaded = true
         }
+        val enabled = enabledRules
         val now = System.currentTimeMillis()
         noteBeat(now)
         val today = LocalDate.now().toString()
+        // The in-memory copy can lag a test reset. The store is the visit decision.
+        sessionCache = sessions().current()
+        if (sessionCache.phase == GuardSnapshot.Phase.NONE &&
+            sessionCache.activePackage == null &&
+            sessionCache.visitId == 0L
+        ) {
+            machineLatch = VisitMachine.Latch()
+        }
         val events = readEvents(EventWindow.steadyStart(now, detector.lastEventTimeMillis), now)
         val reduced = UsageEventReducer.reduce(
             state = detector,
@@ -369,6 +389,7 @@ class MonitoringService : Service() {
             dismissPause(PauseDismissReason.STOPPED)
         }
 
+        val hasRule = signaledPackage?.let { pkg -> ruleFor(pkg) != null } == true
         val step = VisitMachine.onForeground(
             snapshot = snapshot,
             latch = machineLatch,
@@ -385,16 +406,26 @@ class MonitoringService : Service() {
             pauseVisible = pauseVisible,
             selfPackage = packageName,
             today = today,
-            signaledHasRule = signaledPackage?.let { pkg -> enabled.any { it.appId == pkg } } == true,
+            signaledHasRule = hasRule,
         )
-        machineLatch = step.latch
+        // A show latch is adopted only when the card is actually shown. Adopting
+        // it here made a skipped show look like overlay handback on the next poll.
+        if (step.ui != VisitMachine.Ui.SHOW_OPENING) {
+            machineLatch = step.latch
+        }
         val persisted = persistIfUnchanged(snapshot, step.snapshot)
         if (persisted) snapshot = step.snapshot
         if (signal != DetectorSignal.NONE) {
             Log.i(TAG, "visit ui=${step.ui} signal=$signal pkg=$signaledPackage pause=$pauseVisible")
+            noteDebug(
+                "tick decide ui=${step.ui} phase=${snapshot.phase} active=${snapshot.activePackage} " +
+                    "hasRule=$hasRule persisted=$persisted visit=${snapshot.visitId}",
+            )
         }
         if (!persisted && step.snapshot != snapshot) {
-            // A choice landed during this tick. Do not show or dismiss from the stale read.
+            // A choice landed during this tick. Decide again from the stored session.
+            sessionCache = sessions().current()
+            presentWaitingOpening()
             accrueUse(today, now)
             return
         }
@@ -416,28 +447,30 @@ class MonitoringService : Service() {
                 dismissPause(PauseDismissReason.LEFT)
                 pauseClearedByUser = false
             }
-            VisitMachine.Ui.NONE -> if (signal == DetectorSignal.NONE || VisitMachine.isOverlayNoise(
-                    pauseVisible = pauseVisible,
-                    handback = machineLatch.handbackPackage,
-                    noiseUntil = machineLatch.overlayNoiseUntilMillis,
-                    signal = signal,
-                    signaledPackage = signaledPackage,
-                    signalTimeMillis = reduced.signalTimeMillis,
-                    selfPackage = packageName,
-                )
-            ) {
-                if (showUnshownOpening(detector.lastPackage ?: snapshot.activePackage)) {
-                    maybeRecoverUnanswered(detector.lastPackage, now)
-                    return
-                }
-                if (showMissedOpening(detector.lastPackage, snapshot)) {
-                    maybeRecoverUnanswered(detector.lastPackage, now)
-                    return
-                }
-            }
+            VisitMachine.Ui.NONE -> Unit
+        }
+        // An OPENED the machine swallowed — stale rules, overlay noise, or a
+        // missed resume — still needs a card if this visit was never shown.
+        // A real leave is not this case: the session is already ended.
+        if (!pauseVisible && step.ui != VisitMachine.Ui.DISMISS) {
+            presentWaitingOpening()
         }
         accrueUse(today, now)
         maybeRecoverUnanswered(detector.lastPackage, now)
+    }
+
+    /**
+     * Puts up an opening the visit already owes, or starts one the poll missed.
+     * Does not invent a visit after Continue, dismiss-for-today, or a no-choice
+     * close of the same visit.
+     */
+    private suspend fun presentWaitingOpening() {
+        if (pauseVisible || stopRequested) return
+        val foreground = detector.lastPackage ?: return
+        val snapshot = sessions().current()
+        sessionCache = snapshot
+        if (showUnshownOpening(foreground)) return
+        showMissedOpening(foreground, snapshot)
     }
 
     /**
@@ -557,11 +590,17 @@ class MonitoringService : Service() {
         machineLatch = machineLatch.copy(
             handbackPackage = rule.appId,
             shownVisitId = sessionCache.visitId,
+            systemRemovals = 0,
         )
         Log.i(TAG, "showing $kind for ${rule.appId}")
         noteDebug("showing $kind for ${rule.appId}")
         withContext(Dispatchers.Main) {
             PausePresenter.show(this@MonitoringService, request, theme, sessionCache.visitId)
+        }
+        if (PausePresenter.surface == PauseSurface.NONE) {
+            pauseVisible = false
+            shownPackage = null
+            shownKind = null
         }
     }
 
