@@ -157,7 +157,7 @@ class CrossAppPauseTest {
         shell("wm dismiss-keyguard")
     }
 
-    private fun waitFor(predicate: () -> Boolean, timeoutMillis: Long = 30_000): Boolean {
+    private fun waitFor(timeoutMillis: Long = 30_000, predicate: () -> Boolean): Boolean {
         val deadline = System.currentTimeMillis() + timeoutMillis
         while (System.currentTimeMillis() < deadline) {
             if (predicate()) return true
