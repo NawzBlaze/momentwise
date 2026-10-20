@@ -1,0 +1,1 @@
+lighthouse did not finish (status null, signal SIGTERM)
