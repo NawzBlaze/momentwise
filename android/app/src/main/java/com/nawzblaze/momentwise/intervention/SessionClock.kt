@@ -546,10 +546,13 @@ object SessionClock {
             snapshot.backgroundedAtElapsed != null -> snapshot.backgroundedAtElapsed
             else -> ended.recentAwayAtElapsed
         }
+        val pkg = snapshot.activePackage
+            ?: snapshot.openingHandledForPackage
+            ?: snapshot.recentAwayPackage
         return ended.copy(
             backgroundedAtElapsed = null,
-            recentAwayPackage = snapshot.activePackage ?: snapshot.recentAwayPackage,
-            recentAwayAtElapsed = awayAt,
+            recentAwayPackage = pkg,
+            recentAwayAtElapsed = if (pkg == null) null else awayAt,
         )
     }
 
@@ -562,7 +565,9 @@ object SessionClock {
         clearedWithoutChoice = false,
         reminderHoldUntilMillis = null,
         backgroundedAtElapsed = null,
-        recentAwayPackage = snapshot.activePackage ?: snapshot.recentAwayPackage,
+        recentAwayPackage = snapshot.activePackage
+            ?: snapshot.openingHandledForPackage
+            ?: snapshot.recentAwayPackage,
         recentAwayAtElapsed = snapshot.backgroundedAtElapsed ?: snapshot.recentAwayAtElapsed,
     )
 }

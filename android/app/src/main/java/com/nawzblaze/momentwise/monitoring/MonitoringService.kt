@@ -32,6 +32,7 @@ import com.nawzblaze.momentwise.intervention.PauseRequest
 import com.nawzblaze.momentwise.intervention.PauseShowPolicy
 import com.nawzblaze.momentwise.intervention.SessionClock
 import com.nawzblaze.momentwise.intervention.UsageEventReducer
+import com.nawzblaze.momentwise.intervention.VisitLifecycle
 import com.nawzblaze.momentwise.intervention.VisitMachine
 import java.time.LocalDate
 import kotlinx.coroutines.CoroutineScope
@@ -251,7 +252,17 @@ class MonitoringService : Service() {
             sessions().session.collect { snapshot ->
                 // Storage omits the accrual anchor. A blind replace made every
                 // poll look like the first sample, so a reminder never arrived.
-                sessionCache = SessionClock.adoptStored(snapshot, sessionCache)
+                val previous = sessionCache
+                val adopted = SessionClock.adoptStored(snapshot, sessionCache)
+                if (adopted.quitSuppressedPackage != null) {
+                    explicitLeave = true
+                    gracePackage = null
+                } else if (previous.phase != GuardSnapshot.Phase.NONE &&
+                    (adopted.phase == GuardSnapshot.Phase.NONE || adopted.backgroundedAtElapsed != null)
+                ) {
+                    armGrace(previous.activePackage ?: shownPackage)
+                }
+                sessionCache = adopted
                 sessionLoaded = true
             }
         }
@@ -596,7 +607,9 @@ class MonitoringService : Service() {
             next.quitSuppressedPackage == null
         ) {
             next.copy(
-                recentAwayPackage = base.activePackage ?: next.recentAwayPackage,
+                recentAwayPackage = base.activePackage
+                    ?: base.openingHandledForPackage
+                    ?: next.recentAwayPackage,
                 recentAwayAtElapsed = android.os.SystemClock.elapsedRealtime(),
             )
         } else {
@@ -644,8 +657,35 @@ class MonitoringService : Service() {
 
     private var shownPackage: String? = null
     private var shownKind: PauseRequest.Kind? = null
+    private var gracePackage: String? = null
+    private var graceAtElapsed: Long = 0L
+    private var explicitLeave = false
+
+    private fun armGrace(packageName: String?) {
+        if (packageName.isNullOrBlank() || explicitLeave) return
+        gracePackage = packageName
+        graceAtElapsed = android.os.SystemClock.elapsedRealtime()
+    }
+
+    private fun openingHeldByGrace(packageName: String): Boolean {
+        if (explicitLeave || packageName != gracePackage) return false
+        val elapsed = android.os.SystemClock.elapsedRealtime()
+        return elapsed >= graceAtElapsed && elapsed - graceAtElapsed < VisitLifecycle.GRACE_MILLIS
+    }
 
     private suspend fun showPause(rule: AppRule, kind: PauseRequest.Kind) {
+        if (sessionCache.quitSuppressedPackage == rule.appId || LeaveSignal.packageName == rule.appId) {
+            explicitLeave = true
+        }
+        if (kind == PauseRequest.Kind.OPENING && !explicitLeave &&
+            shownPackage == rule.appId && sessionCache.phase == GuardSnapshot.Phase.NONE
+        ) {
+            if (gracePackage == null) armGrace(rule.appId)
+        }
+        if (kind == PauseRequest.Kind.OPENING && openingHeldByGrace(rule.appId)) {
+            noteDebug("grace held ${rule.appId}")
+            return
+        }
         if (pauseVisible && shownPackage == rule.appId && shownKind == kind) return
         if (pauseVisible) dismissPause(PauseDismissReason.STOPPED)
         val request = if (kind == PauseRequest.Kind.OPENING) {
@@ -682,6 +722,11 @@ class MonitoringService : Service() {
         pauseVisible = true
         shownPackage = rule.appId
         shownKind = kind
+        if (kind == PauseRequest.Kind.OPENING) {
+            explicitLeave = false
+            gracePackage = null
+            if (LeaveSignal.packageName == rule.appId) LeaveSignal.packageName = null
+        }
         machineLatch = machineLatch.copy(
             handbackPackage = rule.appId,
             shownVisitId = sessionCache.visitId,
