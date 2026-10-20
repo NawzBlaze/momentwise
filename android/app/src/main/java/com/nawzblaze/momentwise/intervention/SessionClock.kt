@@ -180,14 +180,11 @@ object SessionClock {
         return true
     }
 
-    fun onLeft(snapshot: GuardSnapshot): Pair<GuardSnapshot, GuardCommand> {
+    fun onLeft(snapshot: GuardSnapshot, elapsedRealtime: Long = 0L): Pair<GuardSnapshot, GuardCommand> {
         val closed = closeUse(snapshot) { use ->
             if (use.phase == AppUse.Phase.DUE) use.copy(reminderShown = false) else use
         }
-        return endSession(closed).copy(
-            quitSuppressedPackage = null,
-            backgroundedAtElapsed = null,
-        ) to GuardCommand.None
+        return markAway(closed, elapsedRealtime).copy(quitSuppressedPackage = null) to GuardCommand.None
     }
 
     /**
@@ -208,7 +205,7 @@ object SessionClock {
     /** A return at or after the grace boundary is a new visit. Clock going backwards is not a resumed visit. */
     fun expireGrace(snapshot: GuardSnapshot, elapsedRealtime: Long): GuardSnapshot {
         if (!VisitLifecycle.graceExpired(snapshot.backgroundedAtElapsed, elapsedRealtime)) return snapshot
-        return endSession(snapshot).copy(quitSuppressedPackage = null, backgroundedAtElapsed = null)
+        return markAway(snapshot, elapsedRealtime).copy(quitSuppressedPackage = null)
     }
 
     /**
@@ -499,7 +496,7 @@ object SessionClock {
             }
         }
         if (VisitLifecycle.withinGrace(current.backgroundedAtElapsed, elapsedRealtime)) return current
-        return endSession(current)
+        return markAway(current, elapsedRealtime)
     }
 
     /**
@@ -539,6 +536,21 @@ object SessionClock {
     private fun closeUse(snapshot: GuardSnapshot, adjust: (AppUse) -> AppUse = { ActiveUse.close(it) }): GuardSnapshot {
         if (snapshot.useByPackage.isEmpty()) return snapshot
         return snapshot.copy(useByPackage = snapshot.useByPackage.mapValues { (_, use) -> adjust(ActiveUse.close(use)) })
+    }
+
+    /** A non-Leave end. The next entry of this package inside the grace minute is the same visit. */
+    private fun markAway(snapshot: GuardSnapshot, elapsedRealtime: Long): GuardSnapshot {
+        val ended = endSession(snapshot)
+        val awayAt = when {
+            elapsedRealtime > 0L -> elapsedRealtime
+            snapshot.backgroundedAtElapsed != null -> snapshot.backgroundedAtElapsed
+            else -> ended.recentAwayAtElapsed
+        }
+        return ended.copy(
+            backgroundedAtElapsed = null,
+            recentAwayPackage = snapshot.activePackage ?: snapshot.recentAwayPackage,
+            recentAwayAtElapsed = awayAt,
+        )
     }
 
     private fun endSession(snapshot: GuardSnapshot): GuardSnapshot = closeUse(snapshot).copy(

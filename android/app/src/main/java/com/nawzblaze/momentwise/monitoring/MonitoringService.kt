@@ -445,7 +445,7 @@ class MonitoringService : Service() {
         var snapshot = SessionClock.clearStaleDismissals(sessionCache, today)
         val active = snapshot.activePackage
         if (active != null && enabled.none { it.appId == active }) {
-            val left = SessionClock.onLeft(snapshot).first
+            val left = SessionClock.onLeft(snapshot, elapsed).first
             if (persistIfUnchanged(snapshot, left)) snapshot = left
             machineLatch = machineLatch.copy(handbackPackage = null, systemRemovals = 0)
             dismissPause(PauseDismissReason.STOPPED)
@@ -492,6 +492,7 @@ class MonitoringService : Service() {
             Log.i(TAG, "visit ui=${step.ui} signal=$signal pkg=$signaledPackage pause=$pauseVisible")
             noteDebug(
                 "tick decide ui=${step.ui} phase=${snapshot.phase} active=${snapshot.activePackage} " +
+                    "away=${snapshot.recentAwayPackage}@${snapshot.recentAwayAtElapsed} " +
                     "hasRule=$hasRule persisted=$persisted visit=${snapshot.visitId}",
             )
         }
@@ -887,7 +888,8 @@ class MonitoringService : Service() {
     private suspend fun endVisitBecauseMonitoringStopped() {
         val current = sessionCache
         if (current.phase == GuardSnapshot.Phase.NONE && current.activePackage == null) return
-        sessions().update { SessionClock.onLeft(it).first }
+        val elapsedNow = android.os.SystemClock.elapsedRealtime()
+        sessions().update { SessionClock.onLeft(it, elapsedNow).first }
         sessionCache = sessions().current()
     }
 
