@@ -194,6 +194,7 @@ class MonitoringService : Service() {
         var resumeFromScreenOff = false
         while (coroutineContext[Job]?.isActive != false && !stopRequested) {
             if (!screenInteractive()) {
+                if (!resumeFromScreenOff) noteDebug("screen off")
                 resumeFromScreenOff = true
                 withTimeoutOrNull(UsagePoll.SCREEN_OFF_INTERVAL_MILLIS) {
                     screenOn.receive()
@@ -262,6 +263,9 @@ class MonitoringService : Service() {
         val snapshot = sessionCache
         val reconciled = SessionClock.reconcileAfterRestart(snapshot, detector.lastPackage)
         persistIfUnchanged(snapshot, reconciled)
+        noteDebug(
+            "seed events=${observed.size} last=${detector.lastPackage} phase=${sessionCache.phase} screen=${screenInteractive()}",
+        )
         showMissedOpening(detector.lastPackage, sessionCache)
         maybeRecoverUnanswered(detector.lastPackage, now)
         MonitorPresence.beat(this, now)
@@ -292,6 +296,9 @@ class MonitoringService : Service() {
             pauseClassName = PauseActivity::class.java.name,
         )
         detector = reduced.state
+        if (reduced.signal != com.nawzblaze.momentwise.intervention.DetectorSignal.NONE) {
+            noteDebug("tick ${reduced.signal} pkg=${reduced.packageName} last=${detector.lastPackage}")
+        }
         var snapshot = SessionClock.clearStaleDismissals(sessionCache, today)
 
         val active = snapshot.activePackage

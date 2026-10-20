@@ -85,8 +85,10 @@ class CrossAppPauseTest {
             "am start -W -n $APP/.debug.DebugRuleActivity --es measure_usage true",
         )
         assertTrue("Measure activity did not start: ${oneLine(started)}", started.contains("ok"))
+        // The written line is "USAGE_QUERY samples=… meanMs=…", not "USAGE_QUERY meanMs=".
         val recorded = waitFor {
-            statusFile().contains("USAGE_QUERY meanMs=") || statusFile().contains("USAGE_QUERY error=")
+            val notes = statusFile()
+            notes.contains("meanMs=") && !notes.contains("USAGE_QUERY error=")
         }
         val notes = statusFile()
         assertTrue(
@@ -101,7 +103,13 @@ class CrossAppPauseTest {
         // Do not force-stop Momentwise. Instrumentation runs in that process.
         shell("am stopservice $APP/.monitoring.MonitoringService")
         shell("am force-stop $target")
+        // A new start that overlaps onDestroy cancels the poll and never shows a pause.
+        val stopped = waitFor(timeoutMillis = 8_000) {
+            !shell("dumpsys activity services $APP").contains("MonitoringService")
+        }
+        assertTrue("Monitoring service was still running after stop", stopped)
         shell("run-as $APP rm -f files/debug-status.txt")
+        wakeScreen()
 
         val grant = shell("pm grant $APP android.permission.POST_NOTIFICATIONS")
         assertFalse(
@@ -120,7 +128,7 @@ class CrossAppPauseTest {
 
         val enable = shell(
             "am start -W -n $APP/.debug.DebugRuleActivity " +
-                "--es target_package $target --es label Fixture",
+                "--es target_package $target --es label Fixture --es reset_session true",
         )
         assertTrue("Could not enable the fixture rule: $enable", enable.contains("ok"))
         assertTrue(
@@ -131,6 +139,7 @@ class CrossAppPauseTest {
     }
 
     private fun openFixture(target: String) {
+        wakeScreen()
         shell("input keyevent KEYCODE_HOME")
         val opened = shell("am start -W -n $target/.FixtureActivity")
         assertTrue(
@@ -141,8 +150,15 @@ class CrossAppPauseTest {
         assertTrue("Fixture did not open: $opened", opened.contains("ok"))
     }
 
-    private fun waitFor(predicate: () -> Boolean): Boolean {
-        val deadline = System.currentTimeMillis() + 30_000
+    /** Emulator idle during an earlier test can turn the panel off and skip UsageStats. */
+    private fun wakeScreen() {
+        shell("settings put system screen_off_timeout 1800000")
+        shell("input keyevent KEYCODE_WAKEUP")
+        shell("wm dismiss-keyguard")
+    }
+
+    private fun waitFor(predicate: () -> Boolean, timeoutMillis: Long = 30_000): Boolean {
+        val deadline = System.currentTimeMillis() + timeoutMillis
         while (System.currentTimeMillis() < deadline) {
             if (predicate()) return true
             Thread.sleep(1_000)

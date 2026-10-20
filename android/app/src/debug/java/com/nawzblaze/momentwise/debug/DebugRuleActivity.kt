@@ -8,6 +8,7 @@ import android.util.Log
 import android.widget.TextView
 import com.nawzblaze.momentwise.MomentwiseApplication
 import com.nawzblaze.momentwise.data.RuleDefaults
+import com.nawzblaze.momentwise.intervention.GuardSnapshot
 import com.nawzblaze.momentwise.monitoring.GrantChecks
 import com.nawzblaze.momentwise.monitoring.MonitoringCoordinator
 import java.util.Locale
@@ -65,9 +66,10 @@ class DebugRuleActivity : Activity() {
         if (scheduled) return
         scheduled = true
         val app = application as MomentwiseApplication
+        val resetSession = wantsReset(intent)
         // After this frame, so launch work is not still occupying the main thread.
         window.decorView.post {
-            val started = startEnable(app, packageName, label)
+            val started = startEnable(app, packageName, label, resetSession)
             if (!started) Log.i(TAG, "enable already running")
         }
     }
@@ -75,10 +77,15 @@ class DebugRuleActivity : Activity() {
     companion object {
         const val TAG = "MomentwiseDebug"
         const val EXTRA_MEASURE = "measure_usage"
+        const val EXTRA_RESET_SESSION = "reset_session"
 
         fun wantsMeasure(intent: android.content.Intent): Boolean =
             intent.getBooleanExtra(EXTRA_MEASURE, false) ||
                 intent.getStringExtra(EXTRA_MEASURE) == "true"
+
+        fun wantsReset(intent: android.content.Intent): Boolean =
+            intent.getBooleanExtra(EXTRA_RESET_SESSION, false) ||
+                intent.getStringExtra(EXTRA_RESET_SESSION) == "true"
         private val running = AtomicBoolean(false)
 
         /**
@@ -120,11 +127,16 @@ class DebugRuleActivity : Activity() {
         }
 
         /** @return false when a worker is already in flight. One worker only. */
-        fun startEnable(app: MomentwiseApplication, packageName: String, label: String): Boolean {
+        fun startEnable(
+            app: MomentwiseApplication,
+            packageName: String,
+            label: String,
+            resetSession: Boolean = false,
+        ): Boolean {
             if (!running.compareAndSet(false, true)) return false
             thread(name = "debug-rule") {
                 try {
-                    enable(app, packageName, label)
+                    enable(app, packageName, label, resetSession)
                 } finally {
                     running.set(false)
                 }
@@ -132,8 +144,17 @@ class DebugRuleActivity : Activity() {
             return true
         }
 
-        private fun enable(app: MomentwiseApplication, packageName: String, label: String) {
+        private fun enable(
+            app: MomentwiseApplication,
+            packageName: String,
+            label: String,
+            resetSession: Boolean,
+        ) {
             val grants = GrantChecks.read(app)
+            if (resetSession) {
+                runBlocking { app.container.guardSessions.save(GuardSnapshot()) }
+                writeStatus(app, "session reset")
+            }
             Log.i(
                 TAG,
                 "enabling $packageName usage=${grants.usageAccess} notifications=${grants.notifications} overlay=${grants.overlay}",

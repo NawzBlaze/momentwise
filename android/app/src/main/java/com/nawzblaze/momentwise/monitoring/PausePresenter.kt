@@ -108,6 +108,7 @@ object PausePresenter {
             .build()
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
         manager.notify(NotificationChannels.PAUSE_NOTIFICATION_ID, notification)
+        DebugNotes.append(context, "notification posted id=${NotificationChannels.PAUSE_NOTIFICATION_ID}")
     }
 
     private fun cancelNotification(context: Context) {
