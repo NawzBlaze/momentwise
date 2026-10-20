@@ -161,6 +161,16 @@ class VisitGraceTest {
     }
 
     @Test
+    fun unansweredEndDoesNotResumeAsContinue() {
+        val opening = SessionClock.onOpened(GuardSnapshot(), instagram, true, today).first
+        val ended = SessionClock.onLeft(opening, 5_000).first
+        assertEquals(null, ended.recentAwayAtElapsed)
+        val (again, command) = SessionClock.onOpened(ended, instagram, true, today, 8_000)
+        assertTrue(command is GuardCommand.ShowOpening)
+        assertEquals(2L, again.visitId)
+    }
+
+    @Test
     fun finishExplicitLeaveDoesNotKeepAGraceWindow() {
         val left = SessionClock.onQuit(
             SessionClock.onContinue(

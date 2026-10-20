@@ -93,6 +93,10 @@ object SessionClock {
         elapsedRealtime: Long = Long.MIN_VALUE,
     ): Pair<GuardSnapshot, GuardCommand> {
         val cleared = clearStaleDismissals(snapshot, today)
+        // Explicit Leave wins over a grace stamp. The handback is not Continue.
+        if (storedPackage(cleared.quitSuppressedPackage) == packageName) {
+            return cleared to GuardCommand.None
+        }
         val awayPackage = storedPackage(cleared.recentAwayPackage) ?: storedPackage(cleared.lastGuardedPackage)
         if (awayPackage == packageName &&
             VisitLifecycle.withinGrace(cleared.recentAwayAtElapsed, elapsedRealtime)
@@ -110,9 +114,6 @@ object SessionClock {
                 recentAwayAtElapsed = null,
                 quitSuppressedPackage = null,
             ) to GuardCommand.None
-        }
-        if (cleared.quitSuppressedPackage == packageName) {
-            return cleared to GuardCommand.None
         }
         val ready = if (cleared.quitSuppressedPackage != null) {
             cleared.copy(quitSuppressedPackage = null)
@@ -570,9 +571,19 @@ object SessionClock {
         return snapshot.copy(useByPackage = snapshot.useByPackage.mapValues { (_, use) -> adjust(ActiveUse.close(use)) })
     }
 
-    /** A non-Leave end. The next entry of this package inside the grace minute is the same visit. */
+    /**
+     * A non-Leave end. Grace applies only after Continue. Ending an unanswered
+     * opening must not resume as if they had continued.
+     */
     private fun markAway(snapshot: GuardSnapshot, elapsedRealtime: Long): GuardSnapshot {
         val ended = endSession(snapshot)
+        if (snapshot.phase != GuardSnapshot.Phase.CONTINUING) {
+            return ended.copy(
+                backgroundedAtElapsed = null,
+                recentAwayPackage = null,
+                recentAwayAtElapsed = null,
+            )
+        }
         val awayAt = when {
             elapsedRealtime > 0L -> elapsedRealtime
             snapshot.backgroundedAtElapsed != null -> snapshot.backgroundedAtElapsed

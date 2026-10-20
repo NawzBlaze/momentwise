@@ -620,7 +620,7 @@ class MonitoringService : Service() {
     private suspend fun persistIfUnchanged(base: GuardSnapshot, next: GuardSnapshot): Boolean {
         if (base == next) return true
         val stamped = if (next.phase == GuardSnapshot.Phase.NONE &&
-            base.phase != GuardSnapshot.Phase.NONE &&
+            base.phase == GuardSnapshot.Phase.CONTINUING &&
             next.quitSuppressedPackage == null
         ) {
             next.copy(
