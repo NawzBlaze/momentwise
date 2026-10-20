@@ -54,8 +54,9 @@ not a physical-device result.
 ## Signed release
 
 `.github/workflows/android.yml` runs the unit-test job without signing secrets,
-then calls `.github/workflows/android-release.yml`. That signing job reads only
-these Actions secrets:
+then a separate job reads the signing secrets directly. Manual runs use
+`.github/workflows/android-release.yml`. Both jobs read only these Actions
+secrets:
 
 - `MOMENTWISE_KEYSTORE_BASE64` — standard Base64 of the existing keystore file, one line, no `data:` prefix. Linux: `base64 -w 0 release.jks`. macOS: `base64 -b 0 -i release.jks`.
 - `MOMENTWISE_KEYSTORE_PASSWORD`
