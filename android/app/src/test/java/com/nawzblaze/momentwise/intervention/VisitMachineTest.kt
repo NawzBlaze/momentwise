@@ -66,11 +66,27 @@ class VisitMachineTest {
     }
 
     @Test
-    fun continueLeaveAndReopenShowsOnce() {
+    fun continueThenHomeWithinGraceIsTheSameVisit() {
         val visit = Script()
         visit.open(instagram)
         visit.chooseContinue()
         visit.events(ForegroundEvent(instagram, visit.next()))
+        visit.events(ForegroundEvent(launcher, visit.next()))
+        assertEquals(GuardSnapshot.Phase.CONTINUING, visit.snapshot.phase)
+        assertEquals(instagram, visit.snapshot.activePackage)
+        assertTrue(visit.snapshot.backgroundedAtElapsed != null)
+        visit.open(instagram)
+        assertEquals(1, visit.shows)
+        assertEquals(1L, visit.snapshot.visitId)
+        assertEquals(null, visit.snapshot.backgroundedAtElapsed)
+    }
+
+    @Test
+    fun explicitLeaveThenReopenShowsOnce() {
+        val visit = Script()
+        visit.open(instagram)
+        visit.chooseContinue()
+        visit.chooseLeave()
         visit.events(ForegroundEvent(launcher, visit.next()))
         assertEquals(GuardSnapshot.Phase.NONE, visit.snapshot.phase)
         visit.open(instagram)
@@ -85,7 +101,7 @@ class VisitMachineTest {
     }
 
     @Test
-    fun noChoiceThenHomeThenReopenShowsOnce() {
+    fun noChoiceThenHomeWithinGraceDoesNotShowAgain() {
         val visit = Script()
         visit.open(instagram)
         visit.closeWithoutChoice()
@@ -93,7 +109,11 @@ class VisitMachineTest {
         assertEquals(1, visit.shows)
         assertTrue(visit.snapshot.clearedWithoutChoice)
         visit.events(ForegroundEvent(launcher, visit.next()))
-        assertEquals(GuardSnapshot.Phase.NONE, visit.snapshot.phase)
+        assertEquals(GuardSnapshot.Phase.AWAITING_OPENING, visit.snapshot.phase)
+        visit.open(instagram)
+        assertEquals(1, visit.shows)
+        assertTrue(visit.snapshot.clearedWithoutChoice)
+        visit.advance(VisitLifecycle.GRACE_MILLIS)
         visit.open(instagram)
         assertEquals(2, visit.shows)
         assertFalse(visit.snapshot.clearedWithoutChoice)
@@ -105,7 +125,7 @@ class VisitMachineTest {
         visit.open(instagram)
         val first = visit.snapshot.visitId
         visit.chooseContinue()
-        visit.events(ForegroundEvent(instagram, visit.next()))
+        visit.chooseLeave()
         visit.events(ForegroundEvent(launcher, visit.next()))
         visit.open(instagram)
         val stamped = SessionClock.onClearedWithoutChoice(visit.snapshot, nowMillis = 9_000, visitId = first)
@@ -280,7 +300,19 @@ class VisitMachineTest {
 
         fun now(): Long = clock
 
+        fun advance(millis: Long) {
+            clock += millis
+        }
+
         fun open(packageName: String) = events(ForegroundEvent(packageName, next()))
+
+        fun chooseLeave() {
+            snapshot = SessionClock.onQuit(snapshot)
+            latch = VisitMachine.onChoiceDismissed(latch, instagram, clock)
+            clock += 50
+            pauseVisible = false
+            detector = UsageEventReducer.clearPendingStop(detector)
+        }
 
         fun events(vararg fresh: ForegroundEvent) {
             val reduced = UsageEventReducer.reduce(
@@ -303,6 +335,7 @@ class VisitMachineTest {
                 selfPackage = "com.nawzblaze.momentwise",
                 today = "2026-10-20",
                 signaledHasRule = reduced.packageName == instagram,
+                elapsedRealtime = clock,
             )
             snapshot = step.snapshot
             latch = step.latch

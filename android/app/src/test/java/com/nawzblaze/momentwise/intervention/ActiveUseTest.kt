@@ -73,6 +73,16 @@ class ActiveUseTest {
     }
 
     @Test
+    fun aFourSecondConfirmedGapIsCreditedAndTwentySecondsIsNot() {
+        val started = AppUse(budgetMillis = 60_000, phase = AppUse.Phase.ACCRUING, anchorElapsed = 1_000)
+        val (credited, _) = ActiveUse.sample(started, elapsedRealtime = 5_000, eligible = true)
+        assertEquals(4_000L, credited.accumulatedMillis)
+        val (skipped, show) = ActiveUse.sample(started, elapsedRealtime = 21_000, eligible = true)
+        assertFalse(show)
+        assertEquals(0L, skipped.accumulatedMillis)
+    }
+
+    @Test
     fun bootKeepsCompletedUseAndDropsTheOpenSegment() {
         val active = GuardSnapshot(
             activePackage = instagram,

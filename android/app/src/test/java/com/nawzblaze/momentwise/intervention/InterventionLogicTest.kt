@@ -719,6 +719,7 @@ class GuardSnapshotJsonTest {
             clearedWithoutChoice = true,
             reminderHoldUntilMillis = 1_700_000_060_000,
             visitId = 4,
+            backgroundedAtElapsed = 80_000,
         )
         assertEquals(original, GuardSnapshotJson.decode(GuardSnapshotJson.encode(original)))
     }

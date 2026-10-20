@@ -60,7 +60,7 @@ digest="$(printf '%s\n' "$verify" | awk -F': ' '/Signer #1 certificate SHA-256 d
 cat > signed-artifact/signing-verification.txt <<EOF
 package=com.nawzblaze.momentwise
 versionName=1.0.0
-versionCode=11
+versionCode=12
 apksigner=verified
 certificate_sha256=$digest
 $(cat signed-artifact/momentwise-1.0.0-signed.apk.sha256)

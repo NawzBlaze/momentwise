@@ -100,22 +100,40 @@
           <p id="download" class="status-line">A signed download is not available yet.</p>
         </div>
         <figure class="mark-panel">
-          <div class="pause-card">
-            <p class="pause-wordmark"><img src="./assets/logo-mark.png" alt="" width="28" height="28">Momentwise</p>
-            <h2>Before you scroll</h2>
-            <p class="support">Take a second. What do you want from this visit?</p>
-            <div class="pause-choice primary">
-              <strong>Leave Instagram</strong>
-              <span>Step away for now.</span>
+          <div class="pause-pair">
+            <div class="pause-card">
+              <p class="pause-kicker">A new visit</p>
+              <p class="pause-wordmark"><img src="./assets/logo-mark.png" alt="" width="28" height="28">Momentwise</p>
+              <h2>Before you scroll</h2>
+              <p class="support">Take a second. What do you want from this visit?</p>
+              <div class="pause-choice primary">
+                <strong>Leave</strong>
+                <span>Step away for now.</span>
+              </div>
+              <div class="pause-choice secondary">
+                <strong>Continue intentionally</strong>
+                <span>Reminder after 5 minutes of use.</span>
+              </div>
+              <p class="pause-tertiary">Dismiss for today</p>
+              <p class="tertiary-help">No more prompts for this app today.</p>
             </div>
-            <div class="pause-choice secondary">
-              <strong>Continue intentionally</strong>
-              <span>Reminder after 5 minutes of use.</span>
+            <div class="pause-card pause-card-reminder">
+              <p class="pause-kicker">Check-in</p>
+              <p class="pause-wordmark"><img src="./assets/logo-mark.png" alt="" width="28" height="28">Momentwise</p>
+              <h2>Still here</h2>
+              <p class="support">You're still here?</p>
+              <div class="pause-choice primary">
+                <strong>Okay, I'm quitting</strong>
+                <span>Step away for now.</span>
+              </div>
+              <div class="pause-choice secondary">
+                <strong>Wait</strong>
+                <span>Check again after 5 minutes of use.</span>
+              </div>
+              <p class="pause-tertiary">Dismiss for today</p>
             </div>
-            <p class="pause-tertiary">Dismiss for today</p>
-            <p class="tertiary-help">No more prompts for Instagram today.</p>
           </div>
-          <figcaption>The pause, drawn from the product copy. Not a photograph of a phone.</figcaption>
+          <figcaption>Opening and reminder, drawn from the product copy. Not a photograph of a phone.</figcaption>
         </figure>
       </div>
     </section>
@@ -153,12 +171,12 @@
           <li>
             <span class="step-index">2</span>
             <h3>Pause when you open one</h3>
-            <p>The pause asks what you want from this visit. Leave goes home. Staying is a choice. Dismiss for today skips that app until tomorrow. Closing the pause without choosing is not any of those.</p>
+            <p>The pause asks what you want from this visit. Leave goes home and ends it, so the next open asks again. A trip away under a minute, without Leave, is the same visit. Dismiss for today skips that app until tomorrow. Closing the pause without choosing is not any of those.</p>
           </li>
           <li>
             <span class="step-index">3</span>
             <h3>Reminders, if you want them</h3>
-            <p>A reminder counts time in that app after you choose to stay. Time away does not count. Never still shows the opening and does not schedule a reminder.</p>
+            <p>A reminder counts time in that app after you choose to stay. Home, another app, a dark screen, and the pause itself do not count. On a phone it can arrive about 15 seconds after the interval, not on the exact second. Never still shows the opening and does not schedule a reminder.</p>
           </li>
           <li>
             <span class="step-index">4</span>
@@ -207,6 +225,10 @@
           <details>
             <summary>Does Momentwise block the other app?</summary>
             <p>No. Leave returns to the home screen. It does not force-stop the other app. If display over other apps is off, you get a notification instead, and the other app is not covered.</p>
+          </details>
+          <details>
+            <summary>If I leave and come straight back, do I see the pause again?</summary>
+            <p>Not if you were away for less than a minute and you did not tap Leave. That is the same visit, and the reminder keeps the time you already spent. Leave ends the visit. Coming back after a minute, or after Leave, asks again unless you dismissed that app for today.</p>
           </details>
           <details>
             <summary>Can I turn reminders off?</summary>

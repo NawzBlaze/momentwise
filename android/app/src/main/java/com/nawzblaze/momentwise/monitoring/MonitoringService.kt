@@ -249,7 +249,9 @@ class MonitoringService : Service() {
         }
         scope.launch {
             sessions().session.collect { snapshot ->
-                sessionCache = snapshot
+                // Storage omits the accrual anchor. A blind replace made every
+                // poll look like the first sample, so a reminder never arrived.
+                sessionCache = SessionClock.adoptStored(snapshot, sessionCache)
                 sessionLoaded = true
             }
         }
@@ -349,10 +351,10 @@ class MonitoringService : Service() {
             ignoreSelf = false,
             pauseClassName = PauseActivity::class.java.name,
         ).state
-        val snapshot = sessions().current()
-        sessionCache = snapshot
-        val reconciled = SessionClock.reconcileAfterRestart(snapshot, detector.lastPackage)
-        persistIfUnchanged(snapshot, reconciled)
+        val stored = sessions().current()
+        sessionCache = SessionClock.adoptStored(stored, sessionCache)
+        val reconciled = SessionClock.reconcileAfterRestart(sessionCache, detector.lastPackage)
+        persistIfUnchanged(sessionCache, reconciled)
         noteDebug(
             "seed events=${observed.size} last=${detector.lastPackage} phase=${sessionCache.phase} screen=${screenInteractive()}",
         )
@@ -380,8 +382,14 @@ class MonitoringService : Service() {
         val now = System.currentTimeMillis()
         noteBeat(now)
         val today = LocalDate.now().toString()
-        // The in-memory copy can lag a test reset. The store is the visit decision.
-        sessionCache = sessions().current()
+        // Disk is the visit decision. The in-memory copy keeps the accrual anchor,
+        // which storage deliberately does not. Reloading disk alone made every
+        // sample look like the first one, so reminders never accumulated.
+        val elapsed = android.os.SystemClock.elapsedRealtime()
+        val adopted = SessionClock.adoptStored(sessions().current(), sessionCache)
+        val expired = SessionClock.expireGrace(adopted, elapsed)
+        if (expired != adopted) persistIfUnchanged(adopted, expired)
+        sessionCache = expired
         if (VisitMachine.shouldDropLatch(sessionCache, pauseVisible)) {
             machineLatch = VisitMachine.Latch()
         }
@@ -448,14 +456,25 @@ class MonitoringService : Service() {
             selfPackage = packageName,
             today = today,
             signaledHasRule = hasRule,
+            elapsedRealtime = elapsed,
         )
         // A show latch is adopted only when the card is actually shown. Adopting
         // it here made a skipped show look like overlay handback on the next poll.
         if (step.ui != VisitMachine.Ui.SHOW_OPENING) {
             machineLatch = step.latch
         }
-        val persisted = persistIfUnchanged(snapshot, step.snapshot)
-        if (persisted) snapshot = step.snapshot
+        var decided = step.snapshot
+        if (!pauseVisible &&
+            detector.lastPackage != null &&
+            detector.lastPackage == decided.activePackage &&
+            decided.backgroundedAtElapsed != null
+        ) {
+            // A return can be a repeated resume, which is not a new OPENED.
+            // Clear grace anyway, or the minute can expire while they are back.
+            decided = decided.copy(backgroundedAtElapsed = null)
+        }
+        val persisted = persistIfUnchanged(snapshot, decided)
+        if (persisted) snapshot = decided
         if (signal != DetectorSignal.NONE) {
             Log.i(TAG, "visit ui=${step.ui} signal=$signal pkg=$signaledPackage pause=$pauseVisible")
             noteDebug(
@@ -463,7 +482,7 @@ class MonitoringService : Service() {
                     "hasRule=$hasRule persisted=$persisted visit=${snapshot.visitId}",
             )
         }
-        if (!persisted && step.snapshot != snapshot) {
+        if (!persisted && decided != snapshot) {
             // A choice landed during this tick. Decide again from the stored session.
             sessionCache = sessions().current()
             presentWaitingOpening()
@@ -509,7 +528,7 @@ class MonitoringService : Service() {
         if (pauseVisible || stopRequested) return
         val foreground = detector.lastPackage ?: return
         if (foreground == openingHeldPackage) return
-        val snapshot = sessions().current()
+        val snapshot = SessionClock.adoptStored(sessions().current(), sessionCache)
         sessionCache = snapshot
         if (showUnshownOpening(foreground)) return
         showMissedOpening(foreground, snapshot)
@@ -536,7 +555,13 @@ class MonitoringService : Service() {
             monitoringAllowed = true,
             applyRuleInterval = rule != null,
         )
-        if (!persistIfUnchanged(snapshot, next)) return
+        // Keep the anchor even when this sample is not worth a disk write.
+        // The next poll reloads storage; adoptStored puts the anchor back.
+        sessionCache = next
+        if (SessionClock.shouldFlush(snapshot, next) && !persistIfUnchanged(snapshot, next)) {
+            sessionCache = SessionClock.adoptStored(sessions().current(), next)
+            return
+        }
         if (command is GuardCommand.ShowReminder && rule != null && !pauseVisible) {
             showPause(rule, PauseRequest.Kind.REMINDER)
         }
@@ -551,7 +576,7 @@ class MonitoringService : Service() {
         if (base == next) return true
         var applied = false
         sessions().update { current ->
-            if (current == base) {
+            if (current == base || SessionClock.canReplace(current, base)) {
                 applied = true
                 next
             } else {
@@ -728,7 +753,15 @@ class MonitoringService : Service() {
 
     private suspend fun showMissedOpening(foreground: String?, snapshot: GuardSnapshot): Boolean {
         val rule = foreground?.let { ruleFor(it) }
-        if (!SessionClock.needsOpening(snapshot, foreground, rule != null)) return false
+        if (!SessionClock.needsOpening(
+                snapshot,
+                foreground,
+                rule != null,
+                android.os.SystemClock.elapsedRealtime(),
+            )
+        ) {
+            return false
+        }
         val (next, command) = SessionClock.onOpened(snapshot, foreground!!, true, LocalDate.now().toString())
         if (!persistIfUnchanged(snapshot, next)) return false
         if (command is GuardCommand.ShowOpening && rule != null) {
@@ -750,7 +783,9 @@ class MonitoringService : Service() {
         if (ticksSinceBeat < BEAT_EVERY_TICKS) return
         ticksSinceBeat = 0
         MonitorPresence.beat(this, nowMillis)
-        noteDebug("beat last=${detector.lastPackage} phase=${sessionCache.phase}")
+        val active = sessionCache.activePackage
+        val accrued = active?.let { sessionCache.useByPackage[it]?.accumulatedMillis } ?: 0L
+        noteDebug("beat last=${detector.lastPackage} phase=${sessionCache.phase} useMs=$accrued")
     }
 
     private suspend fun stillAllowed(): Boolean {

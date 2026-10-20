@@ -158,6 +158,42 @@ class CrossAppPauseTest {
     }
 
     /**
+     * Continue, Home, then a quick return is the same visit. Explicit Leave is
+     * the other test. This emulator is not a phone, and the fixture is not Instagram.
+     */
+    @Test
+    fun continueThenHomeWithinGraceDoesNotShowAgain() {
+        val target = prepare(overlay = true)
+        openFixture(target)
+        assertTrue(
+            "Opening was not visible. ${diagnostics()}",
+            waitFor { overlayWindowVisible() },
+        )
+        val shows = statusFile().lineSequence().count { it.contains("intervention=overlay shown") }
+        shell(
+            "am broadcast -p $APP -a com.nawzblaze.momentwise.DEBUG_ENABLE_RULE " +
+                "--es target_package $target --ez inject_continue true",
+        )
+        assertTrue(
+            "Continue did not dismiss the overlay. ${diagnostics()}",
+            waitFor { !overlayWindowVisible() },
+        )
+        shell("input keyevent KEYCODE_HOME")
+        Thread.sleep(3_000)
+        openFixture(target)
+        Thread.sleep(4_000)
+        assertFalse(
+            "A return within the grace minute showed another opening. ${diagnostics()}",
+            overlayWindowVisible(),
+        )
+        assertEquals(
+            "A return within the grace minute counted as a new opening. ${diagnostics()}",
+            shows,
+            statusFile().lineSequence().count { it.contains("intervention=overlay shown") },
+        )
+    }
+
+    /**
      * Times queryEvents in the app process on this emulator. Not a phone, and
      * not a battery percentage.
      */

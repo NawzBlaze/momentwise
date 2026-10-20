@@ -188,3 +188,13 @@ jobs:
           name: momentwise-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+
+  site:
+    name: Static site checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Copy, links, and structure
+        run: python3 .github/scripts/check-site.py

@@ -22,6 +22,7 @@ internal object GuardSnapshotJson {
             put("clearedWithoutChoice", snapshot.clearedWithoutChoice)
             put("visitId", snapshot.visitId)
             putNullable("reminderHoldUntilMillis", snapshot.reminderHoldUntilMillis)
+            putNullable("backgroundedAtElapsed", snapshot.backgroundedAtElapsed)
             put("useByPackage", encodeUse(snapshot.useByPackage))
         }.toString()
     }
@@ -69,6 +70,7 @@ internal object GuardSnapshotJson {
                 visitId = json.optLong("visitId", 0L),
                 reminderHoldUntilMillis = json.optNullableLong("reminderHoldUntilMillis"),
                 useByPackage = decodeUse(json.optJSONObject("useByPackage")),
+                backgroundedAtElapsed = json.optNullableLong("backgroundedAtElapsed"),
             )
         } catch (_: Exception) {
             GuardSnapshot()

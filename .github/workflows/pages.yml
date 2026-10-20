@@ -30,6 +30,9 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
+      - name: Check the page before publishing
+        run: python3 .github/scripts/check-site.py
+
       - name: Stage site files
         # The native project is not part of the public site. prototype/ stays in
         # git as a design reference and is not published. After this deploys,

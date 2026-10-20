@@ -144,8 +144,8 @@ a:hover { text-decoration-thickness: 2px; }
 .hero { padding: 80px 0 56px; }
 .hero-grid {
   display: grid;
-  grid-template-columns: 1.3fr 0.7fr;
-  gap: 48px;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 40px;
   align-items: center;
 }
 .eyebrow {
@@ -191,15 +191,15 @@ h3 { font-size: 1.25rem; margin: 0 0 8px; }
 }
 .mark-panel {
   margin: 0;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  box-shadow: var(--shadow);
-  border-radius: 28px;
-  padding: 36px 28px 24px;
-  text-align: center;
+  min-width: 0;
 }
-.mark-panel img { width: min(220px, 70%); }
-.mark-panel figcaption { color: var(--text-faint); font-size: 0.92rem; margin-top: 18px; }
+.mark-panel figcaption { color: var(--text-faint); font-size: 0.92rem; margin-top: 14px; text-align: center; }
+.pause-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  min-width: 0;
+}
 
 .section { padding: 64px 0; }
 .section-alt { background: var(--bg-alt); }
@@ -276,7 +276,16 @@ details p { margin-top: 8px; }
   font-size: 0.95rem;
   font-weight: 560;
 }
-.pause-wordmark img { border-radius: 6px; }
+.pause-wordmark img { width: 28px; height: 28px; border-radius: 6px; }
+.pause-kicker {
+  margin: 0 0 10px;
+  color: var(--gold);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 650;
+}
+.pause-card-reminder { background: var(--bg-alt); }
 .pause-tertiary { margin: 12px 0 0; color: var(--text-soft); font-size: 0.92rem; }
 .pause-card h2, .pause-card h3 {
   margin: 0;
@@ -316,8 +325,8 @@ details p { margin-top: 8px; }
 .footer-links a:hover { color: var(--text); }
 
 @media (max-width: 800px) {
-  .hero { padding-top: 40px; }
-  .hero-grid, .steps, .feature-list, .benefits, .footer-inner { grid-template-columns: 1fr; }
+  .hero { padding-top: 36px; }
+  .hero-grid, .steps, .feature-list, .benefits, .footer-inner, .pause-pair { grid-template-columns: 1fr; }
   .footer-note { grid-column: auto; }
   .nav-toggle { display: inline-flex; margin-left: auto; }
   .site-nav {
@@ -340,6 +349,15 @@ details p { margin-top: 8px; }
     padding-bottom: 12px;
   }
   .mark-panel { order: -1; }
+}
+
+@media (max-width: 390px) {
+  .container, .narrow { width: min(var(--max), calc(100% - 28px)); }
+  .hero { padding-top: 28px; }
+  h1 { font-size: 2.15rem; }
+  .pause-card { padding: 22px 16px 18px; }
+  .theme-option { padding: 6px 8px; font-size: 0.82rem; }
+  .header-source { font-size: 0.85rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {

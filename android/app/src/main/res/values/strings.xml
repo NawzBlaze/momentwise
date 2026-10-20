@@ -33,7 +33,7 @@
     <string name="home_summary_desc_stopped">Monitoring is not running. The ongoing notification is gone, so opening a selected app will not show a pause until it starts again.</string>
     <string name="home_monitor_stopped">The ongoing notification is not running. Saved rules are still here. Start monitoring again from this screen. A phone battery manager can stop it after you leave Momentwise; this app cannot override that, and it will not keep relaunching itself.</string>
     <string name="home_monitor_resume">Start monitoring again</string>
-    <string name="home_limits">Leave goes home. It does not force-stop the other app. Reminders count time in the app, not time away.</string>
+    <string name="home_limits">Leave goes home. It does not force-stop the other app. A trip away under a minute, without Leave, keeps the same visit. Reminders count time in the app, not time away, and can be about 15 seconds late.</string>
     <string name="home_boot_dropped">A check-in was in progress before the phone restarted. That session was dropped. The next time a guarded app opens, the pause starts again.</string>
     <string name="home_boot_dropped_dismiss">Dismiss</string>
     <string name="home_manage_apps">Manage Apps</string>
@@ -196,4 +196,6 @@
     <string name="pause_from_notification">Opened from a notification. The other app was not covered until you opened this.</string>
     <string name="pause_scrim_description">Momentwise pause over %1$s. The app behind is not available until you choose.</string>
     <string name="pause_quit_honesty">Leave returns you to the home screen. It does not force-stop the other app, stop its audio, or clear its back stack.</string>
+    <string name="pause_opening_eyebrow">A new visit</string>
+    <string name="pause_reminder_eyebrow">Check-in</string>
 </resources>

@@ -48,6 +48,12 @@ data class GuardSnapshot(
     val reminderHoldUntilMillis: Long? = null,
     /** Per-app foreground-use. Independent of which visit is currently open. */
     val useByPackage: Map<String, AppUse> = emptyMap(),
+    /**
+     * Monotonic time when this visit left the foreground without explicit Leave.
+     * Null while the visit is in front, or when there is no grace to honor.
+     * Not a wall-clock deadline.
+     */
+    val backgroundedAtElapsed: Long? = null,
 ) {
     enum class Phase { NONE, AWAITING_OPENING, CONTINUING }
 
@@ -98,13 +104,13 @@ object SessionClock {
         // Same visit. A no-choice close is not a leave, so this resume is not
         // a new opening. A later leave clears the flag, and the next resume can show.
         if (ready.clearedWithoutChoice && ready.activePackage == packageName) {
-            return ready to GuardCommand.None
+            return ready.copy(backgroundedAtElapsed = null) to GuardCommand.None
         }
         if (ready.activePackage == packageName &&
             ready.phase != GuardSnapshot.Phase.NONE &&
             ready.openingHandledForPackage == packageName
         ) {
-            return ready to GuardCommand.None
+            return ready.copy(backgroundedAtElapsed = null) to GuardCommand.None
         }
         val next = endSession(ready).copy(
             activePackage = packageName,
@@ -121,14 +127,26 @@ object SessionClock {
      * or the usage event arrived late. It is not a second opening, and it does
      * not put back a pause the user just closed without choosing.
      */
-    fun needsOpening(snapshot: GuardSnapshot, foregroundPackage: String?, ruleEnabled: Boolean): Boolean {
+    fun needsOpening(
+        snapshot: GuardSnapshot,
+        foregroundPackage: String?,
+        ruleEnabled: Boolean,
+        elapsedRealtime: Long = Long.MAX_VALUE,
+    ): Boolean {
         if (foregroundPackage == null || !ruleEnabled) return false
         if (snapshot.quitSuppressedPackage == foregroundPackage) return false
         // Stale days are removed before this is called. A remaining entry is today.
         if (snapshot.dismissals[foregroundPackage] != null) return false
-        if (snapshot.clearedWithoutChoice && snapshot.activePackage == foregroundPackage) return false
-        if (snapshot.activePackage == foregroundPackage && snapshot.phase != GuardSnapshot.Phase.NONE) {
+        if (VisitLifecycle.withinGrace(snapshot.backgroundedAtElapsed, elapsedRealtime) &&
+            snapshot.activePackage == foregroundPackage
+        ) {
             return false
+        }
+        if (!VisitLifecycle.graceExpired(snapshot.backgroundedAtElapsed, elapsedRealtime)) {
+            if (snapshot.clearedWithoutChoice && snapshot.activePackage == foregroundPackage) return false
+            if (snapshot.activePackage == foregroundPackage && snapshot.phase != GuardSnapshot.Phase.NONE) {
+                return false
+            }
         }
         return true
     }
@@ -137,8 +155,115 @@ object SessionClock {
         val closed = closeUse(snapshot) { use ->
             if (use.phase == AppUse.Phase.DUE) use.copy(reminderShown = false) else use
         }
-        return endSession(closed).copy(quitSuppressedPackage = null) to GuardCommand.None
+        return endSession(closed).copy(
+            quitSuppressedPackage = null,
+            backgroundedAtElapsed = null,
+        ) to GuardCommand.None
     }
+
+    /**
+     * Home, an app switch, or a brief leave. Stops accrual by clearing the
+     * anchor, and keeps the visit for [VisitLifecycle.GRACE_MILLIS]. Explicit
+     * Leave does not come through here: [onQuit] already ended that visit.
+     */
+    fun onTemporarilyAway(snapshot: GuardSnapshot, elapsedRealtime: Long): GuardSnapshot {
+        if (snapshot.phase == GuardSnapshot.Phase.NONE || snapshot.activePackage == null) {
+            return endSession(snapshot).copy(quitSuppressedPackage = null, backgroundedAtElapsed = null)
+        }
+        if (snapshot.quitSuppressedPackage != null) {
+            return endSession(snapshot).copy(quitSuppressedPackage = null, backgroundedAtElapsed = null)
+        }
+        return closeUse(snapshot).copy(backgroundedAtElapsed = elapsedRealtime)
+    }
+
+    /** A return at or after the grace boundary is a new visit. Clock going backwards is not a resumed visit. */
+    fun expireGrace(snapshot: GuardSnapshot, elapsedRealtime: Long): GuardSnapshot {
+        if (!VisitLifecycle.graceExpired(snapshot.backgroundedAtElapsed, elapsedRealtime)) return snapshot
+        return endSession(snapshot).copy(quitSuppressedPackage = null, backgroundedAtElapsed = null)
+    }
+
+    /**
+     * Disk JSON does not store [AppUse.anchorElapsed], on purpose: a reboot must
+     * not invent the gap. Reloading that JSON on every poll wiped the anchor and
+     * the timer never advanced. Keep the in-memory anchor when the visit is the
+     * same. A different visit, choice, or package takes the stored snapshot.
+     */
+    fun adoptStored(stored: GuardSnapshot, memory: GuardSnapshot): GuardSnapshot {
+        if (stored.visitId != memory.visitId ||
+            stored.phase != memory.phase ||
+            stored.activePackage != memory.activePackage ||
+            stored.clearedWithoutChoice != memory.clearedWithoutChoice ||
+            stored.quitSuppressedPackage != memory.quitSuppressedPackage
+        ) {
+            return stored
+        }
+        val use = stored.useByPackage.mapValues { (pkg, disk) ->
+            val live = memory.useByPackage[pkg] ?: return@mapValues disk
+            if (live.phase != disk.phase || live.budgetMillis != disk.budgetMillis) disk
+            else disk.copy(
+                accumulatedMillis = maxOf(disk.accumulatedMillis, live.accumulatedMillis),
+                anchorElapsed = live.anchorElapsed,
+                reminderShown = disk.reminderShown || live.reminderShown,
+            )
+        }
+        return stored.copy(useByPackage = use, backgroundedAtElapsed = memory.backgroundedAtElapsed)
+    }
+
+    /**
+     * A choice that landed in storage must not be overwritten by a poll that
+     * started earlier. Accrual that is only ahead in memory is not a choice.
+     */
+    fun canReplace(stored: GuardSnapshot, base: GuardSnapshot): Boolean {
+        if (stored.visitId != base.visitId ||
+            stored.phase != base.phase ||
+            stored.activePackage != base.activePackage ||
+            stored.clearedWithoutChoice != base.clearedWithoutChoice ||
+            stored.quitSuppressedPackage != base.quitSuppressedPackage ||
+            stored.dismissals != base.dismissals ||
+            stored.openingHandledForPackage != base.openingHandledForPackage
+        ) {
+            return false
+        }
+        val pkg = base.activePackage ?: return true
+        val disk = stored.useByPackage[pkg]
+        val live = base.useByPackage[pkg]
+        if (disk == null || live == null) return disk == live
+        if (disk.phase != live.phase || disk.budgetMillis != live.budgetMillis) return false
+        return disk.accumulatedMillis <= live.accumulatedMillis
+    }
+
+    /** Phase, grace, and a reminder are written immediately. Plain accrual can wait five seconds. */
+    fun shouldFlush(before: GuardSnapshot, after: GuardSnapshot): Boolean {
+        if (before.phase != after.phase ||
+            before.visitId != after.visitId ||
+            before.activePackage != after.activePackage ||
+            before.backgroundedAtElapsed != after.backgroundedAtElapsed ||
+            before.clearedWithoutChoice != after.clearedWithoutChoice ||
+            before.quitSuppressedPackage != after.quitSuppressedPackage ||
+            before.dismissals != after.dismissals ||
+            before.openingHandledForPackage != after.openingHandledForPackage
+        ) {
+            return true
+        }
+        val packages = before.useByPackage.keys + after.useByPackage.keys
+        for (pkg in packages) {
+            val earlier = before.useByPackage[pkg]
+            val later = after.useByPackage[pkg]
+            if (earlier == null || later == null) return true
+            if (earlier.phase != later.phase ||
+                earlier.budgetMillis != later.budgetMillis ||
+                earlier.reminderShown != later.reminderShown
+            ) {
+                return true
+            }
+            if (kotlin.math.abs(later.accumulatedMillis - earlier.accumulatedMillis) >= FLUSH_USE_EVERY_MILLIS) {
+                return true
+            }
+        }
+        return false
+    }
+
+    const val FLUSH_USE_EVERY_MILLIS = 5_000L
 
     /**
      * Samples foreground-use. [nowMillis] is not a reminder deadline.
@@ -227,6 +352,7 @@ object SessionClock {
             quitSuppressedPackage = null,
             clearedWithoutChoice = false,
             reminderHoldUntilMillis = null,
+            backgroundedAtElapsed = null,
             useByPackage = use,
         )
     }
@@ -244,6 +370,7 @@ object SessionClock {
             reminderPresentedFor = null,
             clearedWithoutChoice = false,
             reminderHoldUntilMillis = null,
+            backgroundedAtElapsed = null,
             useByPackage = use,
         )
     }
@@ -265,6 +392,7 @@ object SessionClock {
             quitSuppressedPackage = null,
             clearedWithoutChoice = false,
             reminderHoldUntilMillis = null,
+            backgroundedAtElapsed = null,
         )
     }
 
@@ -375,6 +503,7 @@ object SessionClock {
         openingHandledForPackage = null,
         clearedWithoutChoice = false,
         reminderHoldUntilMillis = null,
+        backgroundedAtElapsed = null,
     )
 }
 
