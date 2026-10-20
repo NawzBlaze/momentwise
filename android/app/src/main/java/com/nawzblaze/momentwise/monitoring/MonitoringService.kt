@@ -9,6 +9,7 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
@@ -17,6 +18,7 @@ import com.nawzblaze.momentwise.MomentwiseApplication
 import com.nawzblaze.momentwise.R
 import com.nawzblaze.momentwise.data.model.AppRule
 import com.nawzblaze.momentwise.intervention.DetectorSignal
+import com.nawzblaze.momentwise.intervention.EventWindow
 import com.nawzblaze.momentwise.intervention.DetectorState
 import com.nawzblaze.momentwise.intervention.GuardCommand
 import com.nawzblaze.momentwise.intervention.PauseActivity
@@ -30,6 +32,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -45,12 +48,25 @@ class MonitoringService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var pollJob: Job? = null
     private var detector = DetectorState()
-    private var lastQueryMillis = 0L
     @Volatile
     private var pauseVisible = false
 
     @Volatile
     private var stopRequested = false
+
+    @Volatile
+    private var rulesLoaded = false
+
+    @Volatile
+    private var pausedByUser = false
+
+    @Volatile
+    private var enabledRules: List<AppRule> = emptyList()
+
+    private var collectorsStarted = false
+    private var launcherPackage: String? = null
+    private var launcherReadAtMillis = 0L
+    private var ticksSinceBeat = 0
 
     /** One recovery per process. An empty usage window does not count as a decision. */
     private var recoveredUnanswered = false
@@ -61,11 +77,17 @@ class MonitoringService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // startForeground before SharedPreferences. The first prefs read can
+        // hit disk, and API 34 kills the process if this call is late.
         if (!startAsForeground()) return START_NOT_STICKY
+        MonitorPresence.markStartAttempt(this, System.currentTimeMillis())
         PausePresenter.onDismissed = { pauseVisible = false }
         PausePresenter.onShown = { pauseVisible = true }
+        startCollectors()
         synchronized(gate) {
-            if (pollJob?.isActive == true && !stopRequested) return START_STICKY
+            if (!PollSupervisor.shouldLaunch(pollJob?.isActive == true, stopRequested)) {
+                return START_STICKY
+            }
             stopRequested = false
             startGeneration += 1
             pollJob?.cancel()
@@ -74,11 +96,36 @@ class MonitoringService : Service() {
         return START_STICKY
     }
 
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        // Swiping Momentwise away is not a request to stop guarding.
+        // Re-post the ongoing notification. Do not start a restart loop.
+        if (!stopRequested) {
+            startAsForeground()
+        }
+        super.onTaskRemoved(rootIntent)
+    }
+
     override fun onDestroy() {
         pollJob?.cancel()
         scope.cancel()
         PausePresenter.dismiss(this)
         super.onDestroy()
+    }
+
+    private fun startCollectors() {
+        if (collectorsStarted) return
+        collectorsStarted = true
+        scope.launch {
+            app().container.appRuleRepository.rules.collect { rules ->
+                enabledRules = rules.filter { it.enabled }
+                rulesLoaded = true
+            }
+        }
+        scope.launch {
+            app().container.appSettingsRepository.monitoringPaused.collect { paused ->
+                pausedByUser = paused
+            }
+        }
     }
 
     private suspend fun runPoll() {
@@ -90,30 +137,45 @@ class MonitoringService : Service() {
             stopQuietly()
             return
         }
-        seedWithoutFiring()
+        awaitRules()
+        seedAndRecover()
         while (coroutineContext[Job]?.isActive != false && !stopRequested) {
             tick()
             if (stopRequested) break
-            delay(POLL_INTERVAL_MILLIS)
+            delay(UsagePoll.INTERVAL_MILLIS)
         }
     }
 
-    private suspend fun seedWithoutFiring() {
+    private suspend fun awaitRules() {
+        val deadline = System.currentTimeMillis() + 3_000L
+        while (!rulesLoaded && System.currentTimeMillis() < deadline && !stopRequested) {
+            delay(50)
+        }
+    }
+
+    /**
+     * Establish the foreground from a short recent window, without treating
+     * Momentwise itself as an opening. If a guarded app is already in front
+     * and no opening was shown for it, show that opening. A one-second poll
+     * cannot see a resume that happened while this process was dead.
+     */
+    private suspend fun seedAndRecover() {
         val now = System.currentTimeMillis()
-        val observed = readEvents(now - SEED_WINDOW_MILLIS, now)
+        val observed = readEvents(EventWindow.seedStart(now), now)
         detector = UsageEventReducer.reduce(
             state = DetectorState(),
             events = observed,
             selfPackage = packageName,
-            ignoredPackages = ignoredPackages(),
+            ignoredPackages = ignoredPackages(now),
             ignoreSelf = false,
             pauseClassName = PauseActivity::class.java.name,
         ).state
-        lastQueryMillis = now
         val snapshot = sessions().current()
         val reconciled = SessionClock.reconcileAfterRestart(snapshot, detector.lastPackage)
         if (reconciled != snapshot) sessions().save(reconciled)
+        showMissedOpening(detector.lastPackage)
         maybeRecoverUnanswered(detector.lastPackage, now)
+        MonitorPresence.beat(this, now)
     }
 
     private suspend fun tick() {
@@ -122,21 +184,21 @@ class MonitoringService : Service() {
             stopQuietly()
             return
         }
-        val rules = app().container.appRuleRepository.rules.first()
-        val enabled = rules.filter { it.enabled }
+        if (!rulesLoaded) return
+        val enabled = enabledRules
         if (enabled.isEmpty()) {
             stopQuietly()
             return
         }
         val now = System.currentTimeMillis()
+        noteBeat(now)
         val today = LocalDate.now().toString()
-        val events = readEvents((lastQueryMillis - OVERLAP_MILLIS).coerceAtLeast(0), now)
-        lastQueryMillis = now
+        val events = readEvents(EventWindow.queryStart(now), now)
         val reduced = UsageEventReducer.reduce(
             state = detector,
             events = events,
             selfPackage = packageName,
-            ignoredPackages = ignoredPackages(),
+            ignoredPackages = ignoredPackages(now),
             ignoreSelf = pauseVisible,
             pauseClassName = PauseActivity::class.java.name,
         )
@@ -170,6 +232,7 @@ class MonitoringService : Service() {
                 dismissPause()
             }
             DetectorSignal.NONE -> {
+                if (showMissedOpening(detector.lastPackage)) return
                 val rule = enabled.find { it.appId == detector.lastPackage }
                 val (next, command) = SessionClock.onTick(
                     snapshot = snapshot,
@@ -239,6 +302,8 @@ class MonitoringService : Service() {
         }
         val theme = app().container.appSettingsRepository.themeMode.first().name
         pauseVisible = true
+        Log.i(TAG, "showing $kind for ${rule.appId}")
+        noteDebug("showing $kind for ${rule.appId}")
         withContext(Dispatchers.Main) {
             PausePresenter.show(this@MonitoringService, request, theme)
         }
@@ -260,15 +325,42 @@ class MonitoringService : Service() {
         }
     }
 
-    private fun ignoredPackages(): Set<String> {
-        val launcher = app().container.installedApps.defaultLauncherPackage()
-        return setOfNotNull(launcher, "com.android.systemui", "android")
+    /**
+     * @return true when an opening was shown, so the caller must not also
+     * schedule a reminder on this tick.
+     */
+    private suspend fun showMissedOpening(foreground: String?): Boolean {
+        val rule = enabledRules.find { it.appId == foreground }
+        val snapshot = sessions().current()
+        if (!SessionClock.needsOpening(snapshot, foreground, rule != null)) return false
+        val (next, command) = SessionClock.onOpened(snapshot, foreground!!, true, LocalDate.now().toString())
+        sessions().save(next)
+        if (command is GuardCommand.ShowOpening && rule != null) {
+            showPause(rule, PauseRequest.Kind.OPENING)
+        }
+        return command is GuardCommand.ShowOpening
+    }
+
+    private fun ignoredPackages(nowMillis: Long): Set<String> {
+        if (launcherPackage == null || nowMillis - launcherReadAtMillis > LAUNCHER_CACHE_MILLIS) {
+            launcherPackage = app().container.installedApps.defaultLauncherPackage()
+            launcherReadAtMillis = nowMillis
+        }
+        return setOfNotNull(launcherPackage, "com.android.systemui", "android")
+    }
+
+    private fun noteBeat(nowMillis: Long) {
+        ticksSinceBeat += 1
+        if (ticksSinceBeat < BEAT_EVERY_TICKS) return
+        ticksSinceBeat = 0
+        MonitorPresence.beat(this, nowMillis)
     }
 
     private suspend fun stillAllowed(): Boolean {
-        val grants = GrantChecks.read(this)
-        val anyEnabled = app().container.appRuleRepository.rules.first().any { it.enabled }
-        return anyEnabled && grants.canMonitor
+        if (pausedByUser) return false
+        if (!rulesLoaded) return true
+        if (enabledRules.isEmpty()) return false
+        return GrantChecks.read(this).canMonitor
     }
 
     private fun startAsForeground(): Boolean {
@@ -283,8 +375,12 @@ class MonitoringService : Service() {
             } else {
                 startForeground(NotificationChannels.MONITORING_NOTIFICATION_ID, notification)
             }
+            noteDebug("foreground started")
             true
-        } catch (_: Exception) {
+        } catch (error: Exception) {
+            Log.w(TAG, "startForeground failed", error)
+            noteDebug("foreground failed ${error.javaClass.simpleName}: ${error.message}")
+            MonitorPresence.markStartFailed(this, System.currentTimeMillis())
             stopSelf()
             false
         }
@@ -323,8 +419,18 @@ class MonitoringService : Service() {
         withContext(Dispatchers.Main) {
             val stillCurrent = synchronized(gate) { generation == startGeneration }
             if (!stillCurrent) return@withContext
+            MonitorPresence.markStopped(this@MonitoringService)
             ServiceCompat.stopForeground(this@MonitoringService, ServiceCompat.STOP_FOREGROUND_REMOVE)
             stopSelf()
+        }
+    }
+
+    private fun noteDebug(line: String) {
+        if (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE == 0) return
+        try {
+            openFileOutput("debug-status.txt", MODE_APPEND).bufferedWriter().use { it.appendLine(line) }
+        } catch (_: Exception) {
+            // Diagnosis only. A missing note must not stop guarding.
         }
     }
 
@@ -333,17 +439,19 @@ class MonitoringService : Service() {
     private fun sessions() = app().container.guardSessions
 
     companion object {
-        private const val POLL_INTERVAL_MILLIS = 1_000L
-        private const val SEED_WINDOW_MILLIS = 5_000L
-        private const val OVERLAP_MILLIS = 1_000L
+        private const val TAG = "Momentwise"
+        private const val LAUNCHER_CACHE_MILLIS = 30_000L
+        private const val BEAT_EVERY_TICKS = 5
 
         fun start(context: Context) {
             val intent = Intent(context, MonitoringService::class.java)
             try {
                 ContextCompat.startForegroundService(context, intent)
-            } catch (_: Exception) {
+            } catch (error: Exception) {
                 // A background start can be rejected. The next time Momentwise
                 // is in the foreground, or the boot receiver, tries again.
+                Log.w(TAG, "foreground start rejected", error)
+                MonitorPresence.markStartFailed(context, System.currentTimeMillis())
             }
         }
 

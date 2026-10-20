@@ -43,7 +43,10 @@ object SessionClock {
         if (!ruleEnabled) {
             return endSession(cleared) to GuardCommand.None
         }
-        if (cleared.activePackage == packageName && cleared.openingHandledForPackage == packageName) {
+        if (cleared.activePackage == packageName &&
+            cleared.phase != GuardSnapshot.Phase.NONE &&
+            cleared.openingHandledForPackage == packageName
+        ) {
             return cleared to GuardCommand.None
         }
         val next = endSession(cleared).copy(
@@ -52,6 +55,19 @@ object SessionClock {
             openingHandledForPackage = packageName,
         )
         return next to GuardCommand.ShowOpening(packageName)
+    }
+
+    /**
+     * A guarded package is in front, and this session has not already shown
+     * its opening. Used when a resume was missed because the service was down
+     * or the usage event arrived late. It is not a second opening.
+     */
+    fun needsOpening(snapshot: GuardSnapshot, foregroundPackage: String?, ruleEnabled: Boolean): Boolean {
+        if (foregroundPackage == null || !ruleEnabled) return false
+        if (snapshot.activePackage == foregroundPackage && snapshot.phase != GuardSnapshot.Phase.NONE) {
+            return false
+        }
+        return true
     }
 
     fun onLeft(snapshot: GuardSnapshot): Pair<GuardSnapshot, GuardCommand> =

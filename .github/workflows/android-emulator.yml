@@ -10,6 +10,7 @@ concurrency:
 
 permissions:
   contents: read
+  pull-requests: write
 
 jobs:
   instrumented:
@@ -44,4 +45,27 @@ jobs:
           arch: x86_64
           disable-animations: true
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
-          script: cd android && ./gradlew :app:connectedDebugAndroidTest --no-daemon --stacktrace
+          script: bash android/run-instrumented.sh
+
+      - name: Publish failure excerpt
+        if: failure() && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          API_LEVEL: ${{ matrix.api-level }}
+        run: |
+          set +e
+          log="${GITHUB_WORKSPACE}/emulator-test.log"
+          {
+            echo "<!-- momentwise-emulator-log api-${API_LEVEL} -->"
+            echo "API ${API_LEVEL} instrumentation failed."
+            echo
+            echo '```'
+            if [ -f "$log" ]; then
+              grep -E 'FAILED|FAILURE:|What went wrong|e: |error:|Exception|BUILD |not posted|not delivered|not allowed|AssertionError|MomentwiseDebug|foreground start' "$log" | tail -n 80
+            else
+              echo "No emulator log was written."
+            fi
+            echo '```'
+          } > "$RUNNER_TEMP/emu.md"
+          gh pr comment "$PR_NUMBER" --body-file "$RUNNER_TEMP/emu.md"

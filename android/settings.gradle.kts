@@ -22,3 +22,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "momentwise-android"
 include(":app")
+include(":fixture")
