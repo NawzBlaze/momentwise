@@ -117,7 +117,13 @@ object VisitMachine {
                         latch = nextLatch.copy(handbackPackage = null, systemRemovals = 0),
                     )
                 }
-                val (opened, command) = SessionClock.onOpened(cleared, pkg, signaledHasRule, today)
+                val (opened, command) = SessionClock.onOpened(
+                    cleared,
+                    pkg,
+                    signaledHasRule,
+                    today,
+                    elapsedRealtime,
+                )
                 if (command is GuardCommand.ShowOpening && signaledHasRule) {
                     Step(
                         snapshot = opened,

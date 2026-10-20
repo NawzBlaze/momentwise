@@ -590,16 +590,27 @@ class MonitoringService : Service() {
      */
     private suspend fun persistIfUnchanged(base: GuardSnapshot, next: GuardSnapshot): Boolean {
         if (base == next) return true
+        val stamped = if (next.phase == GuardSnapshot.Phase.NONE &&
+            base.phase != GuardSnapshot.Phase.NONE &&
+            next.quitSuppressedPackage == null
+        ) {
+            next.copy(
+                recentAwayPackage = base.activePackage ?: next.recentAwayPackage,
+                recentAwayAtElapsed = android.os.SystemClock.elapsedRealtime(),
+            )
+        } else {
+            next
+        }
         var applied = false
         sessions().update { current ->
             if (current == base || SessionClock.canReplace(current, base)) {
                 applied = true
-                next
+                stamped
             } else {
                 current
             }
         }
-        if (applied) sessionCache = next
+        if (applied) sessionCache = stamped
         return applied
     }
 
@@ -778,7 +789,13 @@ class MonitoringService : Service() {
         ) {
             return false
         }
-        val (next, command) = SessionClock.onOpened(snapshot, foreground!!, true, LocalDate.now().toString())
+        val (next, command) = SessionClock.onOpened(
+            snapshot,
+            foreground!!,
+            true,
+            LocalDate.now().toString(),
+            android.os.SystemClock.elapsedRealtime(),
+        )
         if (!persistIfUnchanged(snapshot, next)) return false
         if (command is GuardCommand.ShowOpening && rule != null) {
             noteDebug(

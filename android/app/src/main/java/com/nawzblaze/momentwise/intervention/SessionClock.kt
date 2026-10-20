@@ -54,6 +54,13 @@ data class GuardSnapshot(
      * Not a wall-clock deadline.
      */
     val backgroundedAtElapsed: Long? = null,
+    /**
+     * Package whose visit ended without explicit Leave, and when. A return
+     * inside [VisitLifecycle.GRACE_MILLIS] is still that visit. Cleared by Leave.
+     * Not a wall-clock deadline.
+     */
+    val recentAwayPackage: String? = null,
+    val recentAwayAtElapsed: Long? = null,
 ) {
     enum class Phase { NONE, AWAITING_OPENING, CONTINUING }
 
@@ -77,8 +84,26 @@ object SessionClock {
         packageName: String,
         ruleEnabled: Boolean,
         today: String,
+        elapsedRealtime: Long = Long.MIN_VALUE,
     ): Pair<GuardSnapshot, GuardCommand> {
         val cleared = clearStaleDismissals(snapshot, today)
+        if (cleared.recentAwayPackage == packageName &&
+            VisitLifecycle.withinGrace(cleared.recentAwayAtElapsed, elapsedRealtime)
+        ) {
+            return cleared.copy(
+                activePackage = packageName,
+                phase = if (cleared.phase == GuardSnapshot.Phase.NONE) {
+                    GuardSnapshot.Phase.CONTINUING
+                } else {
+                    cleared.phase
+                },
+                openingHandledForPackage = packageName,
+                backgroundedAtElapsed = null,
+                recentAwayPackage = null,
+                recentAwayAtElapsed = null,
+                quitSuppressedPackage = null,
+            ) to GuardCommand.None
+        }
         if (cleared.quitSuppressedPackage == packageName) {
             return cleared to GuardCommand.None
         }
@@ -134,6 +159,11 @@ object SessionClock {
     ): Boolean {
         if (foregroundPackage == null || !ruleEnabled) return false
         if (snapshot.quitSuppressedPackage == foregroundPackage) return false
+        if (snapshot.recentAwayPackage == foregroundPackage &&
+            VisitLifecycle.withinGrace(snapshot.recentAwayAtElapsed, elapsedRealtime)
+        ) {
+            return false
+        }
         // Stale days are removed before this is called. A remaining entry is today.
         if (snapshot.dismissals[foregroundPackage] != null) return false
         if (VisitLifecycle.withinGrace(snapshot.backgroundedAtElapsed, elapsedRealtime) &&
@@ -322,7 +352,11 @@ object SessionClock {
      * Usage Access has seen the user leave, or open something else.
      */
     fun onQuit(snapshot: GuardSnapshot): GuardSnapshot =
-        endSession(snapshot).copy(quitSuppressedPackage = snapshot.activePackage)
+        endSession(snapshot).copy(
+            quitSuppressedPackage = snapshot.activePackage,
+            recentAwayPackage = null,
+            recentAwayAtElapsed = null,
+        )
 
     /**
      * Continue starts the reminder from this moment when the interval is enabled.
@@ -516,6 +550,8 @@ object SessionClock {
         clearedWithoutChoice = false,
         reminderHoldUntilMillis = null,
         backgroundedAtElapsed = null,
+        recentAwayPackage = snapshot.activePackage ?: snapshot.recentAwayPackage,
+        recentAwayAtElapsed = snapshot.backgroundedAtElapsed ?: snapshot.recentAwayAtElapsed,
     )
 }
 

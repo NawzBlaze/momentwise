@@ -23,6 +23,8 @@ internal object GuardSnapshotJson {
             put("visitId", snapshot.visitId)
             putNullable("reminderHoldUntilMillis", snapshot.reminderHoldUntilMillis)
             putNullable("backgroundedAtElapsed", snapshot.backgroundedAtElapsed)
+            putNullable("recentAwayPackage", snapshot.recentAwayPackage)
+            putNullable("recentAwayAtElapsed", snapshot.recentAwayAtElapsed)
             put("useByPackage", encodeUse(snapshot.useByPackage))
         }.toString()
     }
@@ -71,6 +73,8 @@ internal object GuardSnapshotJson {
                 reminderHoldUntilMillis = json.optNullableLong("reminderHoldUntilMillis"),
                 useByPackage = decodeUse(json.optJSONObject("useByPackage")),
                 backgroundedAtElapsed = json.optNullableLong("backgroundedAtElapsed"),
+                recentAwayPackage = json.optString("recentAwayPackage").ifBlank { null },
+                recentAwayAtElapsed = json.optNullableLong("recentAwayAtElapsed"),
             )
         } catch (_: Exception) {
             GuardSnapshot()
