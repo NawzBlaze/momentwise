@@ -205,7 +205,8 @@ object SessionClock {
     /** A return at or after the grace boundary is a new visit. Clock going backwards is not a resumed visit. */
     fun expireGrace(snapshot: GuardSnapshot, elapsedRealtime: Long): GuardSnapshot {
         if (!VisitLifecycle.graceExpired(snapshot.backgroundedAtElapsed, elapsedRealtime)) return snapshot
-        return markAway(snapshot, elapsedRealtime).copy(quitSuppressedPackage = null)
+        val started = snapshot.backgroundedAtElapsed ?: elapsedRealtime
+        return markAway(snapshot, started).copy(quitSuppressedPackage = null)
     }
 
     /**
