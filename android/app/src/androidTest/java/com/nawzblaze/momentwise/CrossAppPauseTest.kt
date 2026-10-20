@@ -10,42 +10,118 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Launches a second installed package and reads the opening notice from the
- * system notification dump. Overlay stays denied, so this is the notification
- * fallback, not a full-screen pause, and not an injected usage event.
+ * Launches a second installed package. Overlay granted and overlay denied are
+ * separate cases. Neither injects a usage event.
  *
  * Limitations, on purpose: the target is `com.nawzblaze.momentwise.fixture`,
- * not Instagram or any other real app. A GitHub-hosted emulator pass does not
- * establish physical-device reliability, battery survival, or exact timing.
+ * not Instagram. A GitHub-hosted emulator pass is not a physical-phone result,
+ * not a battery measurement, and not proof the pause cannot be dismissed by
+ * the system.
  */
 @RunWith(AndroidJUnit4::class)
 class CrossAppPauseTest {
 
     @Test
-    fun openingTheFixtureShowsThePauseNotification() {
-        val target = "com.nawzblaze.momentwise.fixture"
-        assertNotEquals(APP, target)
+    fun withoutOverlayTheNotificationDoesNotCoverTheFixture() {
+        val target = prepare(overlay = false)
+        openFixture(target)
 
-        val grant = shell("pm grant $APP android.permission.POST_NOTIFICATIONS")
-        assertFalse("Notification grant failed: ${oneLine(grant)}", grant.contains("Exception") || grant.contains("Error"))
+        assertTrue(
+            "Opening notice was not delivered as a notification. ${diagnostics()}",
+            waitFor {
+                val notes = notificationDump()
+                notes.contains(PROMPT) && notes.contains("not blocked") &&
+                    statusFile().contains("overlay-not-granted")
+            },
+        )
+        val status = statusFile()
+        assertFalse(
+            "Denied overlay still reported a cover. ${diagnostics()}",
+            status.contains("intervention=overlay shown"),
+        )
+        val top = resumedActivityLine()
+        assertTrue(
+            "Fixture was not the resumed activity, so this is not the uncovered fallback: $top",
+            top.contains(target),
+        )
+        assertFalse(
+            "PauseActivity covered the fixture even though overlay was denied: $top",
+            top.contains("PauseActivity"),
+        )
+    }
+
+    @Test
+    fun grantedOverlayShowsAVisibleCover() {
+        val target = prepare(overlay = true)
+        openFixture(target)
+
+        val shown = waitFor {
+            statusFile().contains("intervention=overlay shown") && overlayWindowVisible()
+        }
+        assertTrue(
+            "Visible overlay was not added. ${diagnostics()} windows=${oneLine(windowDump().take(400))}",
+            shown,
+        )
+        assertFalse(
+            "Overlay path also left the not-blocked notification up. ${diagnostics()}",
+            notificationDump().contains("not blocked"),
+        )
+    }
+
+    /**
+     * Times queryEvents in the app process on this emulator. Not a phone, and
+     * not a battery percentage.
+     */
+    @Test
+    fun usageQueryOnThisEmulatorIsRecorded() {
+        shell("am force-stop $APP")
+        shell("run-as $APP rm -f files/debug-status.txt")
         shell("appops set $APP GET_USAGE_STATS allow")
         shell("cmd appops set $APP GET_USAGE_STATS allow")
-        // Leave overlay off so the supported fallback is a notification we can read.
-        shell("appops set $APP SYSTEM_ALERT_WINDOW deny")
+        val started = shell("am start -W -n $APP/.debug.DebugRuleActivity --ez measure_usage true")
+        assertTrue("Measure activity did not start: $started", started.contains("ok"))
+        val recorded = waitFor { statusFile().contains("USAGE_QUERY") }
+        val status = statusFile()
+        assertTrue("Usage query was not recorded: ${oneLine(status)}", recorded)
+        assertFalse(status, status.contains("USAGE_QUERY error="))
+        val mean = Regex("meanMs=([0-9.]+)").find(status)?.groupValues?.get(1)?.toDoubleOrNull()
+        assertTrue("Could not read meanMs from $status", mean != null && mean < 2_000.0)
+    }
+
+    private fun prepare(overlay: Boolean): String {
+        val target = "com.nawzblaze.momentwise.fixture"
+        assertNotEquals(APP, target)
+        shell("am force-stop $APP")
+        shell("am force-stop $target")
+
+        val grant = shell("pm grant $APP android.permission.POST_NOTIFICATIONS")
+        assertFalse(
+            "Notification grant failed: ${oneLine(grant)}",
+            grant.contains("Exception") || grant.contains("Error"),
+        )
+        shell("appops set $APP GET_USAGE_STATS allow")
+        shell("cmd appops set $APP GET_USAGE_STATS allow")
+        val overlayMode = if (overlay) "allow" else "deny"
+        shell("appops set $APP SYSTEM_ALERT_WINDOW $overlayMode")
+        shell("cmd appops set $APP SYSTEM_ALERT_WINDOW $overlayMode")
         val usage = shell("appops get $APP GET_USAGE_STATS")
         assertTrue("Usage Access was not allowed: $usage", usage.contains("allow"))
+        val overlayOps = shell("appops get $APP SYSTEM_ALERT_WINDOW")
+        assertTrue("Overlay appop was not $overlayMode: $overlayOps", overlayOps.contains(overlayMode))
 
         val enable = shell(
             "am start -W -n $APP/.debug.DebugRuleActivity " +
                 "--es target_package $target --es label Fixture",
         )
-        assertTrue("Could not enable the fixture rule: $enable", enable.contains("Status: ok") || enable.contains("ok"))
-
+        assertTrue("Could not enable the fixture rule: $enable", enable.contains("ok"))
         assertTrue(
             "Monitoring notification was not posted. ${diagnostics()}",
-            waitForNotification("Momentwise is guarding"),
+            waitFor { notificationDump().contains("Momentwise is guarding") },
         )
+        return target
+    }
 
+    private fun openFixture(target: String) {
         shell("input keyevent KEYCODE_HOME")
         val opened = shell("am start -W -n $target/.FixtureActivity")
         assertTrue(
@@ -53,43 +129,55 @@ class CrossAppPauseTest {
             opened.contains("$target/.FixtureActivity") || opened.contains(target),
         )
         assertFalse("The start targeted Momentwise itself: $opened", opened.contains("$APP/.MainActivity"))
-        assertTrue("Fixture did not open: $opened", opened.contains("Status: ok") || opened.contains("ok"))
-
-        assertTrue(
-            "Opening notice was not delivered. ${diagnostics()}",
-            waitForNotification("What brought you here?"),
-        )
+        assertTrue("Fixture did not open: $opened", opened.contains("ok"))
     }
 
-    private fun waitForNotification(text: String): Boolean {
+    private fun waitFor(predicate: () -> Boolean): Boolean {
         val deadline = System.currentTimeMillis() + 30_000
         while (System.currentTimeMillis() < deadline) {
-            if (notificationDump().contains(text)) return true
+            if (predicate()) return true
             Thread.sleep(1_000)
         }
-        return false
+        return predicate()
     }
 
-    private fun notificationDump(): String {
-        val dump = shell("dumpsys notification --noredact")
-        val hits = dump.lineSequence()
-            .filter {
-                it.contains("Momentwise") || it.contains("momentwise") ||
-                    it.contains("guarding") || it.contains("brought you") || it.contains("pause is waiting")
-            }
-            .take(20)
-            .joinToString(" | ")
-        return if (hits.isNotBlank()) hits else "none len=${dump.length} head=${dump.take(180)}"
+    private fun notificationDump(): String = shell("dumpsys notification --noredact")
+
+    private fun windowDump(): String = shell("dumpsys window windows")
+
+    private fun overlayWindowVisible(): Boolean {
+        val dump = windowDump()
+        if (dump.contains("Momentwise intervention")) return true
+        return dump.contains(APP) && (
+            dump.contains("APPLICATION_OVERLAY") || dump.contains("ty=2038")
+            )
+    }
+
+    private fun statusFile(): String = shell("run-as $APP cat files/debug-status.txt")
+
+    private fun resumedActivityLine(): String {
+        val dump = shell("dumpsys activity activities")
+        return dump.lineSequence()
+            .firstOrNull { it.contains("topResumedActivity") || it.contains("mResumedActivity") }
+            .orEmpty()
+            .ifBlank { oneLine(dump.take(500)) }
     }
 
     private fun diagnostics(): String {
-        val status = shell("run-as $APP cat files/debug-status.txt")
         val posted = shell("dumpsys package $APP")
             .lineSequence()
-            .filter { it.contains("POST_NOTIFICATIONS") }
-            .take(2)
+            .filter { it.contains("POST_NOTIFICATIONS") || it.contains("SYSTEM_ALERT_WINDOW") }
+            .take(4)
             .joinToString(" | ")
-        return oneLine("status=[$status] permission=[$posted] notifications=[${notificationDump()}]")
+        val notes = notificationDump().lineSequence()
+            .filter {
+                it.contains("Momentwise") || it.contains("momentwise") ||
+                    it.contains("not blocked") || it.contains("Before you scroll") ||
+                    it.contains("guarding")
+            }
+            .take(12)
+            .joinToString(" | ")
+        return oneLine("status=[${statusFile()}] package=[$posted] notifications=[$notes]")
     }
 
     private fun oneLine(text: String): String = text.replace(Regex("\\s+"), " ").take(700)
@@ -102,5 +190,6 @@ class CrossAppPauseTest {
 
     companion object {
         private const val APP = "com.nawzblaze.momentwise"
+        private const val PROMPT = "What do you want to do right now?"
     }
 }

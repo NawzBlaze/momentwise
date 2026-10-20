@@ -6,6 +6,7 @@ data class PauseRequest(
     val appName: String,
     val kind: Kind,
     val notice: String,
+    val heading: String = InterventionSurface.OPENING_HEADING,
     val primaryLabel: String,
     val secondaryLabel: String,
     val tertiaryLabel: String? = null,

@@ -1,6 +1,7 @@
 package com.nawzblaze.momentwise.debug
 
 import android.app.Activity
+import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.os.Bundle
 import android.util.Log
@@ -9,6 +10,7 @@ import com.nawzblaze.momentwise.MomentwiseApplication
 import com.nawzblaze.momentwise.data.RuleDefaults
 import com.nawzblaze.momentwise.monitoring.GrantChecks
 import com.nawzblaze.momentwise.monitoring.MonitoringCoordinator
+import java.util.Locale
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.runBlocking
 import kotlin.concurrent.thread
@@ -31,6 +33,10 @@ class DebugRuleActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (intent.getBooleanExtra(EXTRA_MEASURE, false)) {
+            setContentView(TextView(this).apply { text = "Measuring usage query" })
+            return
+        }
         packageName = intent.getStringExtra(DebugRuleBridge.EXTRA_PACKAGE)
             ?: intent.getStringExtra("package")
         label = intent.getStringExtra(DebugRuleBridge.EXTRA_LABEL)?.ifBlank { null } ?: packageName
@@ -44,6 +50,15 @@ class DebugRuleActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        if (intent.getBooleanExtra(EXTRA_MEASURE, false)) {
+            if (scheduled) return
+            scheduled = true
+            val app = application
+            window.decorView.post {
+                thread(name = "usage-measure") { measureUsage(app) }
+            }
+            return
+        }
         val packageName = packageName ?: return
         val label = label ?: return
         if (scheduled) return
@@ -58,7 +73,46 @@ class DebugRuleActivity : Activity() {
 
     companion object {
         const val TAG = "MomentwiseDebug"
+        const val EXTRA_MEASURE = "measure_usage"
         private val running = AtomicBoolean(false)
+
+        /**
+         * Times UsageStats.queryEvents in this process. This is an emulator or
+         * device measurement of that call, not a battery result and not the
+         * JVM reducer benchmark.
+         */
+        fun measureUsage(app: Context) {
+            val usage = app.getSystemService(UsageStatsManager::class.java)
+            if (usage == null) {
+                writeStatus(app, "USAGE_QUERY error=no-service")
+                return
+            }
+            val samples = ArrayList<Long>(5)
+            repeat(5) {
+                val now = System.currentTimeMillis()
+                val started = System.nanoTime()
+                try {
+                    usage.queryEvents(now - 20_000L, now)
+                } catch (error: Exception) {
+                    writeStatus(app, "USAGE_QUERY error=${error.javaClass.simpleName}")
+                    return
+                }
+                samples += (System.nanoTime() - started) / 1_000_000L
+            }
+            val mean = samples.average()
+            val meanText = String.format(Locale.US, "%.3f", mean)
+            writeStatus(
+                app,
+                "USAGE_QUERY samples=${samples.joinToString(",")} meanMs=$meanText windowMs=20000",
+            )
+        }
+
+        private fun writeStatus(app: Context, line: String) {
+            app.openFileOutput("debug-status.txt", Context.MODE_APPEND).bufferedWriter().use {
+                it.appendLine(line)
+            }
+            Log.i(TAG, line)
+        }
 
         /** @return false when a worker is already in flight. One worker only. */
         fun startEnable(app: MomentwiseApplication, packageName: String, label: String): Boolean {

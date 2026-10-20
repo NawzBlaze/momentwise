@@ -21,7 +21,7 @@ if [ "$code" -ne 0 ]; then
     echo "--- androidTest failure text ---"
     find app/build -path '*androidTest*' -name '*.xml' -print 2>/dev/null |
       while read -r report; do
-        grep -n -E 'failure|AssertionError|not posted|not delivered|not allowed' "$report" | head -n 40
+        grep -n -E 'failure|AssertionError|not posted|not delivered|not allowed|overlay|not blocked|USAGE_QUERY' "$report" | head -n 40
       done
   } >>"$LOG"
 fi

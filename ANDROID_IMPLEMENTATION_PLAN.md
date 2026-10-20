@@ -68,10 +68,10 @@ The sample catalog is configuration, not usage. Home does not show invented scre
 
 From the approved prototype and the product brief:
 
-- Opening notice default: `What brought you here?`
-- Option 1 default: `Quit` — leave the distracting app.
-- Option 2 default: `Anyways` — continue into it.
-- Reminder frequencies: Never, 5, 10, 15, 20 minutes, or Custom (1–300 minutes, matching `prototype/app.js`).
+- Opening heading: `Before you scroll`. Opening prompt default: `What do you want to do right now?`
+- Option 1 default: `Leave {app name}` — return home. It does not force-stop.
+- Option 2 default: `Continue` — dismiss the pause and start the reminder.
+- Reminder frequencies: Never, 5, 10, 15, 20 minutes, or Custom (1–300 minutes). A new rule defaults to 5 minutes. Never still shows the opening. Saved prompts, labels, and intervals are not rewritten when these defaults change. The browser prototype still has the older wording.
 - Reminder notice default: `You're still here?`
 - Advanced actions, collapsed by default:
   - `Okay, I'm quitting` — leave the distracting app.
@@ -133,10 +133,11 @@ Once detection fires, Momentwise is in the background. Since Android 10 (API 29)
 
 Recommended UI, in order:
 
-1. **Preferred: Momentwise's own activity, brought forward after the user has granted "Display over other apps".** The activity is the pause itself: the saved notice, Quit, and Anyways. It is not a transparent tapjacking layer. It should use its own task (`taskAffinity` plus a new task, not the distracting app's task) so it cannot be inserted into another app's stack. That matters: Android's task-hijacking rules exist specifically to stop a pause-like activity being sandwiched into another app.
-2. **Degraded, if overlay permission is refused: a high-priority notification** the user can tap to open the same screen. Say so in the UI. Do not pretend the pause appeared on its own.
-3. **Do not use `USE_FULL_SCREEN_INTENT`.** Since Android 14 that capability is restricted, and Play expects it for calling and alarm apps. A mindfulness check-in is not that.
-4. **Do not draw a click-through overlay over the other app's controls.** An overlay that still lets taps reach the app underneath is the tapjacking pattern the platform is trying to stop. If an overlay is used at all, it should be opaque, limited to the pause, and dismissed by one of the two real choices.
+1. **When display-over-other-apps is granted: a visible `TYPE_APPLICATION_OVERLAY` that is the pause.** A card occupies about the middle half of the screen. A forest scrim covers the rest so the other app is visibly paused and not tappable. This does not need a background activity start. It is not an invisible window and not a click-through layer.
+2. **If that window cannot be added:** try the pause activity once. `startActivity` returning is not proof it was shown. Since API 29 a foreground service is not in the foreground for background-activity limits. The notification stays up.
+3. **If overlay permission is refused: a high-priority notification only.** Its text says the other app is not blocked. Tapping it opens the same card in Momentwise's own task. Do not describe the notification as a cover.
+4. **Do not use `USE_FULL_SCREEN_INTENT`.** Since Android 14 that capability is restricted, and Play expects it for calling and alarm apps. A mindfulness check-in is not that.
+5. **Do not draw a click-through overlay over the other app's controls.** An overlay that still lets taps reach the app underneath is the tapjacking pattern the platform is trying to stop. The pause window consumes touches. The card is opaque. The scrim is visible, not a blur and not an invisible catcher.
 
 `SYSTEM_ALERT_WINDOW` is also a manual Settings grant (`Settings.canDrawOverlays`). Request it only when the user enables a rule, after a screen that explains why, with a way to decline and keep using Momentwise as a configuration app.
 
@@ -146,12 +147,12 @@ This exemption must be re-tested on API 34, 35, and 36 before it is treated as r
 
 | Choice | Intended behaviour | Supported mechanism |
 | --- | --- | --- |
-| Quit / "Okay, I'm quitting" | Leave the distracting app | `Intent.ACTION_MAIN` + `CATEGORY_HOME`, so the home screen comes forward and the other app stops being the foreground task. Then finish the pause. |
-| Anyways | Continue, and start the reminder interval if one is set | Finish the pause so the existing task of the other app is visible again. Do not re-launch it. Record the session start. |
+| Leave / "Okay, I'm quitting" | Leave the distracting app | `Intent.ACTION_MAIN` + `CATEGORY_HOME`, so the home screen comes forward and the other app stops being the foreground task. Then finish the pause. The same visit is not paused again until a leave is observed. |
+| Continue | Continue, and start the reminder interval if one is set | Finish the pause so the existing task of the other app is visible again. Do not re-launch it. Record the session start. |
 | Wait | Snooze this check-in | Persist `nextReminderAt` for that package as now plus the configured snooze minutes (default 10). |
 | Dismiss reminder | No more reminders for this app today | Persist the local date and package. Opening pause still runs on the next launch. Clear the flag on the next local day. |
 
-`forceStopPackage` is not available to third-party apps (`FORCE_STOP_PACKAGES` is signature/privileged). Killing another process is not a goal. The settings copy already says this, and the native Quit path must keep saying it.
+`forceStopPackage` is not available to third-party apps (`FORCE_STOP_PACKAGES` is signature/privileged). Killing another process is not a goal. The settings copy already says this, and the native Leave path must keep saying it.
 
 "Continue" has a sequencing consequence: Usage Access only notices the other app *after* it has opened. The pause therefore appears over an app that is already running, rather than instead of launching it. Quit sends the user home; it does not rewind the launch. That is the honest behaviour, and the preview already describes it that way.
 

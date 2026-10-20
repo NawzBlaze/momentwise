@@ -18,6 +18,13 @@ data class GuardSnapshot(
     /** Package to local date (`yyyy-MM-dd`) for dismiss-for-today. Does not disable the rule. */
     val dismissals: Map<String, String> = emptyMap(),
     val sessionDroppedOnBoot: Boolean = false,
+    /**
+     * Set when Leave sends the user home. While this package is still the last
+     * observed foreground, do not open another pause. Cleared once a leave, or
+     * a different app, is actually observed. This stops Leave from immediately
+     * reopening over the same resume.
+     */
+    val quitSuppressedPackage: String? = null,
 ) {
     enum class Phase { NONE, AWAITING_OPENING, CONTINUING }
 
@@ -40,16 +47,24 @@ object SessionClock {
         today: String,
     ): Pair<GuardSnapshot, GuardCommand> {
         val cleared = clearStaleDismissals(snapshot, today)
-        if (!ruleEnabled) {
-            return endSession(cleared) to GuardCommand.None
-        }
-        if (cleared.activePackage == packageName &&
-            cleared.phase != GuardSnapshot.Phase.NONE &&
-            cleared.openingHandledForPackage == packageName
-        ) {
+        if (cleared.quitSuppressedPackage == packageName) {
             return cleared to GuardCommand.None
         }
-        val next = endSession(cleared).copy(
+        val ready = if (cleared.quitSuppressedPackage != null) {
+            cleared.copy(quitSuppressedPackage = null)
+        } else {
+            cleared
+        }
+        if (!ruleEnabled) {
+            return endSession(ready).copy(quitSuppressedPackage = null) to GuardCommand.None
+        }
+        if (ready.activePackage == packageName &&
+            ready.phase != GuardSnapshot.Phase.NONE &&
+            ready.openingHandledForPackage == packageName
+        ) {
+            return ready to GuardCommand.None
+        }
+        val next = endSession(ready).copy(
             activePackage = packageName,
             phase = GuardSnapshot.Phase.AWAITING_OPENING,
             openingHandledForPackage = packageName,
@@ -64,6 +79,7 @@ object SessionClock {
      */
     fun needsOpening(snapshot: GuardSnapshot, foregroundPackage: String?, ruleEnabled: Boolean): Boolean {
         if (foregroundPackage == null || !ruleEnabled) return false
+        if (snapshot.quitSuppressedPackage == foregroundPackage) return false
         if (snapshot.activePackage == foregroundPackage && snapshot.phase != GuardSnapshot.Phase.NONE) {
             return false
         }
@@ -71,7 +87,7 @@ object SessionClock {
     }
 
     fun onLeft(snapshot: GuardSnapshot): Pair<GuardSnapshot, GuardCommand> =
-        endSession(snapshot) to GuardCommand.None
+        endSession(snapshot).copy(quitSuppressedPackage = null) to GuardCommand.None
 
     fun onTick(
         snapshot: GuardSnapshot,
@@ -95,8 +111,13 @@ object SessionClock {
         return cleared.copy(reminderPresentedFor = dueAt) to GuardCommand.ShowReminder(pkg)
     }
 
-    /** Home-intent Quit. Does not disable the rule and does not start a reminder. */
-    fun onQuit(snapshot: GuardSnapshot): GuardSnapshot = endSession(snapshot)
+    /**
+     * Home-intent Leave. Does not disable the rule, does not force-stop, and
+     * does not start a reminder. The same package is not paused again until
+     * Usage Access has seen the user leave, or open something else.
+     */
+    fun onQuit(snapshot: GuardSnapshot): GuardSnapshot =
+        endSession(snapshot).copy(quitSuppressedPackage = snapshot.activePackage)
 
     fun onContinue(
         snapshot: GuardSnapshot,
@@ -115,6 +136,7 @@ object SessionClock {
             phase = GuardSnapshot.Phase.CONTINUING,
             nextReminderAtMillis = next,
             reminderPresentedFor = null,
+            quitSuppressedPackage = null,
         )
     }
 

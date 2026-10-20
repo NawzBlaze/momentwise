@@ -16,7 +16,7 @@ A single-module Jetpack Compose app:
 - Per-app rules in DataStore, keyed by package name. Validation, rule isolation, the usage-event reducer, and the reminder session clock have JVM unit tests.
 - Launchable apps from the device. Foundation sample ids are dropped, not copied onto real apps.
 - Usage Access, display over other apps, and notifications are explained before a rule is enabled. Decline leaves monitoring off.
-- A `specialUse` foreground service and a pause (overlay, or a notification if overlay is refused). Quit is a home intent. This has not been run on a device here.
+- A `specialUse` foreground service and a pause. With display-over-other-apps, that pause is a visible middle card and scrim. Without it, it is a notification that does not block the other app. Leave is a home intent, not a force-stop. This has not been run on a physical phone here.
 - After process death, an unanswered opening or a due reminder is shown again if Usage Access still sees that app. An empty event window does not end the session. This decision is unit-tested, not device-tested.
 
 The intervention design, and what is still unverified on a device, is in
@@ -76,21 +76,22 @@ That file is not published yet.
 This is a code diagnosis, not a log from the phone that failed.
 
 - Usage events are often written several seconds after a resume. The old query advanced to "now" and looked back one second, so a late Instagram resume was never read. The monitor now re-reads a bounded 20-second window and ignores events it has already applied.
-- If the process is dead when the guarded app opens, a later start looks at the last 60 seconds. If that app is still the last resume and no opening was shown, the opening is shown then. It is not a second opening after Anyways.
+- If the process is dead when the guarded app opens, a later start looks at the last 60 seconds. If that app is still the last resume and no opening was shown, the opening is shown then. It is not a second opening after Continue.
+- While the screen is off, the monitor does not query UsageStats. A screen-on broadcast wakes it. Grant checks are cached for 5 seconds. The session is not read from DataStore on every tick. The one-second poll remains while the screen is on. A debug build appends `usageQuery` timing every 30 queries to `files/debug-status.txt`. That is not a battery percentage.
 - Home used to say monitoring was on whenever a rule was enabled and the grants were present. The guarding notification can be gone while that is still true. Home and Settings now use a service heartbeat. A stale heartbeat is shown as stopped, with a start-again action. There is no restart loop.
 - The guarding channel was low importance, and Android will not raise an existing channel. New installs use a default-importance silent channel so the ongoing notification is less likely to be hidden. That has not been confirmed on the phone that failed.
 - A one-second poll remains. It is the latency bound, not a scan of usage history. Usage Access has no resume callback, and events are often written late, so a shorter interval would not remove that delay. Each tick reads a bounded 20-second window and drops timestamps already applied. The launcher package is cached for 30 seconds. A unit test times the pure reducer on a dense 200-event window and requires the mean to stay under that one-second interval. That number is JVM reducer cost, not UsageStats IPC, not frame time, and not a phone.
 
 ## On-device intervention checklist
 
-Not run on a physical device in this workspace. There is no phone here. A welcome-screen test does not prove any of the following. The emulator cross-app test, when green, only shows that a fixture package produced the notification fallback. On one API 34 device and one API 35 device, record the Android version, the permissions actually granted, the target app, and what happened.
+Not run on a physical device in this workspace. There is no phone here. A welcome-screen test does not prove any of the following. The emulator test, when green, launches `com.nawzblaze.momentwise.fixture`, not Instagram. It checks the notification fallback with overlay denied, and a visible overlay window with overlay allowed. That is not a phone result. On one API 34 device and one API 35 device, record the Android version, the permissions actually granted, the target app, and what happened.
 
 1. Install a debug build. Do not treat it as the public release.
 2. Decline Usage Access. Enable a rule only after the explanation. Confirm the app does not crash and does not pretend the pause will appear.
-3. Allow Usage Access and notifications. Skip display-over-other-apps. Open a selected app. The pause should arrive as a notification, using the saved notice and button labels. Tap it.
-4. Allow display-over-other-apps. Leave the app and open it again. The pause should be Momentwise's own screen, not a force-stop.
-5. Tap Quit. The launcher should come forward. The other app must still be in recents. Open it again: the opening pause should show again.
-6. Tap Anyways. The other app should continue without Momentwise relaunching it. A reminder should not appear before the saved interval. With Never, no reminder should appear.
+3. Allow Usage Access and notifications. Skip display-over-other-apps. Open a selected app. A notification should appear and say the app is not blocked. The other app should still be usable until you tap the notification. Tapping it opens the pause. Do not treat the notification itself as a cover.
+4. Allow display-over-other-apps. Leave the app and open it again. A card should cover about the middle of the screen, with the other app visible behind a scrim. Taps on the scrim should do nothing. It should not be an invisible layer.
+5. Tap Leave. The launcher should come forward. The other app must still be in recents. The pause should not immediately reopen over the same visit. Open the app again after leaving: the opening pause should show again.
+6. Tap Continue. The other app should continue without Momentwise relaunching it. A reminder should not appear before the saved interval. A new rule defaults to 5 minutes. With Never, no reminder should appear. The opening pause should still appear.
 7. On the reminder, tap Wait. That app's next check-in should move by the snooze. Another guarded app must keep its own interval.
 8. Tap Dismiss reminder. That app should not check in again until the next local day. Its rule stays enabled. A second guarded app should still check in.
 9. Pause monitoring in Settings. Saved rules must remain. Opening a guarded app should not show a pause. Turn monitoring back on, leave, and open again: the pause should return.
@@ -98,8 +99,9 @@ Not run on a physical device in this workspace. There is no phone here. A welcom
 11. Force-stop Momentwise while an opening pause is unanswered and the guarded app is still in front. Open Momentwise or let the service restart. The same pause should come back, not a second independent one.
 11a. After the guarding notification disappears, open Momentwise. Home should say monitoring is not running, not that it is on. Start monitoring again, leave, and open the guarded app.
 12. Reboot. An in-progress session should be dropped. The next open should be a new pause. Dismiss-for-today should still apply if the day has not changed.
+13. On a debug build, after the screen has been on and guarding for about half a minute, `adb shell run-as com.nawzblaze.momentwise cat files/debug-status.txt` can show `usageQuery` mean time. That is UsageStats query time on that device, not a daily battery percentage. A release build does not write that file.
 
-Expected limits: the monitor polls about once a second, so the pause is not instant. Vendor battery limits can stop the service. Quit cannot force-stop another app.
+Expected limits: the monitor polls about once a second while the screen is on, so the pause is not instant. Vendor battery limits can stop the service. Leave cannot force-stop another app. No battery-percentage claim has been measured.
 
 ## Layout
 

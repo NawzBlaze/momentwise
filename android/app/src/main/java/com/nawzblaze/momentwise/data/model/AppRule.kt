@@ -4,15 +4,17 @@ package com.nawzblaze.momentwise.data.model
  * One guarded app's complete, independent rule configuration.
  *
  * Every app owns its own [AppRule]; rules never inherit from or share state
- * with each other (verified by RuleIsolationTest). Defaults follow the
- * approved product specification exactly:
+ * with each other (verified by RuleIsolationTest). A newly built rule uses:
  *
- * - Opening notice: "What brought you here?"
- * - Option 1: "Quit" — leaves the distracting app.
- * - Option 2: "Anyways" — continues into the app.
- * - Reminder frequency: Never (presets 5/10/15/20 or Custom when enabled).
+ * - Opening heading: "Before you scroll" (fixed; not the editable prompt).
+ * - Opening prompt: "What do you want to do right now?"
+ * - Option 1: "Leave {app name}" — returns home. It does not force-stop.
+ * - Option 2: "Continue" — dismisses the pause and starts the reminder.
+ * - Reminder frequency: 5 minutes. Never is still an explicit choice.
  * - Reminder notice: "You're still here?"
- * - Advanced actions: quit / snooze (10 min) / dismiss-for-today, collapsed by default.
+ *
+ * These constructor defaults are for a new rule. Decoding a saved rule does
+ * not replace a stored prompt, label, or interval with them.
  */
 data class AppRule(
     /** Stable identifier — the target app's package name once device detection is wired. */
@@ -22,10 +24,10 @@ data class AppRule(
     val enabled: Boolean = false,
     /** True once the user has opened/saved this app's configuration at least once. */
     val configuredEver: Boolean = false,
-    val openingNotice: String = "What brought you here?",
-    val quitOption: ResponseOption = ResponseOption("Quit", RuleAction.LEAVE_APP),
-    val continueOption: ResponseOption = ResponseOption("Anyways", RuleAction.CONTINUE_INTO_APP),
-    val reminderFrequency: ReminderFrequency = ReminderFrequency.Never,
+    val openingNotice: String = "What do you want to do right now?",
+    val quitOption: ResponseOption = ResponseOption("Leave", RuleAction.LEAVE_APP),
+    val continueOption: ResponseOption = ResponseOption("Continue", RuleAction.CONTINUE_INTO_APP),
+    val reminderFrequency: ReminderFrequency = ReminderFrequency.EveryMinutes(5),
     val reminderNotice: String = "You're still here?",
     val reminderActions: ReminderActions = ReminderActions(),
     /**

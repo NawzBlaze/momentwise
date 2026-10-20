@@ -58,17 +58,18 @@ internal object AppRuleJson {
 
     private fun decode(json: JSONObject): AppRule {
         val appId = json.optString("appId")
+        val appName = json.optString("appName").ifBlank { appId }
         val snooze = json.optInt("advSnoozeMinutes", ReminderActions.DEFAULT_SNOOZE_MINUTES)
             .coerceIn(ReminderActions.MIN_SNOOZE_MINUTES, ReminderActions.MAX_SNOOZE_MINUTES)
         return AppRule(
             appId = appId,
-            appName = json.optString("appName").ifBlank { appId },
+            appName = appName,
             category = json.optString("category"),
             enabled = json.optBoolean("enabled", false),
             configuredEver = json.optBoolean("configuredEver", false),
             openingNotice = migrateOpeningNotice(json.optString("openingNotice")),
             quitOption = ResponseOption(
-                label = json.optString("option1Label").ifBlank { RuleDefaults.QUIT_OPTION_LABEL },
+                label = json.optString("option1Label").ifBlank { RuleDefaults.leaveLabel(appName) },
                 action = RuleAction.LEAVE_APP,
             ),
             continueOption = ResponseOption(
@@ -89,9 +90,10 @@ internal object AppRuleJson {
     }
 
     /**
-     * Blank notices fall back to the approved default. The known legacy default
-     * "You Are Distracted" is migrated the same way as the browser prototype,
-     * without touching any notice the user actually wrote.
+     * Blank notices, and the older foundation string "You Are Distracted", fall
+     * back to the current default. A saved prompt is kept, including the
+     * previous default "What brought you here?". Changing the new-rule default
+     * must not rewrite that.
      */
     private fun migrateOpeningNotice(raw: String): String {
         val trimmed = raw.trim()

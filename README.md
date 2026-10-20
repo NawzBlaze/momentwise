@@ -101,7 +101,7 @@ A browser-runnable, high-fidelity clickable prototype of the proposed Momentwise
 - **Adaptive Appearance:** Supports System (auto-detects OS color scheme), Light (warm cream and forest green), and Dark (soft charcoal and comfortable off-white) modes.
 - **Responsive Display:** On desktop displays, presents inside a simulated Android device mockup with quick-navigation controls; on mobile devices (≤560px), seamlessly fills the viewport natively.
 
-> **Important Disclosure:** This prototype uses browser-local storage and simulated sample metrics. No Android background services, accessibility APIs, device permissions, or real app monitoring are active.
+> **Important Disclosure:** This prototype uses browser-local storage and simulated sample metrics. No Android background services, accessibility APIs, device permissions, or real app monitoring are active. Its opening copy is the older design reference. The native app's new-rule defaults are separate, and this prototype was not rewritten to match them.
 
 ---
 

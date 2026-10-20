@@ -47,8 +47,33 @@ object PollSupervisor {
 object UsagePoll {
     const val INTERVAL_MILLIS = 1_000L
 
+    /** No UsageStats query while the screen is off. A screen-on broadcast wakes sooner. */
+    const val SCREEN_OFF_INTERVAL_MILLIS = 30_000L
+
+    /** AppOps and overlay checks are not repeated on every one-second tick. */
+    const val GRANT_REFRESH_MILLIS = 5_000L
+
+    fun delayMillis(screenInteractive: Boolean): Long =
+        if (screenInteractive) INTERVAL_MILLIS else SCREEN_OFF_INTERVAL_MILLIS
+
+    fun shouldRefreshGrants(lastReadAtMillis: Long, nowMillis: Long): Boolean =
+        lastReadAtMillis == 0L || nowMillis - lastReadAtMillis >= GRANT_REFRESH_MILLIS
+
     fun queryIsBounded(nowMillis: Long, startMillis: Long): Boolean {
         if (startMillis < 0L || startMillis > nowMillis) return false
         return nowMillis - startMillis <= EventWindow.TRAILING_MILLIS
     }
+}
+
+/**
+ * Debug timing for UsageStats calls. A JVM reducer benchmark is not this.
+ * Recording every 30th query avoids a log line on every tick.
+ */
+object UsageQueryDiagnostics {
+    const val RECORD_EVERY = 30
+
+    fun shouldRecord(queryCount: Int): Boolean = queryCount > 0 && queryCount % RECORD_EVERY == 0
+
+    fun meanMillis(totalNanos: Long, queryCount: Int): Long =
+        if (queryCount <= 0) 0L else totalNanos / queryCount / 1_000_000L
 }

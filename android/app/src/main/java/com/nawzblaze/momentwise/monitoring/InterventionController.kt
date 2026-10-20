@@ -9,8 +9,9 @@ import com.nawzblaze.momentwise.intervention.SessionClock
 import java.time.LocalDate
 
 /**
- * Applies a pause choice. Quit sends the user home. It does not force-stop
- * the other app, and Continue does not relaunch it.
+ * Applies a pause choice. Leave sends the user home. It does not force-stop
+ * the other app, and Continue does not relaunch it. The reminder starts only
+ * after Continue.
  */
 class InterventionController(
     private val context: Context,

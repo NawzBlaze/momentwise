@@ -161,6 +161,13 @@ fun OpeningNoticePreviewScreen(
 
         VerticalSpacer(28)
         Text(
+            text = stringResource(R.string.pause_notification_title),
+            style = MaterialTheme.typography.titleMedium,
+            color = colors.accentText,
+            textAlign = TextAlign.Center,
+        )
+        VerticalSpacer(8)
+        Text(
             text = rule.openingNotice,
             style = MaterialTheme.typography.headlineSmall,
             color = MaterialTheme.colorScheme.onBackground,

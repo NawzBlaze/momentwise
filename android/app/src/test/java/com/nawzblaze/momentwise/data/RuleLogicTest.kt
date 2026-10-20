@@ -20,12 +20,12 @@ class RuleDefaultsTest {
     fun freshRuleUsesApprovedCopy() {
         val rule = RuleDefaults.ruleFor("example", "Example", "Test")
 
-        assertEquals("What brought you here?", rule.openingNotice)
-        assertEquals("Quit", rule.quitOption.label)
+        assertEquals("What do you want to do right now?", rule.openingNotice)
+        assertEquals("Leave Example", rule.quitOption.label)
         assertEquals(RuleAction.LEAVE_APP, rule.quitOption.action)
-        assertEquals("Anyways", rule.continueOption.label)
+        assertEquals("Continue", rule.continueOption.label)
         assertEquals(RuleAction.CONTINUE_INTO_APP, rule.continueOption.action)
-        assertEquals(ReminderFrequency.Never, rule.reminderFrequency)
+        assertEquals(ReminderFrequency.EveryMinutes(5), rule.reminderFrequency)
         assertEquals("You're still here?", rule.reminderNotice)
         assertEquals("Okay, I'm quitting", rule.reminderActions.quitLabel)
         assertEquals(RuleAction.LEAVE_APP, rule.reminderActions.quitAction)
@@ -35,6 +35,9 @@ class RuleDefaultsTest {
         assertEquals("Dismiss reminder", rule.reminderActions.dismissLabel)
         assertEquals(RuleAction.DISMISS_FOR_TODAY, rule.reminderActions.dismissAction)
         assertFalse(rule.enabled)
+        assertEquals("Leave app", RuleDefaults.leaveLabel("   "))
+        assertEquals(24, RuleDefaults.leaveLabel("A".repeat(40)).length)
+        assertTrue(RuleDefaults.leaveLabel("A".repeat(40)).startsWith("Leave "))
     }
 
     @Test
@@ -296,7 +299,7 @@ class RuleCatalogIsolationTest {
 
         val instagram = reset.first { it.appId == "instagram" }
         assertEquals(RuleDefaults.OPENING_NOTICE, instagram.openingNotice)
-        assertEquals(ReminderFrequency.Never, instagram.reminderFrequency)
+        assertEquals(ReminderFrequency.EveryMinutes(5), instagram.reminderFrequency)
         assertTrue(instagram.enabled)
         assertEquals(
             ReminderFrequency.EveryMinutes(15),

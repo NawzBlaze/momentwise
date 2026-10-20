@@ -81,7 +81,7 @@
         </div>
         <figure class="mark-panel">
           <img src="./assets/logo.png" alt="Momentwise mark: a flowing forest-green M with a golden sunrise." width="220" height="220">
-          <figcaption>The opening pause asks what brought you here, then offers Quit or Anyways.</figcaption>
+          <figcaption>A new opening pause is headed “Before you scroll” and asks what you want to do right now.</figcaption>
         </figure>
       </div>
     </section>
@@ -98,17 +98,17 @@
           <li>
             <span class="step-index">2</span>
             <h3>Set an opening notice and response actions.</h3>
-            <p>The default notice is “What brought you here?” Quit leaves. Anyways continues. Renaming a button does not change what it does.</p>
+            <p>A new rule asks “What do you want to do right now?” Leave returns home. Continue stays. Renaming a button does not change what it does. A rule you already saved keeps its own wording.</p>
           </li>
           <li>
             <span class="step-index">3</span>
             <h3>Choose whether and when reminders should appear.</h3>
-            <p>Never, 5, 10, 15, 20 minutes, or a custom interval. Never still shows the opening pause.</p>
+            <p>A new rule starts at 5 minutes. Never, 10, 15, 20, and Custom are still choices. Never still shows the opening pause and does not schedule a reminder.</p>
           </li>
           <li>
             <span class="step-index">4</span>
             <h3>Use your phone with more intention.</h3>
-            <p>After Anyways, a later check-in can ask “You're still here?” Wait snoozes. Dismiss stops reminders for that app until tomorrow. The rule stays enabled.</p>
+            <p>After Continue, a later check-in can ask “You're still here?” Wait snoozes. Dismiss stops reminders for that app until tomorrow. The rule stays enabled.</p>
           </li>
         </ol>
       </div>
@@ -117,7 +117,7 @@
     <section id="product" class="section section-alt" aria-labelledby="product-title">
       <div class="container">
         <h2 id="product-title">What is in the app</h2>
-        <p class="section-intro">These are implemented in the native project. A pause over another app has not been verified on a physical phone from this workspace. There are no product screenshots here, because none were captured from the native app.</p>
+        <p class="section-intro">These are implemented in the native project. A pause over another app has not been verified on a physical phone from this workspace. An emulator check, when it passes, is not that verification. There are no product screenshots here, because none were captured from the native app.</p>
         <ul class="feature-list">
           <li>
             <h3>Independent rules</h3>
@@ -129,7 +129,7 @@
           </li>
           <li>
             <h3>A pause, not a lock</h3>
-            <p>Quit sends you home. It does not force-stop the other app. Anyways lets that app continue.</p>
+            <p>When display-over-other-apps is allowed, the pause is a card in the middle of the screen and a visible scrim. Leave sends you home. It does not force-stop the other app. Continue lets that app continue. If that permission is off, you get a notification instead, and the other app is not blocked until you open it.</p>
           </li>
           <li>
             <h3>Monitoring you can stop</h3>
@@ -150,11 +150,11 @@
           </div>
           <div>
             <dt>Notifications</dt>
-            <dd>The monitor runs as a foreground service, so Android requires a persistent notification. If display-over-other-apps is off, the pause itself is a notification you tap.</dd>
+            <dd>The monitor runs as a foreground service, so Android requires a persistent notification. If display-over-other-apps is off, a pause is a notification you tap. That notification does not cover or block the other app.</dd>
           </div>
           <div>
             <dt>Display over other apps</dt>
-            <dd>Optional. When allowed, the pause is Momentwise’s own screen over the other app. It is not an invisible window held open for a privilege. You can skip it.</dd>
+            <dd>Optional. When allowed, a visible card covers about the middle of the screen and the other app stays visible behind a scrim. Touches do not pass through. It is not an invisible window. You can skip it.</dd>
           </div>
         </dl>
         <p>There is no Momentwise account, analytics SDK, or advertising SDK in the app. Rules stay in on-device storage. There is no Momentwise server receiving them. Android, GitHub, and this website have their own logs; that is not the same as the app uploading your rules.</p>
@@ -181,8 +181,8 @@
       <div class="container narrow">
         <h2 id="faq-title">Questions</h2>
         <details>
-          <summary>Does Quit close the other app for good?</summary>
-          <p>No. Quit returns you to the launcher. Android does not let a normal app force-stop another app, and Momentwise does not try.</p>
+          <summary>Does Leave close the other app for good?</summary>
+          <p>No. Leave returns you to the launcher. Android does not let a normal app force-stop another app, and Momentwise does not try. The button label can be edited; the action stays the same.</p>
         </details>
         <details>
           <summary>Are reminders exact to the second?</summary>
@@ -227,7 +227,7 @@
         <li><a href="#permissions">Permissions</a></li>
         <li><a href="#install">Install</a></li>
       </ul>
-      <p class="footer-note">Version in the app module: 0.4.0. Not a Play release. No signed APK is published. The pause has not been proven on hardware here.</p>
+      <p class="footer-note">Version in the app module: 0.5.0. Not a Play release. No signed APK is published. The pause has not been proven on a physical phone here. The browser prototype still uses older wording and is not the Android app.</p>
     </div>
   </footer>
   <script src="./script.js"></script>

@@ -114,6 +114,14 @@ class ServiceStartGateTest {
         assertTrue(UsagePoll.queryIsBounded(now, start))
         assertEquals(EventWindow.TRAILING_MILLIS, now - start)
         assertEquals(UsagePoll.INTERVAL_MILLIS, 1_000L)
+        assertEquals(UsagePoll.INTERVAL_MILLIS, UsagePoll.delayMillis(screenInteractive = true))
+        assertEquals(UsagePoll.SCREEN_OFF_INTERVAL_MILLIS, UsagePoll.delayMillis(screenInteractive = false))
+        assertTrue(UsagePoll.SCREEN_OFF_INTERVAL_MILLIS > UsagePoll.INTERVAL_MILLIS)
+        assertFalse(UsagePoll.shouldRefreshGrants(1_000L, 2_000L))
+        assertTrue(UsagePoll.shouldRefreshGrants(0L, 2_000L))
+        assertTrue(UsageQueryDiagnostics.shouldRecord(30))
+        assertFalse(UsageQueryDiagnostics.shouldRecord(1))
+        assertEquals(4L, UsageQueryDiagnostics.meanMillis(8_000_000L, 2))
         val events = (0 until 40).map { index ->
             ForegroundEvent("com.example.app", now - 15_000L + index * 100L)
         }

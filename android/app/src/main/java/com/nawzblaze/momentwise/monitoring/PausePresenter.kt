@@ -11,11 +11,20 @@ import com.nawzblaze.momentwise.intervention.PauseActivity
 import com.nawzblaze.momentwise.intervention.PauseRequest
 
 /**
- * Shows the pause. An overlay is used only when the user has allowed display
- * over other apps, and the overlay is the pause itself — never an invisible
- * window held open to keep a privilege. Otherwise a notification opens the
- * same screen. That path is labelled as a notification, not as a pause that
- * appeared on its own.
+ * Shows the pause.
+ *
+ * When display-over-other-apps is granted, the pause is a visible overlay:
+ * a card in the middle and a scrim that consumes touches. That does not
+ * require a background activity start.
+ *
+ * If the overlay cannot be added, a background activity start is attempted
+ * once and its result is not treated as proof the activity was shown. Since
+ * API 29 a foreground service is not allowed to start an activity. The
+ * notification remains the fallback, and its text says the other app is not
+ * blocked.
+ *
+ * If overlay is not granted, only the notification is shown. A notification
+ * is not described as a cover.
  */
 object PausePresenter {
 
@@ -35,11 +44,13 @@ object PausePresenter {
     fun show(context: Context, request: PauseRequest, themeModeName: String) {
         shownGeneration += 1
         if (GrantChecks.read(context).overlay) {
-            val shown = PauseOverlay.show(context, request, themeModeName)
-            if (shown) {
+            if (PauseOverlay.show(context, request, themeModeName)) {
                 cancelNotification(context)
                 return
             }
+            noteActivityAttempt(context, request)
+        } else {
+            DebugNotes.append(context, "intervention=notification reason=overlay-not-granted")
         }
         showNotification(context, request)
     }
@@ -57,6 +68,21 @@ object PausePresenter {
     fun handOffToActivity(context: Context) {
         PauseOverlay.dismiss(context)
         cancelNotification(context)
+        DebugNotes.append(context, "intervention=activity")
+    }
+
+    /**
+     * startActivity returning is not evidence the pause was visible.
+     * Background activity starts are commonly blocked without an exception.
+     */
+    private fun noteActivityAttempt(context: Context, request: PauseRequest) {
+        val outcome = try {
+            context.startActivity(PauseActivity.intent(context, request))
+            "returned"
+        } catch (error: Exception) {
+            error.javaClass.simpleName
+        }
+        DebugNotes.append(context, "activity-start=$outcome")
     }
 
     private fun showNotification(context: Context, request: PauseRequest) {
@@ -67,11 +93,13 @@ object PausePresenter {
             launch,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
+        val fallback = context.getString(R.string.pause_notification_fallback, request.appName)
+        val visible = "${request.heading}. ${request.notice} $fallback"
         val notification = NotificationCompat.Builder(context, NotificationChannels.PAUSE)
             .setSmallIcon(R.drawable.ic_stat_pause)
-            .setContentTitle(context.getString(R.string.pause_notification_title))
-            .setContentText(request.notice)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(request.notice))
+            .setContentTitle(request.heading)
+            .setContentText(visible)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(visible))
             .setContentIntent(pending)
             .setDeleteIntent(PauseClearedReceiver.pending(context))
             .setAutoCancel(false)
@@ -90,7 +118,7 @@ object PausePresenter {
 
 /**
  * The user swiped the pause notification away without choosing. That is not a
- * Quit or an Anyways. Clear the "pause is showing" latch so the next opening
+ * Leave or a Continue. Clear the "pause is showing" latch so the next opening
  * can show again.
  */
 class PauseClearedReceiver : BroadcastReceiver() {

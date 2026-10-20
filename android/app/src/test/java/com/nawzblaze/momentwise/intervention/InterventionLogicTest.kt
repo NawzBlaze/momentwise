@@ -193,6 +193,22 @@ class SessionClockTest {
         assertEquals(GuardSnapshot.Phase.NONE, quit.phase)
         assertNull(quit.nextReminderAtMillis)
         assertNull(quit.activePackage)
+        assertEquals(instagram, quit.quitSuppressedPackage)
+        assertFalse(SessionClock.needsOpening(quit, instagram, true))
+        val (again, command) = SessionClock.onOpened(quit, instagram, true, today)
+        assertEquals(GuardCommand.None, command)
+        assertEquals(instagram, again.quitSuppressedPackage)
+    }
+
+    @Test
+    fun leaveSuppressionClearsAfterARealLeave() {
+        val quit = SessionClock.onQuit(
+            GuardSnapshot(activePackage = instagram, phase = GuardSnapshot.Phase.AWAITING_OPENING),
+        )
+        val left = SessionClock.onLeft(quit).first
+        assertNull(left.quitSuppressedPackage)
+        val (_, command) = SessionClock.onOpened(left, instagram, true, today)
+        assertTrue(command is GuardCommand.ShowOpening)
     }
 
     @Test
