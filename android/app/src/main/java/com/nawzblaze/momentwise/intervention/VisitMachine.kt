@@ -165,6 +165,32 @@ object VisitMachine {
         return RemovalStep(held, action, currentId, snapshot.activePackage)
     }
 
+    /**
+     * A fresh session has no visit to protect. Do not drop the latch while a
+     * card is still on screen: that would treat the overlay's own stop as a leave.
+     */
+    fun shouldDropLatch(snapshot: GuardSnapshot, pauseVisible: Boolean): Boolean =
+        !pauseVisible &&
+            snapshot.phase == GuardSnapshot.Phase.NONE &&
+            snapshot.activePackage == null &&
+            snapshot.visitId == 0L
+
+    /**
+     * The card can be removed before the visit write is visible, so the stored
+     * phase is still [GuardSnapshot.Phase.NONE]. That is not a finished visit.
+     * Put the card back once. A second removal stops. Continue is never put back.
+     */
+    fun unpersistedRemoval(
+        phase: GuardSnapshot.Phase,
+        action: Removal,
+        shownPackage: String?,
+        systemRemovals: Int,
+    ): Removal {
+        if (action != Removal.IGNORE || shownPackage.isNullOrBlank()) return action
+        if (phase == GuardSnapshot.Phase.CONTINUING) return action
+        return if (systemRemovals < 1) Removal.RESHOW else Removal.IGNORE
+    }
+
     fun isOverlayNoise(
         pauseVisible: Boolean,
         handback: String?,

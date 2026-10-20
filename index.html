@@ -3,17 +3,36 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Momentwise | Pause before you scroll</title>
-  <meta name="description" content="Personal prompts and gentle reminders help you break automatic scrolling habits and choose how you spend your time.">
+  <title>Momentwise | Pause Before You Scroll</title>
+  <meta name="description" content="Momentwise helps you pause before opening distracting apps and check in during actual app use. Set your own prompts and reminders on your Android phone.">
+  <meta name="robots" content="index, follow">
   <meta name="theme-color" content="#FAF7F2" id="meta-theme-color">
-  <meta property="og:type" content="website">
-  <meta property="og:url" content="https://nawzblaze.github.io/momentwise/">
-  <meta property="og:title" content="Momentwise — Pause before you scroll.">
-  <meta property="og:description" content="Personal prompts and gentle reminders help you break automatic scrolling habits and choose how you spend your time.">
-  <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="Momentwise — Pause before you scroll.">
-  <meta name="twitter:description" content="Personal prompts and gentle reminders help you break automatic scrolling habits and choose how you spend your time.">
   <link rel="canonical" href="https://nawzblaze.github.io/momentwise/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Momentwise">
+  <meta property="og:locale" content="en">
+  <meta property="og:url" content="https://nawzblaze.github.io/momentwise/">
+  <meta property="og:title" content="Momentwise | Pause Before You Scroll">
+  <meta property="og:description" content="Momentwise helps you pause before opening distracting apps and check in during actual app use. Set your own prompts and reminders on your Android phone.">
+  <meta property="og:image" content="https://nawzblaze.github.io/momentwise/assets/og.jpg">
+  <meta property="og:image:alt" content="Momentwise mark: a forest-green M and a golden sunrise">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Momentwise | Pause Before You Scroll">
+  <meta name="twitter:description" content="Momentwise helps you pause before opening distracting apps and check in during actual app use. Set your own prompts and reminders on your Android phone.">
+  <meta name="twitter:image" content="https://nawzblaze.github.io/momentwise/assets/og.jpg">
+  <meta name="twitter:image:alt" content="Momentwise mark: a forest-green M and a golden sunrise">
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Momentwise",
+      "operatingSystem": "Android",
+      "applicationCategory": "LifestyleApplication",
+      "url": "https://nawzblaze.github.io/momentwise/",
+      "image": "https://nawzblaze.github.io/momentwise/assets/og.jpg",
+      "description": "Momentwise helps you pause before opening distracting apps and check in during actual app use. Set your own prompts and reminders on your Android phone."
+    }
+  </script>
   <link rel="icon" type="image/png" sizes="32x32" href="./assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="192x192" href="./assets/favicon-192.png">
   <link rel="apple-touch-icon" href="./assets/favicon-192.png">
@@ -41,7 +60,7 @@
   <header class="site-header">
     <div class="container header-inner">
       <a href="./" class="brand" aria-label="Momentwise home">
-        <img src="./assets/logo.png" alt="" class="brand-mark" width="34" height="34">
+        <img src="./assets/logo-mark.png" alt="" class="brand-mark" width="34" height="34">
         <span class="brand-name">Momentwise</span>
       </a>
       <button type="button" class="nav-toggle" aria-expanded="false" aria-controls="site-nav">
@@ -51,6 +70,7 @@
         <a href="#benefits">Why it helps</a>
         <a href="#how">How it works</a>
         <a href="#permissions">Permissions</a>
+        <a href="#privacy">Privacy</a>
         <a href="#faq">Questions</a>
       </nav>
       <div class="header-tools">
@@ -81,7 +101,7 @@
         </div>
         <figure class="mark-panel">
           <div class="pause-card">
-            <p class="pause-wordmark"><img src="./assets/logo.png" alt="" width="28" height="28">Momentwise</p>
+            <p class="pause-wordmark"><img src="./assets/logo-mark.png" alt="" width="28" height="28">Momentwise</p>
             <h2>Before you scroll</h2>
             <p class="support">Take a second. What do you want from this visit?</p>
             <div class="pause-choice primary">
@@ -171,6 +191,15 @@
       </div>
     </section>
 
+    <section id="privacy" class="section" aria-labelledby="privacy-title">
+      <div class="container narrow">
+        <h2 id="privacy-title">Privacy</h2>
+        <p>Rules, prompts, and reminder settings stay on the phone. Momentwise has no account, and the app does not include an advertising or analytics SDK.</p>
+        <p>Usage Access is read on the device to notice which app is in front. It is not turned into a usage chart, and it is not uploaded to a Momentwise server. There is no Momentwise server.</p>
+        <p>Android still shows an ongoing notification while monitoring is running. That is a system requirement for this kind of foreground service, not a sign that the app is sending data off the phone.</p>
+      </div>
+    </section>
+
     <section id="faq" class="section" aria-labelledby="faq-title">
       <div class="container narrow">
         <h2 id="faq-title">Questions</h2>
@@ -187,6 +216,10 @@
             <summary>Where is the download?</summary>
             <p>Momentwise is not on Google Play. A signed download is not published yet, so the button stays off.</p>
           </details>
+          <details>
+            <summary>Why is there an ongoing notification?</summary>
+            <p>Android requires one while Momentwise is monitoring. It stays silent and says “Momentwise is on.” Hiding it would also stop reliable monitoring. The app does not remove it.</p>
+          </details>
         </div>
       </div>
     </section>
@@ -195,7 +228,7 @@
   <footer class="site-footer">
     <div class="container footer-inner">
       <div class="footer-brand">
-        <img src="./assets/logo.png" alt="" width="28" height="28">
+        <img src="./assets/logo-mark.png" alt="" width="28" height="28">
         <div>
           <strong>Momentwise</strong>
           <p>Make room for what matters.</p>
@@ -204,6 +237,7 @@
       <ul class="footer-links">
         <li><a href="https://github.com/NawzBlaze/momentwise">Repository</a></li>
         <li><a href="https://github.com/NawzBlaze/momentwise/issues">Issues</a></li>
+        <li><a href="#privacy">Privacy</a></li>
         <li><a href="#permissions">Permissions</a></li>
         <li><a href="#download">Download</a></li>
       </ul>

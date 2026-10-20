@@ -87,6 +87,12 @@ class MonitoringService : Service() {
     /** Overlay handback and the visit id of the card currently shown. */
     private var machineLatch = VisitMachine.Latch()
 
+    /**
+     * The system removed an opening twice before the visit write was visible.
+     * Do not show that package again until it has actually left the foreground.
+     */
+    private var openingHeldPackage: String? = null
+
     @Volatile
     private var sessionCache: GuardSnapshot = GuardSnapshot()
 
@@ -152,12 +158,33 @@ class MonitoringService : Service() {
                 PauseDismissReason.WITHOUT_CHOICE -> {
                     detector = UsageEventReducer.clearPendingStop(detector)
                     val removal = VisitMachine.onSystemRemoved(sessionCache, machineLatch, visitId, now)
-                    machineLatch = removal.latch
-                    when (removal.action) {
-                        VisitMachine.Removal.IGNORE -> pauseClearedByUser = false
+                    val action = VisitMachine.unpersistedRemoval(
+                        phase = sessionCache.phase,
+                        action = removal.action,
+                        shownPackage = shownPackage,
+                        systemRemovals = machineLatch.systemRemovals,
+                    )
+                    machineLatch = if (action == VisitMachine.Removal.RESHOW && removal.action == VisitMachine.Removal.IGNORE) {
+                        removal.latch.copy(
+                            handbackPackage = shownPackage ?: removal.latch.handbackPackage,
+                            overlayNoiseUntilMillis = now,
+                            systemRemovals = machineLatch.systemRemovals + 1,
+                        )
+                    } else {
+                        removal.latch
+                    }
+                    when (action) {
+                        VisitMachine.Removal.IGNORE -> {
+                            pauseClearedByUser = false
+                            if (shownPackage != null && machineLatch.systemRemovals >= 1 &&
+                                sessionCache.phase != GuardSnapshot.Phase.CONTINUING
+                            ) {
+                                openingHeldPackage = shownPackage
+                            }
+                        }
                         VisitMachine.Removal.RESHOW -> {
                             pauseClearedByUser = false
-                            val pkg = removal.packageName
+                            val pkg = removal.packageName ?: shownPackage
                             val rule = pkg?.let { id -> enabledRules.find { it.appId == id } }
                             if (rule != null) {
                                 scope.launch { showPause(rule, PauseRequest.Kind.OPENING) }
@@ -165,6 +192,7 @@ class MonitoringService : Service() {
                         }
                         VisitMachine.Removal.RECORD_NO_CHOICE -> {
                             pauseClearedByUser = true
+                            openingHeldPackage = removal.packageName ?: shownPackage
                             scope.launch { recordClearedWithoutChoice(removal.packageName, removal.visitId) }
                         }
                     }
@@ -354,10 +382,7 @@ class MonitoringService : Service() {
         val today = LocalDate.now().toString()
         // The in-memory copy can lag a test reset. The store is the visit decision.
         sessionCache = sessions().current()
-        if (sessionCache.phase == GuardSnapshot.Phase.NONE &&
-            sessionCache.activePackage == null &&
-            sessionCache.visitId == 0L
-        ) {
+        if (VisitMachine.shouldDropLatch(sessionCache, pauseVisible)) {
             machineLatch = VisitMachine.Latch()
         }
         val events = readEvents(EventWindow.steadyStart(now, detector.lastEventTimeMillis), now)
@@ -375,6 +400,22 @@ class MonitoringService : Service() {
         val signal = reduced.signal
         val signaledPackage = reduced.packageName
         detector = reduced.state
+        val heldNoise = VisitMachine.isOverlayNoise(
+            pauseVisible = pauseVisible,
+            handback = machineLatch.handbackPackage,
+            noiseUntil = machineLatch.overlayNoiseUntilMillis,
+            signal = signal,
+            signaledPackage = signaledPackage,
+            signalTimeMillis = reduced.signalTimeMillis,
+            selfPackage = packageName,
+        )
+        val leftHeld = signal == DetectorSignal.LEFT &&
+            (signaledPackage == null || signaledPackage == openingHeldPackage)
+        val openedSomethingElse = signal == DetectorSignal.OPENED &&
+            signaledPackage != null && signaledPackage != openingHeldPackage
+        if (openingHeldPackage != null && !pauseVisible && !heldNoise && (leftHeld || openedSomethingElse)) {
+            openingHeldPackage = null
+        }
         if (signal != DetectorSignal.NONE) {
             noteDebug(
                 "tick $signal pkg=$signaledPackage last=${detector.lastPackage} pause=$pauseVisible visit=${sessionCache.visitId}",
@@ -467,6 +508,7 @@ class MonitoringService : Service() {
     private suspend fun presentWaitingOpening() {
         if (pauseVisible || stopRequested) return
         val foreground = detector.lastPackage ?: return
+        if (foreground == openingHeldPackage) return
         val snapshot = sessions().current()
         sessionCache = snapshot
         if (showUnshownOpening(foreground)) return

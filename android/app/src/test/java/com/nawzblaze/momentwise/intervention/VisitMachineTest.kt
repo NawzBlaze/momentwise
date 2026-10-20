@@ -115,6 +115,50 @@ class VisitMachineTest {
     }
 
     @Test
+    fun aVisibleCardKeepsItsLatchOnAnEmptySession() {
+        val empty = GuardSnapshot()
+        assertFalse(VisitMachine.shouldDropLatch(empty, pauseVisible = true))
+        assertTrue(VisitMachine.shouldDropLatch(empty, pauseVisible = false))
+        assertFalse(
+            VisitMachine.shouldDropLatch(
+                empty.copy(visitId = 2, phase = GuardSnapshot.Phase.AWAITING_OPENING, activePackage = instagram),
+                pauseVisible = false,
+            ),
+        )
+    }
+
+    @Test
+    fun anUnpersistedOpeningIsReshownOnceThenHeld() {
+        assertEquals(
+            VisitMachine.Removal.RESHOW,
+            VisitMachine.unpersistedRemoval(
+                phase = GuardSnapshot.Phase.NONE,
+                action = VisitMachine.Removal.IGNORE,
+                shownPackage = instagram,
+                systemRemovals = 0,
+            ),
+        )
+        assertEquals(
+            VisitMachine.Removal.IGNORE,
+            VisitMachine.unpersistedRemoval(
+                phase = GuardSnapshot.Phase.NONE,
+                action = VisitMachine.Removal.IGNORE,
+                shownPackage = instagram,
+                systemRemovals = 1,
+            ),
+        )
+        assertEquals(
+            VisitMachine.Removal.IGNORE,
+            VisitMachine.unpersistedRemoval(
+                phase = GuardSnapshot.Phase.CONTINUING,
+                action = VisitMachine.Removal.IGNORE,
+                shownPackage = instagram,
+                systemRemovals = 0,
+            ),
+        )
+    }
+
+    @Test
     fun systemRemovalReshowsOnceThenStops() {
         val visit = Script()
         visit.open(instagram)
