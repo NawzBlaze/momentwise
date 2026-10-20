@@ -731,6 +731,15 @@ class GuardSnapshotJsonTest {
     }
 
     @Test
+    fun jsonNullIsNotThePackageNameNull() {
+        val saved = """{"phase":"NONE","recentAwayPackage":null,"recentAwayAtElapsed":50000,"lastGuardedPackage":"com.instagram.android","visitId":4}"""
+        val decoded = GuardSnapshotJson.decode(saved)
+        assertEquals(null, decoded.recentAwayPackage)
+        assertEquals("com.instagram.android", decoded.lastGuardedPackage)
+        assertFalse(SessionClock.needsOpening(decoded, "com.instagram.android", true, 70_000))
+    }
+
+    @Test
     fun aSnapshotSavedBeforeVisitIdsDecodesAsVisitZero() {
         val legacy = """{"activePackage":"com.instagram.android","phase":"CONTINUING","dismissals":{}}"""
         assertEquals(0L, GuardSnapshotJson.decode(legacy).visitId)

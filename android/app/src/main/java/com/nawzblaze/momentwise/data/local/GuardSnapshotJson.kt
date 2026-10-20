@@ -60,23 +60,23 @@ internal object GuardSnapshotJson {
                 }
             }
             GuardSnapshot(
-                activePackage = json.optString("activePackage").ifBlank { null },
+                activePackage = json.optNullableString("activePackage"),
                 phase = runCatching { GuardSnapshot.Phase.valueOf(json.optString("phase")) }
                     .getOrDefault(GuardSnapshot.Phase.NONE),
                 nextReminderAtMillis = json.optNullableLong("nextReminderAtMillis"),
                 reminderPresentedFor = json.optNullableLong("reminderPresentedFor"),
-                openingHandledForPackage = json.optString("openingHandledForPackage").ifBlank { null },
+                openingHandledForPackage = json.optNullableString("openingHandledForPackage"),
                 dismissals = dismissals,
                 sessionDroppedOnBoot = json.optBoolean("sessionDroppedOnBoot", false),
-                quitSuppressedPackage = json.optString("quitSuppressedPackage").ifBlank { null },
+                quitSuppressedPackage = json.optNullableString("quitSuppressedPackage"),
                 clearedWithoutChoice = json.optBoolean("clearedWithoutChoice", false),
                 visitId = json.optLong("visitId", 0L),
                 reminderHoldUntilMillis = json.optNullableLong("reminderHoldUntilMillis"),
                 useByPackage = decodeUse(json.optJSONObject("useByPackage")),
                 backgroundedAtElapsed = json.optNullableLong("backgroundedAtElapsed"),
-                recentAwayPackage = json.optString("recentAwayPackage").ifBlank { null },
+                recentAwayPackage = json.optNullableString("recentAwayPackage"),
                 recentAwayAtElapsed = json.optNullableLong("recentAwayAtElapsed"),
-                lastGuardedPackage = json.optString("lastGuardedPackage").ifBlank { null },
+                lastGuardedPackage = json.optNullableString("lastGuardedPackage"),
             )
         } catch (_: Exception) {
             GuardSnapshot()
@@ -93,6 +93,17 @@ internal object GuardSnapshotJson {
 
     private fun JSONObject.optNullableLong(key: String): Long? =
         if (!has(key) || isNull(key)) null else optLong(key)
+
+    /**
+     * Android's [JSONObject.optString] turns a JSON null into the four characters
+     * "null". That is not a package. A missing away package must stay null so the
+     * last guarded package can still cover the grace minute.
+     */
+    private fun JSONObject.optNullableString(key: String): String? {
+        if (!has(key) || isNull(key)) return null
+        val value = optString(key)
+        return value.takeUnless { it.isBlank() || it == "null" }
+    }
 
     private fun decodeUse(json: JSONObject?): Map<String, AppUse> {
         if (json == null) return emptyMap()

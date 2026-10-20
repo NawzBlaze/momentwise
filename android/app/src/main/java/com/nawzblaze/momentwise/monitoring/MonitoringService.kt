@@ -503,7 +503,7 @@ class MonitoringService : Service() {
             Log.i(TAG, "visit ui=${step.ui} signal=$signal pkg=$signaledPackage pause=$pauseVisible")
             noteDebug(
                 "tick decide ui=${step.ui} phase=${snapshot.phase} active=${snapshot.activePackage} " +
-                    "away=${snapshot.recentAwayPackage}/${snapshot.lastGuardedPackage}@${snapshot.recentAwayAtElapsed} " +
+                    "away=${snapshot.recentAwayPackage}/${snapshot.lastGuardedPackage}@${snapshot.recentAwayAtElapsed} elapsed=$elapsed " +
                     "hasRule=$hasRule persisted=$persisted visit=${snapshot.visitId}",
             )
         }

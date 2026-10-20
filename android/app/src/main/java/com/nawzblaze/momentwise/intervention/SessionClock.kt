@@ -78,6 +78,10 @@ sealed interface GuardCommand {
 
 object SessionClock {
 
+    /** Android JSON can decode a null package as the word "null". That is not an app. */
+    private fun storedPackage(value: String?): String? =
+        value?.takeUnless { it.isBlank() || it == "null" }
+
     /** Not an exact alarm. The next poll after this hold may show the reminder again. */
     const val REMINDER_REDISPLAY_HOLD_MILLIS = 60_000L
 
@@ -89,7 +93,7 @@ object SessionClock {
         elapsedRealtime: Long = Long.MIN_VALUE,
     ): Pair<GuardSnapshot, GuardCommand> {
         val cleared = clearStaleDismissals(snapshot, today)
-        val awayPackage = cleared.recentAwayPackage ?: cleared.lastGuardedPackage
+        val awayPackage = storedPackage(cleared.recentAwayPackage) ?: storedPackage(cleared.lastGuardedPackage)
         if (awayPackage == packageName &&
             VisitLifecycle.withinGrace(cleared.recentAwayAtElapsed, elapsedRealtime)
         ) {
@@ -163,7 +167,7 @@ object SessionClock {
     ): Boolean {
         if (foregroundPackage == null || !ruleEnabled) return false
         if (snapshot.quitSuppressedPackage == foregroundPackage) return false
-        val awayPackage = snapshot.recentAwayPackage ?: snapshot.lastGuardedPackage
+        val awayPackage = storedPackage(snapshot.recentAwayPackage) ?: storedPackage(snapshot.lastGuardedPackage)
         if (awayPackage == foregroundPackage &&
             VisitLifecycle.withinGrace(snapshot.recentAwayAtElapsed, elapsedRealtime)
         ) {
@@ -389,6 +393,8 @@ object SessionClock {
             clearedWithoutChoice = false,
             reminderHoldUntilMillis = null,
             backgroundedAtElapsed = null,
+            recentAwayPackage = null,
+            recentAwayAtElapsed = null,
             lastGuardedPackage = pkg ?: snapshot.lastGuardedPackage,
             useByPackage = use,
         )
