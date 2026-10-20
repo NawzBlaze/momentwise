@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Momentwise | Pause Before You Scroll</title>
   <meta name="description" content="Momentwise helps you pause before opening distracting apps and check in during actual app use. Set your own prompts and reminders on your Android phone.">
+  <meta name="google-site-verification" content="01omZfSAZVcvwrjPL0O4zI9x9tx9-AXHt6KhZnlq8tw" />
   <meta name="robots" content="index, follow">
   <meta name="theme-color" content="#FAF7F2" id="meta-theme-color">
   <link rel="canonical" href="https://nawzblaze.github.io/momentwise/">
@@ -36,6 +37,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="./assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="192x192" href="./assets/favicon-192.png">
   <link rel="apple-touch-icon" href="./assets/favicon-192.png">
+  <link rel="preload" as="image" href="./assets/logo.png">
   <script>
     (function() {
       try {
@@ -73,13 +75,10 @@
         <a href="#privacy">Privacy</a>
         <a href="#faq">Questions</a>
       </nav>
-      <div class="header-tools">
-        <a class="header-source" href="https://github.com/NawzBlaze/momentwise" target="_blank" rel="noopener noreferrer">Source</a>
-        <div class="theme-selector" role="radiogroup" aria-label="Theme">
-          <button type="button" class="theme-option" role="radio" aria-checked="false" data-theme-value="system">Auto</button>
-          <button type="button" class="theme-option" role="radio" aria-checked="false" data-theme-value="light">Light</button>
-          <button type="button" class="theme-option" role="radio" aria-checked="false" data-theme-value="dark">Dark</button>
-        </div>
+      <div class="theme-selector" role="radiogroup" aria-label="Theme">
+        <button type="button" class="theme-option" role="radio" aria-checked="false" data-theme-value="system">Auto</button>
+        <button type="button" class="theme-option" role="radio" aria-checked="false" data-theme-value="light">Light</button>
+        <button type="button" class="theme-option" role="radio" aria-checked="false" data-theme-value="dark">Dark</button>
       </div>
     </div>
   </header>
@@ -87,58 +86,28 @@
   <main id="main">
     <section class="hero" aria-labelledby="hero-title">
       <div class="container hero-grid">
-        <div>
+        <div class="hero-copy">
           <p class="eyebrow">INTRODUCING MOMENTWISE</p>
           <h1 id="hero-title">Pause before you scroll.</h1>
           <p class="lede">Personal prompts and gentle reminders help you break automatic scrolling habits and choose how you spend your time.</p>
           <p class="brand-tagline">Make room for what matters.</p>
           <p class="secondary-line">Make your next tap intentional.</p>
           <div class="hero-actions">
-            <button type="button" class="button button-primary" disabled aria-disabled="true">Download for Android</button>
+            <button type="button" class="button button-primary" id="download-button" disabled aria-disabled="true">Download for Android</button>
             <a class="button button-secondary" href="https://github.com/NawzBlaze/momentwise" target="_blank" rel="noopener noreferrer">View source code</a>
           </div>
-          <p id="download" class="status-line">A signed download is not available yet.</p>
-        </div>
-        <figure class="mark-panel">
-          <div class="pause-pair">
-            <div class="pause-card">
-              <p class="pause-kicker">A new visit</p>
-              <p class="pause-wordmark"><img src="./assets/logo-mark.png" alt="" width="28" height="28">Momentwise</p>
-              <h2>Before you scroll</h2>
-              <p class="support">Take a second. What do you want from this visit?</p>
-              <div class="pause-choice primary">
-                <strong>Leave</strong>
-                <span>Step away for now.</span>
-              </div>
-              <div class="pause-choice secondary">
-                <strong>Continue intentionally</strong>
-                <span>Reminder after 5 minutes of use.</span>
-              </div>
-              <p class="pause-tertiary">Dismiss for today</p>
-              <p class="tertiary-help">No more prompts for this app today.</p>
-            </div>
-            <div class="pause-card pause-card-reminder">
-              <p class="pause-kicker">Check-in</p>
-              <p class="pause-wordmark"><img src="./assets/logo-mark.png" alt="" width="28" height="28">Momentwise</p>
-              <h2>Still here</h2>
-              <p class="support">You're still here?</p>
-              <div class="pause-choice primary">
-                <strong>Okay, I'm quitting</strong>
-                <span>Step away for now.</span>
-              </div>
-              <div class="pause-choice secondary">
-                <strong>Wait</strong>
-                <span>Check again after 5 minutes of use.</span>
-              </div>
-              <p class="pause-tertiary">Dismiss for today</p>
-            </div>
+          <div class="download-block" id="download">
+            <p class="status-line" id="download-status" aria-live="polite">A signed download is not available yet.</p>
+            <div id="download-details" class="download-details" hidden></div>
           </div>
-          <figcaption>Opening and reminder, drawn from the product copy. Not a photograph of a phone.</figcaption>
+        </div>
+        <figure class="hero-mark">
+          <img class="hero-logo" src="./assets/logo.png" width="960" height="960" alt="Momentwise mark: a forest-green M and a golden sunrise" fetchpriority="high" decoding="async">
         </figure>
       </div>
     </section>
 
-    <section id="benefits" class="section section-alt" aria-labelledby="benefits-title">
+    <section id="benefits" class="section" aria-labelledby="benefits-title">
       <div class="container">
         <h2 id="benefits-title">A pause, not a lock</h2>
         <div class="benefits">
@@ -165,29 +134,37 @@
         <ol class="steps">
           <li>
             <span class="step-index">1</span>
-            <h3>Choose the apps</h3>
-            <p>Each app has its own prompt, buttons, and reminder. Nothing is turned on until you enable it.</p>
+            <div>
+              <h3>Choose the apps</h3>
+              <p>Each app has its own prompt, buttons, and reminder. Nothing is turned on until you enable it.</p>
+            </div>
           </li>
           <li>
             <span class="step-index">2</span>
-            <h3>Pause when you open one</h3>
-            <p>The pause asks what you want from this visit. Leave goes home and ends it, so the next open asks again. A trip away under a minute, without Leave, is the same visit. Dismiss for today skips that app until tomorrow. Closing the pause without choosing is not any of those.</p>
+            <div>
+              <h3>Pause when you open one</h3>
+              <p>The pause asks what you want from this visit. Leave goes home and ends it, so the next open asks again. A trip away under a minute, without Leave, is the same visit. Dismiss for today skips that app until tomorrow. Closing the pause without choosing is not any of those.</p>
+            </div>
           </li>
           <li>
             <span class="step-index">3</span>
-            <h3>Reminders, if you want them</h3>
-            <p>A reminder counts time in that app after you choose to stay. Home, another app, a dark screen, and the pause itself do not count. On a phone it can arrive about 15 seconds after the interval, not on the exact second. Never still shows the opening and does not schedule a reminder.</p>
+            <div>
+              <h3>Reminders, if you want them</h3>
+              <p>A reminder counts time in that app after you choose to stay. Home, another app, a dark screen, and the pause itself do not count. On a phone it can arrive about 15 seconds after the interval, not on the exact second. Never still shows the opening and does not schedule a reminder.</p>
+            </div>
           </li>
           <li>
             <span class="step-index">4</span>
-            <h3>Stop whenever you want</h3>
-            <p>Settings can pause monitoring without deleting rules. Declining a permission leaves Momentwise as a configuration app.</p>
+            <div>
+              <h3>Stop whenever you want</h3>
+              <p>Settings can pause monitoring without deleting rules. Declining a permission leaves Momentwise as a configuration app.</p>
+            </div>
           </li>
         </ol>
       </div>
     </section>
 
-    <section id="permissions" class="section section-alt" aria-labelledby="permissions-title">
+    <section id="permissions" class="section" aria-labelledby="permissions-title">
       <div class="container narrow">
         <h2 id="permissions-title">Permissions</h2>
         <p>Momentwise explains each grant before the system screen, and only asks when you enable a rule.</p>
@@ -236,7 +213,7 @@
           </details>
           <details>
             <summary>Where is the download?</summary>
-            <p>Momentwise is not on Google Play. A signed download is not published yet, so the button stays off.</p>
+            <p>Momentwise is not on Google Play. The download button links to a signed release file only when one is published.</p>
           </details>
           <details>
             <summary>Why is there an ongoing notification?</summary>
@@ -250,7 +227,7 @@
   <footer class="site-footer">
     <div class="container footer-inner">
       <div class="footer-brand">
-        <img src="./assets/logo-mark.png" alt="" width="28" height="28">
+        <img src="./assets/logo-mark.png" alt="" width="34" height="34">
         <div>
           <strong>Momentwise</strong>
           <p>Make room for what matters.</p>
@@ -263,7 +240,7 @@
         <li><a href="#permissions">Permissions</a></li>
         <li><a href="#download">Download</a></li>
       </ul>
-      <p class="footer-note">Not on Google Play. A signed download is not available yet.</p>
+      <p class="footer-note" id="footer-download-note">Not on Google Play. A signed download is not available yet.</p>
     </div>
   </footer>
   <script src="./script.js"></script>

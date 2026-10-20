@@ -22,5 +22,6 @@ dist/
 build/
 _site/
 signed-artifact/
+site-screenshots/
 *.tmp
 *.log
