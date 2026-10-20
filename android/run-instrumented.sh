@@ -28,6 +28,7 @@ if [ "$code" -ne 0 ]; then
     cat "${GITHUB_WORKSPACE:-/tmp}/emulator-measure.txt" || true
     python3 - <<'PY'
 import pathlib
+import re
 root = pathlib.Path("app/build")
 found = False
 for report in root.rglob("*.xml"):
@@ -39,7 +40,11 @@ for report in root.rglob("*.xml"):
         continue
     found = True
     print(path)
-    print(text[:2500])
+    names = re.findall(r'<testcase name="([^"]+)"[^>]*>\s*<(?:failure|error)', text)
+    print("FAILED TESTS:", ", ".join(names) if names else "(none parsed)")
+    for name, body in re.findall(r'<testcase name="([^"]+)"[^>]*>\s*<(?:failure|error)[^>]*>(.*?)</(?:failure|error)>', text, re.S):
+        msg = re.sub(r"\s+", " ", body)
+        print(f"FAILED {name}: ...{msg[-500:]}")
 if not found:
     print("No instrumentation failure element was found.")
 PY

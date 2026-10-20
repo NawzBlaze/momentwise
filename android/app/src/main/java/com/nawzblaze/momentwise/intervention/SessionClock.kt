@@ -202,10 +202,17 @@ object SessionClock {
      * Leave does not come through here: [onQuit] already ended that visit.
      */
     fun onTemporarilyAway(snapshot: GuardSnapshot, elapsedRealtime: Long): GuardSnapshot {
-        if (snapshot.phase == GuardSnapshot.Phase.NONE || snapshot.activePackage == null) {
-            return endSession(snapshot).copy(quitSuppressedPackage = null, backgroundedAtElapsed = null)
-        }
         if (snapshot.quitSuppressedPackage != null) {
+            // The leave after explicit Leave was observed. Do not start a grace
+            // minute; the next entry is a new opening.
+            return endSession(snapshot).copy(
+                quitSuppressedPackage = null,
+                backgroundedAtElapsed = null,
+                recentAwayPackage = null,
+                recentAwayAtElapsed = null,
+            )
+        }
+        if (snapshot.phase == GuardSnapshot.Phase.NONE || snapshot.activePackage == null) {
             return endSession(snapshot).copy(quitSuppressedPackage = null, backgroundedAtElapsed = null)
         }
         return closeUse(snapshot).copy(backgroundedAtElapsed = elapsedRealtime)

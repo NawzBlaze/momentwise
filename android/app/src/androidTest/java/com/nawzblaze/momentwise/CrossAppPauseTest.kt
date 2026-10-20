@@ -333,7 +333,10 @@ class CrossAppPauseTest {
         return oneLine("status=[${statusFile()}] package=[$posted] notifications=[$notes]")
     }
 
-    private fun oneLine(text: String): String = text.replace(Regex("\\s+"), " ").take(700)
+    private fun oneLine(text: String): String {
+        val flat = text.replace(Regex("\\s+"), " ")
+        return if (flat.length <= 700) flat else flat.takeLast(700)
+    }
 
     private fun shell(command: String): String {
         val automation = InstrumentationRegistry.getInstrumentation().uiAutomation

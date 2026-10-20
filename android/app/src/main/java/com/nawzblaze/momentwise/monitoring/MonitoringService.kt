@@ -32,7 +32,6 @@ import com.nawzblaze.momentwise.intervention.PauseRequest
 import com.nawzblaze.momentwise.intervention.PauseShowPolicy
 import com.nawzblaze.momentwise.intervention.SessionClock
 import com.nawzblaze.momentwise.intervention.UsageEventReducer
-import com.nawzblaze.momentwise.intervention.VisitLifecycle
 import com.nawzblaze.momentwise.intervention.VisitMachine
 import java.time.LocalDate
 import kotlinx.coroutines.CoroutineScope
@@ -252,18 +251,19 @@ class MonitoringService : Service() {
             sessions().session.collect { snapshot ->
                 // Storage omits the accrual anchor. A blind replace made every
                 // poll look like the first sample, so a reminder never arrived.
-                val previous = sessionCache
                 val adopted = SessionClock.adoptStored(snapshot, sessionCache)
-                if (adopted.quitSuppressedPackage != null) {
-                    explicitLeave = true
-                    gracePackage = null
-                } else if (previous.phase != GuardSnapshot.Phase.NONE &&
-                    (adopted.phase == GuardSnapshot.Phase.NONE || adopted.backgroundedAtElapsed != null)
-                ) {
-                    armGrace(previous.activePackage ?: shownPackage)
-                }
                 sessionCache = adopted
                 sessionLoaded = true
+                if (pauseVisible &&
+                    adopted.visitId == 0L &&
+                    adopted.phase == GuardSnapshot.Phase.NONE &&
+                    adopted.activePackage == null &&
+                    adopted.lastGuardedPackage == null
+                ) {
+                    // A test or settings reset cleared the session. The pause flag
+                    // is process-local, so it would swallow the next opening.
+                    scope.launch { dismissPause(PauseDismissReason.STOPPED) }
+                }
             }
         }
     }
@@ -432,8 +432,11 @@ class MonitoringService : Service() {
         val signal = reduced.signal
         val signaledPackage = reduced.packageName
         detector = reduced.state
+        // A pause flag with no open visit is stale. It must not swallow a new opening.
+        val pauseForPolicy = pauseVisible &&
+            (sessionCache.phase != GuardSnapshot.Phase.NONE || sessionCache.activePackage != null)
         val heldNoise = VisitMachine.isOverlayNoise(
-            pauseVisible = pauseVisible,
+            pauseVisible = pauseForPolicy,
             handback = machineLatch.handbackPackage,
             noiseUntil = machineLatch.overlayNoiseUntilMillis,
             signal = signal,
@@ -476,7 +479,7 @@ class MonitoringService : Service() {
                     null
                 }
             }.toSet(),
-            pauseVisible = pauseVisible,
+            pauseVisible = pauseForPolicy,
             selfPackage = packageName,
             today = today,
             signaledHasRule = hasRule,
@@ -675,35 +678,11 @@ class MonitoringService : Service() {
 
     private var shownPackage: String? = null
     private var shownKind: PauseRequest.Kind? = null
-    private var gracePackage: String? = null
-    private var graceAtElapsed: Long = 0L
-    private var explicitLeave = false
-
-    private fun armGrace(packageName: String?) {
-        if (packageName.isNullOrBlank() || explicitLeave) return
-        gracePackage = packageName
-        graceAtElapsed = android.os.SystemClock.elapsedRealtime()
-    }
-
-    private fun openingHeldByGrace(packageName: String): Boolean {
-        if (explicitLeave || packageName != gracePackage) return false
-        val elapsed = android.os.SystemClock.elapsedRealtime()
-        return elapsed >= graceAtElapsed && elapsed - graceAtElapsed < VisitLifecycle.GRACE_MILLIS
-    }
 
     private suspend fun showPause(rule: AppRule, kind: PauseRequest.Kind) {
-        if (sessionCache.quitSuppressedPackage == rule.appId || LeaveSignal.packageName == rule.appId) {
-            explicitLeave = true
-        }
-        if (kind == PauseRequest.Kind.OPENING && !explicitLeave &&
-            shownPackage == rule.appId && sessionCache.phase == GuardSnapshot.Phase.NONE
-        ) {
-            if (gracePackage == null) armGrace(rule.appId)
-        }
-        if (kind == PauseRequest.Kind.OPENING && openingHeldByGrace(rule.appId)) {
-            noteDebug("grace held ${rule.appId}")
-            return
-        }
+        // The visit reducer decides whether this is a new opening. A process-local
+        // latch here hid a real second visit after Leave, and did not survive the
+        // process restarts that the grace failure actually hit.
         if (pauseVisible && shownPackage == rule.appId && shownKind == kind) return
         if (pauseVisible) dismissPause(PauseDismissReason.STOPPED)
         val request = if (kind == PauseRequest.Kind.OPENING) {
@@ -740,10 +719,8 @@ class MonitoringService : Service() {
         pauseVisible = true
         shownPackage = rule.appId
         shownKind = kind
-        if (kind == PauseRequest.Kind.OPENING) {
-            explicitLeave = false
-            gracePackage = null
-            if (LeaveSignal.packageName == rule.appId) LeaveSignal.packageName = null
+        if (kind == PauseRequest.Kind.OPENING && LeaveSignal.packageName == rule.appId) {
+            LeaveSignal.packageName = null
         }
         machineLatch = machineLatch.copy(
             handbackPackage = rule.appId,
