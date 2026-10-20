@@ -18,6 +18,7 @@ A single-module Jetpack Compose app:
 - Usage Access, display over other apps, and notifications are explained before a rule is enabled. Each grant is one control. It says Allow until Android reports the grant, then Allowed. Returning from Settings re-reads Android. A tap does not mark a grant. Decline leaves monitoring off and does not delete rules.
 - A new rule's pause asks "Before you scroll". Leave goes home. Continue intentionally stays, and its supporting line uses the saved interval of foreground use. Never does not promise a reminder. Dismiss for today is on the opening card and the reminder card. It suppresses that app until the next local day and keeps the rule enabled. The in-app preview uses that same card and does not start a session. A saved custom prompt is kept.
 - A reminder counts accumulated time while that guarded app is in the foreground, the screen is on, and Momentwise is not covering it. Leaving the app pauses the timer. Time away, screen-off, and Momentwise UI are not counted. A gap longer than 2.5 seconds is not credited. Reboot keeps completed use and does not invent the missing gap.
+- Each opening has a visit id. A callback from an older card cannot dismiss or suppress a newer visit. While the card is up, a launcher or other-package usage event does not end the visit. After Continue, a usage event timestamped while the card was up is not a new opening. A real leave after that ends the visit, so the next open can show once. The overlay stays focusable so its buttons can be tapped. This has not been confirmed on a physical phone.
 - A `specialUse` foreground service and a pause. With display-over-other-apps, that pause is a visible middle card and scrim. Without it, it is a notification that does not block the other app. Leave is a home intent, not a force-stop. The one-second poll is unchanged. A shorter usage-event window during a steady poll is not a phone lag or battery measurement. This has not been run on a physical phone here.
 - After process death, an unanswered opening or a due reminder is shown again if Usage Access still sees that app. An empty event window does not end the session. This decision is unit-tested, not device-tested.
 
@@ -42,8 +43,8 @@ That is the reproducible build for this milestone. A local SDK is not assumed.
 A green unit-test run means `testDebugUnitTest`, `assembleDebug`, `assembleRelease`,
 `assembleDebugAndroidTest`, and `lintDebug` succeeded on Ubuntu with JDK 17 and
 SDK 35. The debug APK artifact is named `momentwise-debug-apk`. It is a zip of
-`app-debug.apk`, not a signed release. `assembleRelease` without signing secrets
-produces an unsigned APK. That is not a public release. A separate emulator
+`app-debug.apk`, not a signed release. The unit-test job may compile an
+unsigned release APK and then deletes that file. It is not uploaded. A separate emulator
 workflow runs `connectedDebugAndroidTest` on API 34 and API 35 when it is green.
 That run includes a test which starts `com.nawzblaze.momentwise.fixture`, a
 separate package, and reads the opening notice from the system notification
@@ -52,26 +53,30 @@ not a physical-device result.
 
 ## Signed release
 
-The release workflow is `.github/workflows/android-release.yml`. It runs on a
-`v*` tag or by hand. It publishes nothing unless these Actions secrets exist:
+`.github/workflows/android.yml` does not read signing secrets. It runs tests,
+lint, and the unsigned/debug build. The only workflow that reads signing
+secrets is `.github/workflows/android-release.yml`, and only as a manual
+`workflow_dispatch` whose ref is `refs/heads/main`. A dispatch of any other
+branch fails in a job that does not read secrets. That workflow does not run
+on pull requests, does not use `pull_request_target`, does not generate a
+keystore, and does not publish a GitHub Release. It reads only these Actions
+secrets:
 
-- `MOMENTWISE_KEYSTORE_BASE64` — base64 of a `.jks` created once and backed up outside Git
+- `MOMENTWISE_KEYSTORE_BASE64` — standard Base64 of the existing keystore file, one line, no `data:` prefix. Linux: `base64 -w 0 release.jks`. macOS: `base64 -b 0 -i release.jks`.
 - `MOMENTWISE_KEYSTORE_PASSWORD`
 - `MOMENTWISE_KEY_ALIAS`
 - `MOMENTWISE_KEY_PASSWORD`
 
-Do not commit the keystore or the passwords. Do not generate a new key on every
-build. The workflow checks that each secret is non-empty and exits 1 before any
-APK is built if one is missing. It does not print secret values. `gh secret list`
-from this review environment returns HTTP 403, so that command cannot confirm
-whether the secrets are set. The workflow run is the presence check.
+The workflow decodes that keystore into the runner temp directory, passes the
+path and passwords to Gradle as environment variables, and deletes the file
+afterward. It does not run `keytool -genkeypair` and does not commit the
+keystore. If any secret is missing, the signing job exits 1 before Gradle and
+uploads nothing. It does not print secret values.
 
-After a signed `Momentwise.apk` is attached to a GitHub Release and the
-URL below downloads, the website can point at it:
-
-`https://github.com/NawzBlaze/momentwise/releases/latest/download/Momentwise.apk`
-
-That file is not published yet.
+A successful job runs `apksigner verify --verbose --print-certs`, requires
+package `com.nawzblaze.momentwise` and versionName `1.0.0`, and uploads the
+distinct artifact `momentwise-signed-apk`. That artifact is not a GitHub
+Release. This workflow does not publish one, and the website download stays off.
 
 ## Why a configured phone can still miss the pause
 

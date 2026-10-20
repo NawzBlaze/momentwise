@@ -147,13 +147,7 @@ fun HomeScreen(
                     color = colors.textSecondary,
                 )
                 VerticalSpacer(14)
-                if (activeRules.isEmpty()) {
-                    Text(
-                        text = "Tap Manage Apps to choose an app to guard.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.textTertiary,
-                    )
-                } else {
+                if (activeRules.isNotEmpty()) {
                     ActiveRuleChips(activeRules = activeRules, onChipClick = onConfigureRule)
                 }
                 VerticalSpacer(14)

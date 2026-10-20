@@ -297,6 +297,7 @@ details p { margin-top: 8px; }
 .pause-choice span { font-size: 0.82rem; margin-top: 3px; font-weight: 400; }
 .pause-choice.primary { background: var(--text); color: var(--bg); }
 .pause-choice.secondary { background: transparent; color: var(--text); border: 1px solid var(--text-soft); }
+.tertiary-help { margin: 4px 0 0; color: var(--text-faint); font-size: 0.82rem; }
 .pause-card figcaption, .mark-panel figcaption { margin-top: 14px; }
 .faq { display: grid; gap: 14px; margin-top: 24px; }
 .faq details {

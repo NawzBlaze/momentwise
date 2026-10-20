@@ -49,13 +49,13 @@ object PauseOverlay {
     private var host: OverlayHost? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
-    fun show(context: Context, request: PauseRequest, themeModeName: String): Boolean {
+    fun show(context: Context, request: PauseRequest, themeModeName: String, visitId: Long = 0L): Boolean {
         val appContext = context.applicationContext
         val windowManager = appContext.getSystemService(WindowManager::class.java) ?: return false
         dismiss(appContext)
         return try {
             val themed = android.view.ContextThemeWrapper(appContext, R.style.Theme_Momentwise)
-            val overlay = OverlayHost(themed)
+            val overlay = OverlayHost(themed, visitId)
             overlay.resume()
             overlay.contentDescription = WINDOW_TITLE
             overlay.isClickable = true
@@ -76,8 +76,9 @@ object PauseOverlay {
                 WindowManager.LayoutParams.MATCH_PARENT,
                 WindowManager.LayoutParams.MATCH_PARENT,
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-                // Focusable so Compose buttons receive touches. A pause-caused
-                // foreground change is ignored by VisitPolicy while the card is up.
+                // Focusable so Compose buttons receive touches. That can pause the
+                // app underneath. VisitMachine treats the resulting usage events
+                // as overlay noise, not as a leave and not as a new visit.
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
                     WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
                 PixelFormat.TRANSLUCENT,
@@ -123,6 +124,10 @@ object PauseOverlay {
     }
 
     fun dismiss(context: Context) {
+        if (android.os.Looper.myLooper() != android.os.Looper.getMainLooper()) {
+            android.os.Handler(android.os.Looper.getMainLooper()).post { dismiss(context) }
+            return
+        }
         val windowManager = context.applicationContext.getSystemService(WindowManager::class.java)
         val current = host ?: return
         host = null
@@ -130,15 +135,6 @@ object PauseOverlay {
             runCatching { windowManager.removeViewImmediate(current) }
         }
         current.destroy()
-    }
-
-    /** The system removed the window. Our own [dismiss] nulls [host] first, so it does not land here. */
-    internal fun systemRemoved(removed: FrameLayout) {
-        val current = host ?: return
-        if (current !== removed) return
-        host = null
-        current.destroy()
-        PausePresenter.noteCleared(PauseDismissReason.WITHOUT_CHOICE)
     }
 
     private fun perform(context: Context, block: suspend (InterventionController) -> Unit) {
@@ -150,14 +146,27 @@ object PauseOverlay {
         )
         scope.launch { block(controller) }
     }
-}
 
-private class OverlayHost(context: Context) :
+    /**
+     * The system removed the window. Our own [dismiss] nulls [host] first, so it does not land here.
+     * A detach during addView is ignored by [OverlayHost].
+     */
+    private fun noteRemoved(removed: OverlayHost) {
+        val current = host ?: return
+        if (current !== removed) return
+        host = null
+        val visitId = removed.visitId
+        current.destroy()
+        PausePresenter.noteCleared(PauseDismissReason.WITHOUT_CHOICE, visitId)
+    }
+
+    private class OverlayHost(context: Context, val visitId: Long) :
     FrameLayout(context),
     LifecycleOwner,
     SavedStateRegistryOwner,
     ViewModelStoreOwner {
 
+    private var sawAttach = false
     private val registry = LifecycleRegistry(this)
     private val savedStateController = SavedStateRegistryController.create(this)
     override val viewModelStore = ViewModelStore()
@@ -173,15 +182,28 @@ private class OverlayHost(context: Context) :
         registry.currentState = Lifecycle.State.RESUMED
     }
 
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        sawAttach = true
+    }
+
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
-        PauseOverlay.systemRemoved(this)
+        // addView can detach before the window is really up. That is not the
+        // user closing the card, and it must not start a reshow loop.
+        if (!sawAttach) return
+        PauseOverlay.noteRemoved(this)
     }
 
     fun destroy() {
+        if (android.os.Looper.myLooper() != android.os.Looper.getMainLooper()) {
+            android.os.Handler(android.os.Looper.getMainLooper()).post { destroy() }
+            return
+        }
         if (registry.currentState != Lifecycle.State.DESTROYED) {
             registry.currentState = Lifecycle.State.DESTROYED
         }
         viewModelStore.clear()
+    }
     }
 }

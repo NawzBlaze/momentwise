@@ -43,7 +43,7 @@ object PausePresenter {
 
     /** Cleared by the monitoring service. The reason says whether a choice was made. */
     @Volatile
-    var onDismissed: ((PauseDismissReason) -> Unit)? = null
+    var onDismissed: ((PauseDismissReason, Long) -> Unit)? = null
 
     /** Set when the pause activity is actually on screen. */
     @Volatile
@@ -57,6 +57,9 @@ object PausePresenter {
     private var shownGeneration = 0
 
     @Volatile
+    private var shownVisitId = 0L
+
+    @Volatile
     private var handledGeneration = -1
 
     fun currentGeneration(): Int = shownGeneration
@@ -65,18 +68,26 @@ object PausePresenter {
      * Records why this generation's pause went away. A later destroy of the
      * same generation must not turn a choice into "no choice".
      */
-    fun noteCleared(reason: PauseDismissReason) {
+    fun noteCleared(reason: PauseDismissReason, visitId: Long = shownVisitId) {
         val generation = shownGeneration
+        if (reason == PauseDismissReason.WITHOUT_CHOICE && visitId != 0L && visitId != shownVisitId) return
         if (handledGeneration == generation && reason == PauseDismissReason.WITHOUT_CHOICE) return
         handledGeneration = generation
         surface = PauseSurface.NONE
-        onDismissed?.invoke(reason)
+        onDismissed?.invoke(reason, visitId)
     }
 
-    fun show(context: Context, request: PauseRequest, themeModeName: String) {
+    fun show(context: Context, request: PauseRequest, themeModeName: String, visitId: Long = 0L) {
+        if (android.os.Looper.myLooper() != android.os.Looper.getMainLooper()) {
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                show(context, request, themeModeName, visitId)
+            }
+            return
+        }
         shownGeneration += 1
+        if (visitId != 0L) shownVisitId = visitId
         if (GrantChecks.read(context).overlay) {
-            if (PauseOverlay.show(context, request, themeModeName)) {
+            if (PauseOverlay.show(context, request, themeModeName, shownVisitId)) {
                 surface = PauseSurface.OVERLAY
                 cancelNotification(context)
                 return
@@ -90,6 +101,10 @@ object PausePresenter {
     }
 
     fun dismiss(context: Context, reason: PauseDismissReason = PauseDismissReason.WITHOUT_CHOICE) {
+        if (android.os.Looper.myLooper() != android.os.Looper.getMainLooper()) {
+            android.os.Handler(android.os.Looper.getMainLooper()).post { dismiss(context, reason) }
+            return
+        }
         noteCleared(reason)
         PauseOverlay.dismiss(context)
         cancelNotification(context)

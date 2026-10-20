@@ -3,6 +3,7 @@ package com.nawzblaze.momentwise
 import android.os.ParcelFileDescriptor
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
@@ -75,8 +76,8 @@ class CrossAppPauseTest {
     }
 
     /**
-     * Home, then open the fixture again. A no-choice leave must not suppress
-     * the next opening. This is an emulator fixture, not a phone.
+     * Home while the card is up is the launcher, not a leave. Leave ends the
+     * visit. Opening the fixture again shows once. Emulator fixture, not a phone.
      */
     @Test
     fun leaveAndReopenShowsTheOpeningAgain() {
@@ -87,10 +88,20 @@ class CrossAppPauseTest {
             waitFor { statusFile().contains("intervention=overlay shown") && overlayWindowVisible() },
         )
         shell("input keyevent KEYCODE_HOME")
+        Thread.sleep(2_500)
         assertTrue(
-            "Overlay stayed up after Home. ${diagnostics()}",
+            "Home dismissed the opening. Launcher in front is not a leave. ${diagnostics()}",
+            overlayWindowVisible(),
+        )
+        shell(
+            "am broadcast -p $APP -a com.nawzblaze.momentwise.DEBUG_ENABLE_RULE " +
+                "--es target_package $target --ez inject_leave true",
+        )
+        assertTrue(
+            "Leave did not dismiss the overlay. ${diagnostics()}",
             waitFor { !overlayWindowVisible() },
         )
+        Thread.sleep(2_500)
         openFixture(target)
         val shownAgain = waitFor {
             overlayWindowVisible() &&
@@ -99,6 +110,50 @@ class CrossAppPauseTest {
         assertTrue(
             "Second visit did not show the opening. ${diagnostics()}",
             shownAgain,
+        )
+    }
+
+    /**
+     * The card must still be up after several polls. A one-second flash is the
+     * reported phone bug. This emulator is not that phone.
+     */
+    @Test
+    fun overlayStaysUpAcrossSeveralPolls() {
+        val target = prepare(overlay = true)
+        openFixture(target)
+        assertTrue(
+            "Opening was not visible. ${diagnostics()}",
+            waitFor { overlayWindowVisible() },
+        )
+        Thread.sleep(4_000)
+        assertTrue(
+            "Overlay disappeared within 4 seconds. ${diagnostics()}",
+            overlayWindowVisible(),
+        )
+        shell("input keyevent KEYCODE_HOME")
+        Thread.sleep(2_500)
+        assertTrue(
+            "Home dismissed the opening. Launcher in front is not a leave. ${diagnostics()}",
+            overlayWindowVisible(),
+        )
+        val shows = statusFile().lineSequence().count { it.contains("intervention=overlay shown") }
+        shell(
+            "am broadcast -p $APP -a com.nawzblaze.momentwise.DEBUG_ENABLE_RULE " +
+                "--es target_package $target --ez inject_continue true",
+        )
+        assertTrue(
+            "Continue did not dismiss the overlay. ${diagnostics()}",
+            waitFor { !overlayWindowVisible() },
+        )
+        Thread.sleep(4_000)
+        assertFalse(
+            "Overlay came back after Continue without a leave. ${diagnostics()}",
+            overlayWindowVisible(),
+        )
+        assertEquals(
+            "Continue started another opening. ${diagnostics()}",
+            shows,
+            statusFile().lineSequence().count { it.contains("intervention=overlay shown") },
         )
     }
 

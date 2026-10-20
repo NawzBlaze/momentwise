@@ -42,6 +42,7 @@ jobs:
             --exclude _site \
             --exclude .git \
             --exclude .github \
+            --exclude assets/logo.png \
             ./ _site/
 
       - name: Upload artifact

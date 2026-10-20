@@ -48,15 +48,28 @@ class VisitPolicyTest {
     }
 
     @Test
-    fun anUnansweredOpeningIsNotEndedByALauncherLeave() {
+    fun anUnansweredOpeningEndsWhenTheCardIsGoneAndTheUserLeaves() {
         val waiting = VisitPolicy.Latch(
             openPackage = instagram,
             pauseVisible = false,
             phase = GuardSnapshot.Phase.AWAITING_OPENING,
         )
         assertEquals(
-            VisitPolicy.Effect.NONE,
+            VisitPolicy.Effect.END_VISIT,
             VisitPolicy.effect(waiting, DetectorSignal.LEFT, "com.android.launcher", self),
+        )
+    }
+
+    @Test
+    fun aDifferentPackageWhileTheCardIsUpDoesNotReplaceTheVisit() {
+        val visible = VisitPolicy.Latch(
+            openPackage = instagram,
+            pauseVisible = true,
+            phase = GuardSnapshot.Phase.AWAITING_OPENING,
+        )
+        assertEquals(
+            VisitPolicy.Effect.NONE,
+            VisitPolicy.effect(visible, DetectorSignal.OPENED, chrome, self),
         )
     }
 

@@ -718,6 +718,7 @@ class GuardSnapshotJsonTest {
             sessionDroppedOnBoot = true,
             clearedWithoutChoice = true,
             reminderHoldUntilMillis = 1_700_000_060_000,
+            visitId = 4,
         )
         assertEquals(original, GuardSnapshotJson.decode(GuardSnapshotJson.encode(original)))
     }
@@ -726,5 +727,11 @@ class GuardSnapshotJsonTest {
     fun corruptStorageDoesNotThrow() {
         assertEquals(GuardSnapshot(), GuardSnapshotJson.decode(null))
         assertEquals(GuardSnapshot(), GuardSnapshotJson.decode("not-json"))
+    }
+
+    @Test
+    fun aSnapshotSavedBeforeVisitIdsDecodesAsVisitZero() {
+        val legacy = """{"activePackage":"com.instagram.android","phase":"CONTINUING","dismissals":{}}"""
+        assertEquals(0L, GuardSnapshotJson.decode(legacy).visitId)
     }
 }

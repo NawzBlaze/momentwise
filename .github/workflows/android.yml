@@ -175,6 +175,13 @@ jobs:
               print("poll measurement published")
           PY
 
+      - name: Discard unsigned release output
+        if: success()
+        run: |
+          rm -f android/app/build/outputs/apk/release/app-release.apk \
+                android/app/build/outputs/apk/release/app-release-unsigned.apk
+          echo "Unsigned release output was not uploaded."
+
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:

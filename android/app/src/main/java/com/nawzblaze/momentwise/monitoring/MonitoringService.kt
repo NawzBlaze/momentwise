@@ -32,7 +32,7 @@ import com.nawzblaze.momentwise.intervention.PauseRequest
 import com.nawzblaze.momentwise.intervention.PauseShowPolicy
 import com.nawzblaze.momentwise.intervention.SessionClock
 import com.nawzblaze.momentwise.intervention.UsageEventReducer
-import com.nawzblaze.momentwise.intervention.VisitPolicy
+import com.nawzblaze.momentwise.intervention.VisitMachine
 import java.time.LocalDate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -84,6 +84,15 @@ class MonitoringService : Service() {
     /** The user swiped the pause away. Do not immediately put the same one back. */
     private var pauseClearedByUser = false
 
+    /** Overlay handback and the visit id of the card currently shown. */
+    private var machineLatch = VisitMachine.Latch()
+
+    /**
+     * The system removed an opening twice before the visit write was visible.
+     * Do not show that package again until it has actually left the foreground.
+     */
+    private var openingHeldPackage: String? = null
+
     @Volatile
     private var sessionCache: GuardSnapshot = GuardSnapshot()
 
@@ -129,28 +138,63 @@ class MonitoringService : Service() {
         // hit disk, and API 34 kills the process if this call is late.
         if (!startAsForeground()) return START_NOT_STICKY
         MonitorPresence.markStartAttempt(this, System.currentTimeMillis())
-        PausePresenter.onDismissed = { reason ->
+        PausePresenter.onDismissed = { reason, visitId ->
             pauseVisible = false
+            val now = System.currentTimeMillis()
             when (reason) {
                 PauseDismissReason.CHOICE -> {
                     pauseClearedByUser = false
-                    openingReshows = 0
+                    machineLatch = VisitMachine.onChoiceDismissed(
+                        machineLatch,
+                        sessionCache.activePackage,
+                        now,
+                    )
                     detector = UsageEventReducer.clearPendingStop(detector)
                 }
-                PauseDismissReason.LEFT, PauseDismissReason.STOPPED -> pauseClearedByUser = false
+                PauseDismissReason.LEFT, PauseDismissReason.STOPPED -> {
+                    pauseClearedByUser = false
+                    machineLatch = machineLatch.copy(overlayNoiseUntilMillis = now, handbackPackage = null)
+                }
                 PauseDismissReason.WITHOUT_CHOICE -> {
-                    // Same visit. Do not confirm the pause-caused stop as a leave.
-                    // One system removal of an unanswered opening is put back.
-                    // A second removal stops the add/remove loop and is a no-choice.
                     detector = UsageEventReducer.clearPendingStop(detector)
-                    val awaiting = sessionCache.phase == GuardSnapshot.Phase.AWAITING_OPENING
-                    if (awaiting && openingReshows < 1) {
-                        openingReshows += 1
-                        pauseClearedByUser = false
+                    val removal = VisitMachine.onSystemRemoved(sessionCache, machineLatch, visitId, now)
+                    val action = VisitMachine.unpersistedRemoval(
+                        phase = sessionCache.phase,
+                        action = removal.action,
+                        shownPackage = shownPackage,
+                        systemRemovals = machineLatch.systemRemovals,
+                    )
+                    machineLatch = if (action == VisitMachine.Removal.RESHOW && removal.action == VisitMachine.Removal.IGNORE) {
+                        removal.latch.copy(
+                            handbackPackage = shownPackage ?: removal.latch.handbackPackage,
+                            overlayNoiseUntilMillis = now,
+                            systemRemovals = machineLatch.systemRemovals + 1,
+                        )
                     } else {
-                        pauseClearedByUser = true
-                        val pkg = sessionCache.activePackage
-                        scope.launch { recordClearedWithoutChoice(pkg) }
+                        removal.latch
+                    }
+                    when (action) {
+                        VisitMachine.Removal.IGNORE -> {
+                            pauseClearedByUser = false
+                            if (shownPackage != null && machineLatch.systemRemovals >= 1 &&
+                                sessionCache.phase != GuardSnapshot.Phase.CONTINUING
+                            ) {
+                                openingHeldPackage = shownPackage
+                            }
+                        }
+                        VisitMachine.Removal.RESHOW -> {
+                            pauseClearedByUser = false
+                            val pkg = removal.packageName ?: shownPackage
+                            val rule = pkg?.let { id -> enabledRules.find { it.appId == id } }
+                            if (rule != null) {
+                                scope.launch { showPause(rule, PauseRequest.Kind.OPENING) }
+                            }
+                        }
+                        VisitMachine.Removal.RECORD_NO_CHOICE -> {
+                            pauseClearedByUser = true
+                            openingHeldPackage = removal.packageName ?: shownPackage
+                            scope.launch { recordClearedWithoutChoice(removal.packageName, removal.visitId) }
+                        }
                     }
                 }
             }
@@ -242,7 +286,14 @@ class MonitoringService : Service() {
                 resumeFromScreenOff = false
                 seedAndRecover()
             }
-            tick()
+            try {
+                tick()
+            } catch (error: kotlinx.coroutines.CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                Log.w(TAG, "tick failed", error)
+                noteDebug("tick failed ${error.javaClass.simpleName}: ${error.message}")
+            }
             if (stopRequested) break
             delay(UsagePoll.INTERVAL_MILLIS)
         }
@@ -298,7 +349,8 @@ class MonitoringService : Service() {
             ignoreSelf = false,
             pauseClassName = PauseActivity::class.java.name,
         ).state
-        val snapshot = sessionCache
+        val snapshot = sessions().current()
+        sessionCache = snapshot
         val reconciled = SessionClock.reconcileAfterRestart(snapshot, detector.lastPackage)
         persistIfUnchanged(snapshot, reconciled)
         noteDebug(
@@ -315,15 +367,24 @@ class MonitoringService : Service() {
             stopQuietly()
             return
         }
-        if (!rulesLoaded) return
-        val enabled = enabledRules
-        if (enabled.isEmpty()) {
-            stopQuietly()
-            return
+        if (!rulesLoaded || enabledRules.isEmpty()) {
+            val fresh = app().container.appRuleRepository.rules.first().filter { it.enabled }
+            if (fresh.isEmpty()) {
+                stopQuietly()
+                return
+            }
+            enabledRules = fresh
+            rulesLoaded = true
         }
+        val enabled = enabledRules
         val now = System.currentTimeMillis()
         noteBeat(now)
         val today = LocalDate.now().toString()
+        // The in-memory copy can lag a test reset. The store is the visit decision.
+        sessionCache = sessions().current()
+        if (VisitMachine.shouldDropLatch(sessionCache, pauseVisible)) {
+            machineLatch = VisitMachine.Latch()
+        }
         val events = readEvents(EventWindow.steadyStart(now, detector.lastEventTimeMillis), now)
         val reduced = UsageEventReducer.reduce(
             state = detector,
@@ -339,71 +400,119 @@ class MonitoringService : Service() {
         val signal = reduced.signal
         val signaledPackage = reduced.packageName
         detector = reduced.state
-        if (signal != DetectorSignal.NONE) {
-            noteDebug("tick $signal pkg=$signaledPackage last=${detector.lastPackage} pause=$pauseVisible")
-        }
-        var snapshot = SessionClock.clearStaleDismissals(sessionCache, today)
-        val visitEffect = VisitPolicy.effect(
-            latch = VisitPolicy.Latch(
-                openPackage = snapshot.activePackage,
-                pauseVisible = pauseVisible,
-                phase = snapshot.phase,
-            ),
+        val heldNoise = VisitMachine.isOverlayNoise(
+            pauseVisible = pauseVisible,
+            handback = machineLatch.handbackPackage,
+            noiseUntil = machineLatch.overlayNoiseUntilMillis,
             signal = signal,
             signaledPackage = signaledPackage,
+            signalTimeMillis = reduced.signalTimeMillis,
             selfPackage = packageName,
         )
-        if (signal != DetectorSignal.NONE) {
-            Log.i(TAG, "visit effect=$visitEffect signal=$signal pkg=$signaledPackage pause=$pauseVisible")
+        val leftHeld = signal == DetectorSignal.LEFT &&
+            (signaledPackage == null || signaledPackage == openingHeldPackage)
+        val openedSomethingElse = signal == DetectorSignal.OPENED &&
+            signaledPackage != null && signaledPackage != openingHeldPackage
+        if (openingHeldPackage != null && !pauseVisible && !heldNoise && (leftHeld || openedSomethingElse)) {
+            openingHeldPackage = null
         }
-
+        if (signal != DetectorSignal.NONE) {
+            noteDebug(
+                "tick $signal pkg=$signaledPackage last=${detector.lastPackage} pause=$pauseVisible visit=${sessionCache.visitId}",
+            )
+        }
+        var snapshot = SessionClock.clearStaleDismissals(sessionCache, today)
         val active = snapshot.activePackage
         if (active != null && enabled.none { it.appId == active }) {
             val left = SessionClock.onLeft(snapshot).first
             if (persistIfUnchanged(snapshot, left)) snapshot = left
+            machineLatch = machineLatch.copy(handbackPackage = null, systemRemovals = 0)
             dismissPause(PauseDismissReason.STOPPED)
         }
 
-        when (visitEffect) {
-            VisitPolicy.Effect.END_VISIT -> {
-                val (next, _) = SessionClock.onLeft(snapshot)
-                persistIfUnchanged(snapshot, next)
-                dismissPause(PauseDismissReason.LEFT)
-                pauseClearedByUser = false
-            }
-            VisitPolicy.Effect.BEGIN_VISIT -> {
-                val pkg = signaledPackage
+        val hasRule = signaledPackage?.let { pkg -> ruleFor(pkg) != null } == true
+        val step = VisitMachine.onForeground(
+            snapshot = snapshot,
+            latch = machineLatch,
+            signal = signal,
+            signaledPackage = signaledPackage,
+            signalTimeMillis = reduced.signalTimeMillis,
+            resumedPackages = events.mapNotNull { event ->
+                if (event.kind == com.nawzblaze.momentwise.intervention.ForegroundEvent.Kind.RESUMED) {
+                    event.packageName
+                } else {
+                    null
+                }
+            }.toSet(),
+            pauseVisible = pauseVisible,
+            selfPackage = packageName,
+            today = today,
+            signaledHasRule = hasRule,
+        )
+        // A show latch is adopted only when the card is actually shown. Adopting
+        // it here made a skipped show look like overlay handback on the next poll.
+        if (step.ui != VisitMachine.Ui.SHOW_OPENING) {
+            machineLatch = step.latch
+        }
+        val persisted = persistIfUnchanged(snapshot, step.snapshot)
+        if (persisted) snapshot = step.snapshot
+        if (signal != DetectorSignal.NONE) {
+            Log.i(TAG, "visit ui=${step.ui} signal=$signal pkg=$signaledPackage pause=$pauseVisible")
+            noteDebug(
+                "tick decide ui=${step.ui} phase=${snapshot.phase} active=${snapshot.activePackage} " +
+                    "hasRule=$hasRule persisted=$persisted visit=${snapshot.visitId}",
+            )
+        }
+        if (!persisted && step.snapshot != snapshot) {
+            // A choice landed during this tick. Decide again from the stored session.
+            sessionCache = sessions().current()
+            presentWaitingOpening()
+            accrueUse(today, now)
+            return
+        }
+        when (step.ui) {
+            VisitMachine.Ui.SHOW_OPENING -> {
+                val pkg = step.uiPackage
                 if (pkg != null) {
                     pauseClearedByUser = false
-                    openingReshows = 0
                     val rule = ruleFor(pkg)
-                    val (next, command) = SessionClock.onOpened(snapshot, pkg, rule != null, today)
-                    val applied = persistIfUnchanged(snapshot, next)
-                    noteDebug(
-                        "opened pkg=$pkg rule=${rule != null} applied=$applied cmd=${command.javaClass.simpleName}",
-                    )
-                    if (command is GuardCommand.ShowOpening && rule != null) {
-                        if (PauseShowPolicy.shouldShowNewOpening(pauseVisible, alreadyContinuing(pkg))) {
-                            showPause(rule, PauseRequest.Kind.OPENING)
-                        }
-                    } else if (rule == null) {
-                        dismissPause(PauseDismissReason.LEFT)
+                    noteDebug("opened pkg=$pkg rule=${rule != null} visit=${snapshot.visitId}")
+                    if (rule != null &&
+                        PauseShowPolicy.shouldShowNewOpening(pauseVisible, alreadyContinuing(pkg))
+                    ) {
+                        showPause(rule, PauseRequest.Kind.OPENING)
                     }
                 }
             }
-            VisitPolicy.Effect.NONE -> if (signal == DetectorSignal.NONE) {
-                if (showUnshownOpening(detector.lastPackage)) {
-                    maybeRecoverUnanswered(detector.lastPackage, now)
-                    return
-                }
-                if (showMissedOpening(detector.lastPackage, snapshot)) {
-                    maybeRecoverUnanswered(detector.lastPackage, now)
-                    return
-                }
+            VisitMachine.Ui.DISMISS -> {
+                dismissPause(PauseDismissReason.LEFT)
+                pauseClearedByUser = false
             }
+            VisitMachine.Ui.NONE -> Unit
+        }
+        // An OPENED the machine swallowed — stale rules, overlay noise, or a
+        // missed resume — still needs a card if this visit was never shown.
+        // A real leave is not this case: the session is already ended.
+        if (!pauseVisible && step.ui != VisitMachine.Ui.DISMISS) {
+            presentWaitingOpening()
         }
         accrueUse(today, now)
         maybeRecoverUnanswered(detector.lastPackage, now)
+    }
+
+    /**
+     * Puts up an opening the visit already owes, or starts one the poll missed.
+     * Does not invent a visit after Continue, dismiss-for-today, or a no-choice
+     * close of the same visit.
+     */
+    private suspend fun presentWaitingOpening() {
+        if (pauseVisible || stopRequested) return
+        val foreground = detector.lastPackage ?: return
+        if (foreground == openingHeldPackage) return
+        val snapshot = sessions().current()
+        sessionCache = snapshot
+        if (showUnshownOpening(foreground)) return
+        showMissedOpening(foreground, snapshot)
     }
 
     /**
@@ -482,7 +591,6 @@ class MonitoringService : Service() {
 
     private var shownPackage: String? = null
     private var shownKind: PauseRequest.Kind? = null
-    private var openingReshows = 0
 
     private suspend fun showPause(rule: AppRule, kind: PauseRequest.Kind) {
         if (pauseVisible && shownPackage == rule.appId && shownKind == kind) return
@@ -521,10 +629,20 @@ class MonitoringService : Service() {
         pauseVisible = true
         shownPackage = rule.appId
         shownKind = kind
+        machineLatch = machineLatch.copy(
+            handbackPackage = rule.appId,
+            shownVisitId = sessionCache.visitId,
+            systemRemovals = 0,
+        )
         Log.i(TAG, "showing $kind for ${rule.appId}")
         noteDebug("showing $kind for ${rule.appId}")
         withContext(Dispatchers.Main) {
-            PausePresenter.show(this@MonitoringService, request, theme)
+            PausePresenter.show(this@MonitoringService, request, theme, sessionCache.visitId)
+        }
+        if (PausePresenter.surface == PauseSurface.NONE) {
+            pauseVisible = false
+            shownPackage = null
+            shownKind = null
         }
     }
 
@@ -536,13 +654,14 @@ class MonitoringService : Service() {
         withContext(Dispatchers.Main) { PausePresenter.dismiss(this@MonitoringService, reason) }
     }
 
-    private suspend fun recordClearedWithoutChoice(packageName: String?) {
-        // A newer opening already cleared the latch. Do not stamp that visit.
+    private suspend fun recordClearedWithoutChoice(packageName: String?, visitId: Long) {
+        // A newer visit already replaced this one. Do not stamp it.
         if (!pauseClearedByUser) return
         val now = System.currentTimeMillis()
         sessions().update { current ->
-            if (packageName != null && current.activePackage != packageName) current
-            else SessionClock.onClearedWithoutChoice(current, now)
+            if (current.visitId != visitId) current
+            else if (packageName != null && current.activePackage != packageName) current
+            else SessionClock.onClearedWithoutChoice(current, now, visitId)
         }
         sessionCache = sessions().current()
     }
