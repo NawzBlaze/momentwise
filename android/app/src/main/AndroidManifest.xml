@@ -52,7 +52,7 @@
             android:excludeFromRecents="true"
             android:launchMode="singleTask"
             android:taskAffinity=".intervention"
-            android:theme="@style/Theme.Momentwise" />
+            android:theme="@style/Theme.Momentwise.Intervention" />
 
         <service
             android:name=".monitoring.MonitoringService"

@@ -47,6 +47,26 @@ jobs:
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           script: bash android/run-instrumented.sh
 
+      - name: Publish usage-query note
+        if: always() && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          API_LEVEL: ${{ matrix.api-level }}
+        run: |
+          set +e
+          note="${GITHUB_WORKSPACE}/emulator-measure.txt"
+          if [ ! -f "$note" ]; then
+            echo "No usage-query note."
+            exit 0
+          fi
+          text=$(grep 'USAGE_QUERY' "$note" | tail -n 5)
+          if [ -z "$text" ]; then
+            echo "No USAGE_QUERY line."
+            exit 0
+          fi
+          gh pr comment "$PR_NUMBER" --body "$(printf '%s\n' "<!-- momentwise-usage-query api-${API_LEVEL} -->" "API ${API_LEVEL} emulator UsageStats.queryEvents, not a phone and not a battery percentage." "" '```' "$text" '```')" || echo "usage comment failed"
+
       - name: Publish failure excerpt
         if: failure() && github.event_name == 'pull_request'
         env:
@@ -62,7 +82,9 @@ jobs:
             echo
             echo '```'
             if [ -f "$log" ]; then
-              grep -E 'FAILED|FAILURE:|What went wrong|e: |error:|Exception|BUILD |not posted|not delivered|not allowed|AssertionError|MomentwiseDebug|foreground start' "$log" | tail -n 80
+              awk '/androidTest failure text/,0' "$log" | head -n 80
+              echo
+              grep -E 'FAILED|USAGE_QUERY|not delivered|not blocked|overlay shown|AssertionError' "$log" | tail -n 30
             else
               echo "No emulator log was written."
             fi

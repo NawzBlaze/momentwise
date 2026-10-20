@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.getValue
@@ -14,15 +15,20 @@ import androidx.lifecycle.lifecycleScope
 import com.nawzblaze.momentwise.MomentwiseApplication
 import com.nawzblaze.momentwise.data.model.ThemeMode
 import com.nawzblaze.momentwise.monitoring.InterventionController
+import com.nawzblaze.momentwise.monitoring.PauseDismissReason
 import com.nawzblaze.momentwise.monitoring.PausePresenter
 import com.nawzblaze.momentwise.ui.screens.PauseScreen
 import com.nawzblaze.momentwise.ui.theme.MomentwiseTheme
 import kotlinx.coroutines.launch
 
 /**
- * The pause as its own task, used when the user taps the notification and as
- * a fallback if the overlay cannot be added. It is not inserted into the
- * other app's task.
+ * The pause as its own task. It is opened from the notification, and may also
+ * be started when an overlay window could not be added. A start from the
+ * service is not proof this activity was shown: background activity starts
+ * are restricted, and a notification tap is the reliable path.
+ *
+ * Back is not Leave and not Continue. The other app is not tappable while
+ * this activity is in front. It is not inserted into the other app's task.
  */
 class PauseActivity : ComponentActivity() {
 
@@ -32,6 +38,14 @@ class PauseActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        onBackPressedDispatcher.addCallback(
+            this,
+            object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    // A choice is required. Back must not dismiss or send the user home.
+                }
+            },
+        )
         pauseGeneration = PausePresenter.currentGeneration()
         PausePresenter.handOffToActivity(this)
         PausePresenter.onShown?.invoke()
@@ -53,7 +67,7 @@ class PauseActivity : ComponentActivity() {
                         onSecondary = {
                             act { controller ->
                                 if (current.kind == PauseRequest.Kind.OPENING) {
-                                    controller.continueIntoApp()
+                                    controller.continueIntoApp(current.packageName)
                                 } else {
                                     controller.snooze(current)
                                 }
@@ -76,7 +90,7 @@ class PauseActivity : ComponentActivity() {
 
     override fun onDestroy() {
         if (isFinishing && pauseGeneration == PausePresenter.currentGeneration()) {
-            PausePresenter.onDismissed?.invoke()
+            PausePresenter.noteCleared(PauseDismissReason.WITHOUT_CHOICE)
         }
         super.onDestroy()
     }
@@ -99,10 +113,13 @@ class PauseActivity : ComponentActivity() {
         private const val EXTRA_NAME = "pause_name"
         private const val EXTRA_KIND = "pause_kind"
         private const val EXTRA_NOTICE = "pause_notice"
+        private const val EXTRA_HEADING = "pause_heading"
         private const val EXTRA_PRIMARY = "pause_primary"
         private const val EXTRA_SECONDARY = "pause_secondary"
         private const val EXTRA_TERTIARY = "pause_tertiary"
         private const val EXTRA_SNOOZE = "pause_snooze"
+        private const val EXTRA_PRIMARY_SUPPORT = "pause_primary_support"
+        private const val EXTRA_SECONDARY_SUPPORT = "pause_secondary_support"
         private const val EXTRA_FROM_NOTIFICATION = "pause_from_notification"
 
         fun intent(context: Context, request: PauseRequest): Intent =
@@ -112,9 +129,12 @@ class PauseActivity : ComponentActivity() {
                 putExtra(EXTRA_NAME, request.appName)
                 putExtra(EXTRA_KIND, request.kind.name)
                 putExtra(EXTRA_NOTICE, request.notice)
+                putExtra(EXTRA_HEADING, request.heading)
                 putExtra(EXTRA_PRIMARY, request.primaryLabel)
                 putExtra(EXTRA_SECONDARY, request.secondaryLabel)
                 putExtra(EXTRA_TERTIARY, request.tertiaryLabel)
+                putExtra(EXTRA_PRIMARY_SUPPORT, request.primarySupport)
+                putExtra(EXTRA_SECONDARY_SUPPORT, request.secondarySupport)
                 putExtra(EXTRA_SNOOZE, request.snoozeMinutes)
                 putExtra(EXTRA_FROM_NOTIFICATION, request.fromNotification)
             }
@@ -128,9 +148,20 @@ class PauseActivity : ComponentActivity() {
                 appName = intent.getStringExtra(EXTRA_NAME) ?: packageName,
                 kind = kind,
                 notice = intent.getStringExtra(EXTRA_NOTICE).orEmpty(),
+                heading = intent.getStringExtra(EXTRA_HEADING)?.ifBlank { null }
+                    ?: InterventionSurface.OPENING_HEADING,
                 primaryLabel = intent.getStringExtra(EXTRA_PRIMARY).orEmpty(),
                 secondaryLabel = intent.getStringExtra(EXTRA_SECONDARY).orEmpty(),
                 tertiaryLabel = intent.getStringExtra(EXTRA_TERTIARY),
+                primarySupport = intent.getStringExtra(EXTRA_PRIMARY_SUPPORT)
+                    ?.ifBlank { null } ?: InterventionSurface.LEAVE_SUPPORT,
+                secondarySupport = intent.getStringExtra(EXTRA_SECONDARY_SUPPORT)
+                    ?.ifBlank { null }
+                    ?: if (kind == PauseRequest.Kind.REMINDER) {
+                        InterventionSurface.snoozeSupport(intent.getIntExtra(EXTRA_SNOOZE, 10))
+                    } else {
+                        ""
+                    },
                 snoozeMinutes = intent.getIntExtra(EXTRA_SNOOZE, 10),
                 fromNotification = intent.getBooleanExtra(EXTRA_FROM_NOTIFICATION, false),
             )

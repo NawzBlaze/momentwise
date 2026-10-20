@@ -1,7 +1,6 @@
 package com.nawzblaze.momentwise.ui.screens
 
 import android.Manifest
-import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -28,8 +27,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nawzblaze.momentwise.MomentwiseViewModel
 import com.nawzblaze.momentwise.R
+import com.nawzblaze.momentwise.monitoring.GrantChecks
 import com.nawzblaze.momentwise.monitoring.GrantIntents
+import com.nawzblaze.momentwise.ui.components.GrantStatusLine
 import com.nawzblaze.momentwise.ui.components.MomentwiseTopBar
+import com.nawzblaze.momentwise.ui.components.grantActionLabel
 import com.nawzblaze.momentwise.ui.components.SectionCard
 import com.nawzblaze.momentwise.ui.components.VerticalSpacer
 import com.nawzblaze.momentwise.ui.theme.LocalMomentwiseColors
@@ -54,7 +56,7 @@ fun DisclosureScreen(
     val appName = entry?.rule?.appName ?: appId
     val notificationPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
-    ) { }
+    ) { GrantRefresh.bump() }
 
     Column(
         Modifier
@@ -85,38 +87,24 @@ fun DisclosureScreen(
             GrantBlock(
                 title = stringResource(R.string.disclosure_usage_title),
                 body = stringResource(R.string.disclosure_usage_body),
-                status = if (grants.usageAccess) {
-                    stringResource(R.string.grant_allowed)
-                } else {
-                    stringResource(R.string.grant_not_allowed)
-                },
-                action = stringResource(R.string.disclosure_usage_action),
+                allowed = grants.usageAccess,
                 onAction = { GrantIntents.launch(context, GrantIntents.usageAccess(context)) },
             )
             VerticalSpacer(12)
             GrantBlock(
                 title = stringResource(R.string.disclosure_overlay_title),
                 body = stringResource(R.string.disclosure_overlay_body),
-                status = if (grants.overlay) {
-                    stringResource(R.string.grant_allowed)
-                } else {
-                    stringResource(R.string.grant_notification_fallback)
-                },
-                action = stringResource(R.string.disclosure_overlay_action),
+                allowed = grants.overlay,
+                optional = true,
                 onAction = { GrantIntents.launch(context, GrantIntents.overlay(context)) },
             )
             VerticalSpacer(12)
             GrantBlock(
                 title = stringResource(R.string.disclosure_notifications_title),
                 body = stringResource(R.string.disclosure_notifications_body),
-                status = if (grants.notifications) {
-                    stringResource(R.string.grant_allowed)
-                } else {
-                    stringResource(R.string.grant_not_allowed)
-                },
-                action = stringResource(R.string.disclosure_notifications_action),
+                allowed = grants.notifications,
                 onAction = {
-                    if (Build.VERSION.SDK_INT >= 33) {
+                    if (GrantChecks.notificationRuntimeMissing(context)) {
                         notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
                     } else {
                         GrantIntents.launch(context, GrantIntents.notificationSettings(context))
@@ -165,20 +153,24 @@ fun DisclosureScreen(
 private fun GrantBlock(
     title: String,
     body: String,
-    status: String,
-    action: String,
+    allowed: Boolean,
     onAction: () -> Unit,
+    optional: Boolean = false,
 ) {
     val colors = LocalMomentwiseColors.current
     SectionCard {
         Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-        VerticalSpacer(4)
-        Text(status, style = MaterialTheme.typography.labelLarge, color = colors.accentText)
+        VerticalSpacer(6)
+        GrantStatusLine(allowed = allowed, optional = optional)
         VerticalSpacer(8)
         Text(body, style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
         VerticalSpacer(12)
-        OutlinedButton(onClick = onAction, shape = RoundedCornerShape(10.dp)) {
-            Text(action)
+        if (allowed) {
+            TextButton(onClick = onAction) { Text(grantActionLabel(allowed = true)) }
+        } else {
+            OutlinedButton(onClick = onAction, shape = RoundedCornerShape(10.dp)) {
+                Text(grantActionLabel(allowed = false))
+            }
         }
     }
 }

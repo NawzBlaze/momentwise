@@ -17,6 +17,9 @@ internal object GuardSnapshotJson {
             putNullable("openingHandledForPackage", snapshot.openingHandledForPackage)
             put("dismissals", dismissals)
             put("sessionDroppedOnBoot", snapshot.sessionDroppedOnBoot)
+            putNullable("quitSuppressedPackage", snapshot.quitSuppressedPackage)
+            put("clearedWithoutChoice", snapshot.clearedWithoutChoice)
+            putNullable("reminderHoldUntilMillis", snapshot.reminderHoldUntilMillis)
         }.toString()
     }
 
@@ -43,6 +46,9 @@ internal object GuardSnapshotJson {
                 openingHandledForPackage = json.optString("openingHandledForPackage").ifBlank { null },
                 dismissals = dismissals,
                 sessionDroppedOnBoot = json.optBoolean("sessionDroppedOnBoot", false),
+                quitSuppressedPackage = json.optString("quitSuppressedPackage").ifBlank { null },
+                clearedWithoutChoice = json.optBoolean("clearedWithoutChoice", false),
+                reminderHoldUntilMillis = json.optNullableLong("reminderHoldUntilMillis"),
             )
         } catch (_: Exception) {
             GuardSnapshot()

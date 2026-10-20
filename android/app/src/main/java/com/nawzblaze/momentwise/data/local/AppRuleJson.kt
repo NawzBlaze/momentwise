@@ -58,21 +58,22 @@ internal object AppRuleJson {
 
     private fun decode(json: JSONObject): AppRule {
         val appId = json.optString("appId")
+        val appName = json.optString("appName").ifBlank { appId }
         val snooze = json.optInt("advSnoozeMinutes", ReminderActions.DEFAULT_SNOOZE_MINUTES)
             .coerceIn(ReminderActions.MIN_SNOOZE_MINUTES, ReminderActions.MAX_SNOOZE_MINUTES)
         return AppRule(
             appId = appId,
-            appName = json.optString("appName").ifBlank { appId },
+            appName = appName,
             category = json.optString("category"),
             enabled = json.optBoolean("enabled", false),
             configuredEver = json.optBoolean("configuredEver", false),
             openingNotice = migrateOpeningNotice(json.optString("openingNotice")),
             quitOption = ResponseOption(
-                label = json.optString("option1Label").ifBlank { RuleDefaults.QUIT_OPTION_LABEL },
+                label = json.optString("option1Label").ifBlank { RuleDefaults.leaveLabel(appName) },
                 action = RuleAction.LEAVE_APP,
             ),
             continueOption = ResponseOption(
-                label = json.optString("option2Label").ifBlank { RuleDefaults.CONTINUE_OPTION_LABEL },
+                label = migrateContinueLabel(json.optString("option2Label")),
                 action = RuleAction.CONTINUE_INTO_APP,
             ),
             reminderFrequency = ReminderFrequencyCodec.decode(json.optString("reminderFrequency")),
@@ -89,18 +90,30 @@ internal object AppRuleJson {
     }
 
     /**
-     * Blank notices fall back to the approved default. The known legacy default
-     * "You Are Distracted" is migrated the same way as the browser prototype,
-     * without touching any notice the user actually wrote.
+     * Blank notices and the two shipped generic prompts fall back to the
+     * current default. A saved custom prompt is kept, including
+     * "What brought you here?". Intervals are not touched here.
      */
     private fun migrateOpeningNotice(raw: String): String {
         val trimmed = raw.trim()
-        return if (trimmed.isEmpty() || trimmed.equals(LEGACY_OPENING_NOTICE, ignoreCase = true)) {
-            RuleDefaults.OPENING_NOTICE
+        val legacy = trimmed.isEmpty() ||
+            LEGACY_OPENING_NOTICES.any { it.equals(trimmed, ignoreCase = true) }
+        return if (legacy) RuleDefaults.OPENING_NOTICE else trimmed
+    }
+
+    /** The previous shipped label only. A renamed button stays. */
+    private fun migrateContinueLabel(raw: String): String {
+        val trimmed = raw.trim()
+        return if (trimmed.isEmpty() || trimmed == LEGACY_CONTINUE_LABEL) {
+            RuleDefaults.CONTINUE_OPTION_LABEL
         } else {
             trimmed
         }
     }
 
-    private const val LEGACY_OPENING_NOTICE = "You Are Distracted"
+    private val LEGACY_OPENING_NOTICES = setOf(
+        "You Are Distracted",
+        "What do you want to do right now?",
+    )
+    private const val LEGACY_CONTINUE_LABEL = "Continue"
 }

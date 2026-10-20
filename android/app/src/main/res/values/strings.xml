@@ -27,13 +27,13 @@
     <string name="home_summary_one">1 active rule</string>
     <string name="home_summary_many">%1$d active rules</string>
     <string name="home_summary_desc_empty">Select an app in the Apps tab to configure a mindful pause rule.</string>
-    <string name="home_summary_desc_overlay">Monitoring is on. A pause can appear when a guarded app opens. It may be about a second late, and some phones delay it further.</string>
-    <string name="home_summary_desc_notification">Monitoring is on. The pause will not appear by itself until display over other apps is allowed. You will get a notification to tap.</string>
+    <string name="home_summary_desc_overlay">Monitoring is on. A card can cover the middle of a guarded app. It may be about a second late, and some phones delay it further.</string>
+    <string name="home_summary_desc_notification">Monitoring is on. Without display over other apps, Momentwise cannot cover the other app. You will get a notification to tap. The other app is not blocked until you open it.</string>
     <string name="home_summary_desc_blocked">A rule is saved, but monitoring is off until Usage Access and notifications are allowed.</string>
-    <string name="home_summary_desc_stopped">Monitoring is not running. The guarding notification is gone, so opening a guarded app will not show a pause until it starts again.</string>
-    <string name="home_monitor_stopped">The guarding notification is not running. Saved rules are still here. Start monitoring again from this screen. A phone battery manager can stop it after you leave Momentwise; this app cannot override that, and it will not keep relaunching itself.</string>
+    <string name="home_summary_desc_stopped">Monitoring is not running. The ongoing notification is gone, so opening a selected app will not show a pause until it starts again.</string>
+    <string name="home_monitor_stopped">The ongoing notification is not running. Saved rules are still here. Start monitoring again from this screen. A phone battery manager can stop it after you leave Momentwise; this app cannot override that, and it will not keep relaunching itself.</string>
     <string name="home_monitor_resume">Start monitoring again</string>
-    <string name="home_limits">Quit returns you to the home screen. It does not force-stop the other app. A reminder is not an exact alarm, and a force-stop or a phone battery manager can stop monitoring until you open Momentwise again.</string>
+    <string name="home_limits">Leave returns to the home screen. It does not force-stop the other app.</string>
     <string name="home_boot_dropped">A check-in was in progress before the phone restarted. That session was dropped. The next time a guarded app opens, the pause starts again.</string>
     <string name="home_boot_dropped_dismiss">Dismiss</string>
     <string name="home_manage_apps">Manage Apps</string>
@@ -67,7 +67,7 @@
 
     <!-- Configure -->
     <string name="configure_section_opening">When you open this app</string>
-    <string name="configure_opening_help">This message appears the moment you tap the app icon.</string>
+    <string name="configure_opening_help">Shown under the question when this app opens.</string>
     <string name="configure_section_options">Response options</string>
     <string name="configure_options_help">Give yourself two clear choices when the notice appears.</string>
     <string name="configure_option_1_pill">Option 1</string>
@@ -75,8 +75,8 @@
     <string name="configure_option_1_action">Action: Leave app</string>
     <string name="configure_option_2_action">Action: Continue</string>
     <string name="configure_button_label">Button label</string>
-    <string name="configure_option_1_behavior"><b>Behavior:</b> Sends you to the home screen. It does not force-stop the other app. The other app may already be open when the pause appears.</string>
-    <string name="configure_option_2_behavior"><b>Behavior:</b> Dismisses the pause so you can continue. Starts the reminder interval if one is set. It does not relaunch the app.</string>
+    <string name="configure_option_1_behavior">Returns to the home screen. Does not force-stop the other app.</string>
+    <string name="configure_option_2_behavior">Stays in the app and starts the saved reminder, if there is one.</string>
     <string name="configure_section_reminders">Reminders</string>
     <string name="configure_reminders_help">Choose how often Momentwise checks in while you stay in this app.</string>
     <string name="configure_freq_never">Never</string>
@@ -100,13 +100,13 @@
     <string name="preview_opening_testing">Testing:</string>
     <string name="preview_opening_edit_rule">Edit rule</string>
     <string name="preview_opening_breath">Take a slow breath</string>
-    <string name="preview_opening_quit_desc">Step away &amp; put phone down</string>
+    <string name="preview_opening_quit_desc">Returns you to the home screen. Does not force-stop the other app.</string>
     <string name="preview_opening_quit_result_title">Room made for what matters</string>
     <string name="preview_opening_quit_result_back">Back to Apps</string>
     <string name="preview_opening_continue_result_title">Intentional session started</string>
     <string name="preview_opening_test_checkin">Test Check-in Now</string>
     <string name="preview_opening_back_home">Back to Home</string>
-    <string name="preview_opening_disclaimer">In-app preview. It does not start a live session or leave the other app.</string>
+    <string name="preview_opening_disclaimer">Preview. This does not start a live session or cover another app.</string>
 
     <!-- Reminder preview -->
     <string name="preview_reminder_brand">Momentwise • Mindful Check-in</string>
@@ -122,11 +122,11 @@
     <string name="settings_theme_system">System</string>
     <string name="settings_theme_light">Light</string>
     <string name="settings_theme_dark">Dark</string>
-    <string name="settings_platform">Android Platform</string>
+    <string name="settings_platform">About</string>
     <string name="settings_respectful_name">Respectful by Design</string>
-    <string name="settings_respectful_desc">Leaving an app returns you cleanly to your device home screen. Momentwise respects user autonomy and platform conventions — it never forcibly terminates other apps.</string>
-    <string name="settings_architecture_name">On-Device by Design</string>
-    <string name="settings_architecture_desc">Rules, sessions, and which app is in front stay on this device. Nothing is sent off the phone. Monitoring runs only while a rule is enabled. This has not been proven on a physical API 34 or 35 device in this workspace.</string>
+    <string name="settings_respectful_desc">Leave returns to the home screen. Momentwise does not force-stop the other app.</string>
+    <string name="settings_architecture_name">On this phone</string>
+    <string name="settings_architecture_desc">Rules stay on this phone. Monitoring runs only while a rule is enabled and access is allowed.</string>
     <string name="settings_prototype_controls">Data</string>
     <string name="settings_reset_all_name">Reset all app rules</string>
     <string name="settings_reset_all_desc">Clear saved rules and any in-progress check-in on this device.</string>
@@ -134,7 +134,7 @@
     <string name="settings_reset_confirm_title">Reset all app rules?</string>
     <string name="settings_reset_confirm_body">This clears saved rules and any in-progress check-in stored on this device. It does not change other apps.</string>
     <string name="settings_reset_confirm">Reset</string>
-    <string name="settings_version_value">0.4.0</string>
+    <string name="settings_version_value">0.5.2</string>
     <string name="settings_version_label">Version</string>
     <string name="preview_quit_body">You paused and chose not to open %1$s. In the native app this returns you to your home screen. It does not force-stop the other app.</string>
     <string name="preview_continue_with_reminder">Preview only. Continuing into %1$s would schedule a check-in in %2$d minutes. This preview does not start one.</string>
@@ -143,7 +143,7 @@
     <string name="preview_reminder_scheduled">Scheduled check-in after %1$d minutes in %2$s</string>
     <string name="preview_simulated_background">Simulated background</string>
     <string name="settings_storage_label">Storage</string>
-    <string name="settings_storage_value">On-device (DataStore)</string>
+    <string name="settings_storage_value">On this phone</string>
 
     <!-- Snackbars / feedback -->
     <string name="toast_rule_saved">Saved rule for %1$s</string>
@@ -168,33 +168,38 @@
     <string name="settings_monitoring_off">Monitoring paused</string>
     <string name="settings_access">Access</string>
     <string name="settings_access_name">What Momentwise can see</string>
-    <string name="settings_access_desc">These are off until you allow them. Declining leaves Momentwise as a configuration app. Opening a system screen does not grant access by itself.</string>
+    <string name="settings_access_desc">Read from Android, not from a button tap. Green means allowed. Opening Settings does not grant access by itself.</string>
     <string name="grant_allowed">Allowed</string>
     <string name="grant_not_allowed">Not allowed</string>
+    <string name="grant_required">Required</string>
+    <string name="grant_allow">Allow</string>
+    <string name="grant_review_access">Review access</string>
     <string name="grant_notification_fallback">Not allowed — a notification will be used instead</string>
     <string name="disclosure_title">Before guarding</string>
     <string name="disclosure_heading">Pause %1$s only if you want Momentwise to notice it</string>
-    <string name="disclosure_intro">Momentwise does not block the app or lock you out. To show your pause, it needs to know when that app is in front. You can decline and keep editing rules.</string>
+    <string name="disclosure_intro">Momentwise does not force-stop the app or lock you out. If you allow display over other apps, a pause covers it until you choose. Otherwise it cannot cover the app. You can decline and keep editing rules.</string>
     <string name="disclosure_usage_title">Usage Access</string>
     <string name="disclosure_usage_body">Used only to see which app is in the foreground, on this phone, so your pause can appear. It is not used to read messages, build a usage dashboard, or send anything off the device. Android asks for this in Settings, not in a normal permission dialog.</string>
     <string name="disclosure_usage_action">Review Usage Access</string>
     <string name="disclosure_overlay_title">Display over other apps</string>
-    <string name="disclosure_overlay_body">Lets the pause appear by itself, as Momentwise\'s own full screen. It is not a click-through layer, and it is not kept invisible just to hold a privilege. If you skip this, you can still guard the app — the pause arrives as a notification you tap.</string>
+    <string name="disclosure_overlay_body">Optional. A card can cover the middle of the screen. If you skip this, Momentwise uses a notification instead and does not block the other app.</string>
     <string name="disclosure_overlay_action">Review overlay access</string>
     <string name="disclosure_notifications_title">Notifications</string>
-    <string name="disclosure_notifications_body">A quiet ongoing notification while guarding is on, and a notification you can tap if the pause cannot appear on its own. No streaks, no marketing.</string>
+    <string name="disclosure_notifications_body">A quiet ongoing notification while guarding is on, and a notification you can tap if the pause cannot cover the other app. That notification does not block the app. No streaks, no marketing.</string>
     <string name="disclosure_notifications_action">Allow notifications</string>
-    <string name="disclosure_limits">The pause can be about a second late. Some phones delay or stop a foreground service despite the notification. Quit goes to the home screen and does not force-stop the other app. A check-in in progress does not survive a reboot as proof you were still in the app.</string>
+    <string name="disclosure_limits">The pause can be about a second late. Leave goes to the home screen and does not force-stop the other app.</string>
     <string name="disclosure_guard">Guard %1$s</string>
     <string name="disclosure_guard_waiting">Usage Access and notifications are still needed</string>
     <string name="disclosure_decline">Not now</string>
-    <string name="channel_monitoring_name">Guarding</string>
-    <string name="channel_monitoring_desc">Shown while at least one app is guarded.</string>
+    <string name="channel_monitoring_name">Monitoring</string>
+    <string name="channel_monitoring_desc">Shown while Momentwise is watching the apps you selected.</string>
     <string name="channel_pause_name">Pause</string>
-    <string name="channel_pause_desc">A pause you can open when it could not appear on its own.</string>
-    <string name="monitor_notification_title">Momentwise is guarding</string>
-    <string name="monitor_notification_body">Watching the apps you chose. Not a usage report.</string>
-    <string name="pause_notification_title">A pause is waiting</string>
-    <string name="pause_from_notification">Opened from a notification, because the pause could not appear on its own.</string>
-    <string name="pause_quit_honesty">Quit returns you to the home screen. It does not force-stop the other app, stop its audio, or clear its back stack.</string>
+    <string name="channel_pause_desc">A notification you can open when the pause could not cover the other app. It does not block that app.</string>
+    <string name="monitor_notification_title">Momentwise is on</string>
+    <string name="monitor_notification_body">Watching your selected apps.</string>
+    <string name="pause_notification_title">Is this where you want your time to go?</string>
+    <string name="pause_notification_fallback">The app is not blocked. This is a notification, not a cover over %1$s. Open it to choose.</string>
+    <string name="pause_from_notification">Opened from a notification. The other app was not covered until you opened this.</string>
+    <string name="pause_scrim_description">Momentwise pause over %1$s. The app behind is not available until you choose.</string>
+    <string name="pause_quit_honesty">Leave returns you to the home screen. It does not force-stop the other app, stop its audio, or clear its back stack.</string>
 </resources>

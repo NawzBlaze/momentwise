@@ -22,6 +22,7 @@ import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.nawzblaze.momentwise.MomentwiseApplication
 import com.nawzblaze.momentwise.R
 import com.nawzblaze.momentwise.data.model.ThemeMode
+import com.nawzblaze.momentwise.intervention.InterventionSurface
 import com.nawzblaze.momentwise.intervention.PauseRequest
 import com.nawzblaze.momentwise.ui.screens.PauseScreen
 import com.nawzblaze.momentwise.ui.theme.MomentwiseTheme
@@ -31,10 +32,19 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
 /**
- * Opaque full-screen pause hosted in a [WindowManager] overlay.
- * Touches do not pass through to the app underneath.
+ * Visible pause hosted in a [WindowManager] overlay.
+ *
+ * This is used only when the user has granted display-over-other-apps.
+ * The window is the pause itself: a middle card and a visible scrim.
+ * It is not invisible, it is not click-through, and it is not kept up to
+ * hold a privilege. Touches on the scrim are consumed here.
+ *
+ * A background activity start is not required for this path. If the window
+ * cannot be added, [show] returns false and the caller uses the notification.
  */
 object PauseOverlay {
+
+    const val WINDOW_TITLE = InterventionSurface.WINDOW_TITLE
 
     private var host: OverlayHost? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -47,30 +57,19 @@ object PauseOverlay {
             val themed = android.view.ContextThemeWrapper(appContext, R.style.Theme_Momentwise)
             val overlay = OverlayHost(themed)
             overlay.resume()
+            overlay.contentDescription = WINDOW_TITLE
+            overlay.isClickable = true
+            overlay.setOnTouchListener { _, _ -> true }
+            // Compose resolves the owner from this window root, not only the child.
+            overlay.setViewTreeLifecycleOwner(overlay)
+            overlay.setViewTreeSavedStateRegistryOwner(overlay)
+            overlay.setViewTreeViewModelStoreOwner(overlay)
             val composeView = ComposeView(themed).apply {
                 setViewTreeLifecycleOwner(overlay)
                 setViewTreeSavedStateRegistryOwner(overlay)
                 setViewTreeViewModelStoreOwner(overlay)
-                setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
-                setContent {
-                    val mode = ThemeMode.fromStorageKey(themeModeName)
-                    MomentwiseTheme(themeMode = mode) {
-                        PauseScreen(
-                            request = request,
-                            onQuit = { perform(appContext) { it.quit() } },
-                            onSecondary = {
-                                perform(appContext) { controller ->
-                                    if (request.kind == PauseRequest.Kind.OPENING) {
-                                        controller.continueIntoApp()
-                                    } else {
-                                        controller.snooze(request)
-                                    }
-                                }
-                            },
-                            onDismissReminder = { perform(appContext) { it.dismissForToday(request) } },
-                        )
-                    }
-                }
+                setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+                isClickable = true
             }
             overlay.addView(composeView)
             val params = WindowManager.LayoutParams(
@@ -82,6 +81,7 @@ object PauseOverlay {
                 PixelFormat.TRANSLUCENT,
             ).apply {
                 gravity = Gravity.CENTER
+                setTitle(WINDOW_TITLE)
                 if (Build.VERSION.SDK_INT >= 28) {
                     layoutInDisplayCutoutMode =
                         WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
@@ -89,9 +89,33 @@ object PauseOverlay {
             }
             windowManager.addView(overlay, params)
             host = overlay
+            composeView.setContent {
+                val mode = ThemeMode.fromStorageKey(themeModeName)
+                MomentwiseTheme(themeMode = mode) {
+                    PauseScreen(
+                        request = request,
+                        onQuit = { perform(appContext) { it.quit() } },
+                        onSecondary = {
+                            perform(appContext) { controller ->
+                                if (request.kind == PauseRequest.Kind.OPENING) {
+                                    controller.continueIntoApp(request.packageName)
+                                } else {
+                                    controller.snooze(request)
+                                }
+                            }
+                        },
+                        onDismissReminder = { perform(appContext) { it.dismissForToday(request) } },
+                    )
+                }
+            }
+            DebugNotes.append(appContext, "intervention=overlay shown")
             true
-        } catch (_: Exception) {
+        } catch (error: Exception) {
             dismiss(appContext)
+            DebugNotes.append(
+                appContext,
+                "intervention=overlay-failed ${error.javaClass.simpleName}",
+            )
             false
         }
     }
@@ -104,6 +128,15 @@ object PauseOverlay {
             runCatching { windowManager.removeViewImmediate(current) }
         }
         current.destroy()
+    }
+
+    /** The system removed the window. Our own [dismiss] nulls [host] first, so it does not land here. */
+    internal fun systemRemoved(removed: FrameLayout) {
+        val current = host ?: return
+        if (current !== removed) return
+        host = null
+        current.destroy()
+        PausePresenter.noteCleared(PauseDismissReason.WITHOUT_CHOICE)
     }
 
     private fun perform(context: Context, block: suspend (InterventionController) -> Unit) {
@@ -136,6 +169,11 @@ private class OverlayHost(context: Context) :
 
     fun resume() {
         registry.currentState = Lifecycle.State.RESUMED
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        PauseOverlay.systemRemoved(this)
     }
 
     fun destroy() {

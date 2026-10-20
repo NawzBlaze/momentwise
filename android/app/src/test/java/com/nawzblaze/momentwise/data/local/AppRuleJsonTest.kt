@@ -53,12 +53,48 @@ class AppRuleJsonTest {
         val rule = AppRuleJson.decodeList(sparse.toString())!!.single()
 
         assertEquals(RuleDefaults.OPENING_NOTICE, rule.openingNotice)
-        assertEquals(RuleDefaults.QUIT_OPTION_LABEL, rule.quitOption.label)
+        assertEquals(RuleDefaults.leaveLabel("Example"), rule.quitOption.label)
         assertEquals(RuleAction.LEAVE_APP, rule.quitOption.action)
         assertEquals(RuleAction.CONTINUE_INTO_APP, rule.continueOption.action)
         assertEquals(ReminderFrequency.Never, rule.reminderFrequency)
         assertEquals(RuleDefaults.REMINDER_NOTICE, rule.reminderNotice)
         assertEquals(10, rule.reminderActions.snoozeMinutes)
+    }
+
+    @Test
+    fun savedOpeningCopyIsNotRewrittenWhenDefaultsChange() {
+        val saved = JSONArray().put(
+            JSONObject()
+                .put("appId", "com.instagram.android")
+                .put("appName", "Instagram")
+                .put("openingNotice", "What brought you here?")
+                .put("option1Label", "Quit")
+                .put("option2Label", "Anyways")
+                .put("reminderFrequency", "never"),
+        )
+        val rule = AppRuleJson.decodeList(saved.toString())!!.single()
+
+        assertEquals("What brought you here?", rule.openingNotice)
+        assertEquals("Quit", rule.quitOption.label)
+        assertEquals("Anyways", rule.continueOption.label)
+        assertEquals(ReminderFrequency.Never, rule.reminderFrequency)
+    }
+
+    @Test
+    fun shippedGenericPromptAndContinueLabelAreReplaced() {
+        val saved = JSONArray().put(
+            JSONObject()
+                .put("appId", "com.instagram.android")
+                .put("appName", "Instagram")
+                .put("openingNotice", "What do you want to do right now?")
+                .put("option2Label", "Continue")
+                .put("reminderFrequency", "minutes:5"),
+        )
+        val rule = AppRuleJson.decodeList(saved.toString())!!.single()
+
+        assertEquals(RuleDefaults.OPENING_NOTICE, rule.openingNotice)
+        assertEquals(RuleDefaults.CONTINUE_OPTION_LABEL, rule.continueOption.label)
+        assertEquals(ReminderFrequency.EveryMinutes(5), rule.reminderFrequency)
     }
 
     @Test

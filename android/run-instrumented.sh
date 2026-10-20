@@ -16,14 +16,34 @@ LOG="${GITHUB_WORKSPACE:-/tmp}/emulator-test.log"
   ./gradlew :app:connectedDebugAndroidTest --no-daemon --stacktrace
 } >"$LOG" 2>&1
 code=$?
+{
+  echo "--- debug-status ---"
+  adb shell run-as com.nawzblaze.momentwise cat files/debug-status.txt || true
+  echo "--- momentwise-log ---"
+  adb logcat -d -t 40 -s MomentwiseDebug:I Momentwise:I || true
+} > "${GITHUB_WORKSPACE:-/tmp}/emulator-measure.txt" 2>&1 || true
 if [ "$code" -ne 0 ]; then
   {
     echo "--- androidTest failure text ---"
-    find app/build -path '*androidTest*' -name '*.xml' -print 2>/dev/null |
-      while read -r report; do
-        grep -n -E 'failure|AssertionError|not posted|not delivered|not allowed' "$report" | head -n 40
-      done
+    cat "${GITHUB_WORKSPACE:-/tmp}/emulator-measure.txt" || true
+    python3 - <<'PY'
+import pathlib
+root = pathlib.Path("app/build")
+found = False
+for report in root.rglob("*.xml"):
+    path = str(report)
+    if "androidTest" not in path and "androidTests" not in path:
+        continue
+    text = report.read_text(errors="replace")
+    if "<failure" not in text and "<error" not in text:
+        continue
+    found = True
+    print(path)
+    print(text[:2500])
+if not found:
+    print("No instrumentation failure element was found.")
+PY
   } >>"$LOG"
 fi
-tail -n 160 "$LOG"
+tail -n 80 "$LOG"
 exit "$code"

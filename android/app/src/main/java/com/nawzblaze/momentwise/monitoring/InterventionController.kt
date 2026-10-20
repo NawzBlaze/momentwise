@@ -9,8 +9,9 @@ import com.nawzblaze.momentwise.intervention.SessionClock
 import java.time.LocalDate
 
 /**
- * Applies a pause choice. Quit sends the user home. It does not force-stop
- * the other app, and Continue does not relaunch it.
+ * Applies a pause choice. Leave sends the user home. It does not force-stop
+ * the other app, and Continue does not relaunch it. The reminder starts only
+ * after Continue.
  */
 class InterventionController(
     private val context: Context,
@@ -25,33 +26,39 @@ class InterventionController(
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         runCatching { context.startActivity(home) }
-        PausePresenter.dismiss(context)
+        PausePresenter.dismiss(context, PauseDismissReason.CHOICE)
     }
 
-    suspend fun continueIntoApp() {
-        val rule = sessions.current().activePackage?.let { rules.ruleFor(it) }
+    /**
+     * [packageName] is the pause the user answered. Looking up only the stored
+     * session can miss the rule when the opening write lost the race, and then
+     * Continue schedules no reminder.
+     */
+    suspend fun continueIntoApp(packageName: String) {
+        val rule = rules.ruleFor(packageName)
         sessions.update {
             SessionClock.onContinue(
                 snapshot = it,
                 intervalMinutes = rule?.reminderFrequency?.minutesOrNull(),
                 nowMillis = System.currentTimeMillis(),
                 today = LocalDate.now().toString(),
+                packageName = packageName,
             )
         }
-        PausePresenter.dismiss(context)
+        PausePresenter.dismiss(context, PauseDismissReason.CHOICE)
     }
 
     suspend fun snooze(request: PauseRequest) {
         sessions.update {
             SessionClock.onSnooze(it, request.snoozeMinutes, System.currentTimeMillis())
         }
-        PausePresenter.dismiss(context)
+        PausePresenter.dismiss(context, PauseDismissReason.CHOICE)
     }
 
     suspend fun dismissForToday(request: PauseRequest) {
         sessions.update {
             SessionClock.onDismissForToday(it, request.packageName, LocalDate.now().toString())
         }
-        PausePresenter.dismiss(context)
+        PausePresenter.dismiss(context, PauseDismissReason.CHOICE)
     }
 }

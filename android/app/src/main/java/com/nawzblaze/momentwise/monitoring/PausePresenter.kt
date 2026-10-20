@@ -11,43 +11,89 @@ import com.nawzblaze.momentwise.intervention.PauseActivity
 import com.nawzblaze.momentwise.intervention.PauseRequest
 
 /**
- * Shows the pause. An overlay is used only when the user has allowed display
- * over other apps, and the overlay is the pause itself — never an invisible
- * window held open to keep a privilege. Otherwise a notification opens the
- * same screen. That path is labelled as a notification, not as a pause that
- * appeared on its own.
+ * Shows the pause.
+ *
+ * When display-over-other-apps is granted, the pause is a visible overlay:
+ * a card in the middle and a scrim that consumes touches. That does not
+ * require a background activity start.
+ *
+ * If the overlay cannot be added, a background activity start is attempted
+ * once and its result is not treated as proof the activity was shown. Since
+ * API 29 a foreground service is not allowed to start an activity. The
+ * notification remains the fallback, and its text says the other app is not
+ * blocked.
+ *
+ * If overlay is not granted, only the notification is shown. A notification
+ * is not described as a cover.
  */
+enum class PauseSurface { NONE, OVERLAY, ACTIVITY, NOTIFICATION }
+
+enum class PauseDismissReason {
+    /** Leave, Continue, snooze, or dismiss-for-today. */
+    CHOICE,
+    /** Usage Access saw a leave. */
+    LEFT,
+    /** Monitoring stopped, or the process is shutting down. Not a choice. */
+    STOPPED,
+    /** Notification swipe, activity finish, or the system removed the overlay. Not a choice. */
+    WITHOUT_CHOICE,
+}
+
 object PausePresenter {
 
-    /** Cleared by the monitoring service so a later pause is not blocked. */
+    /** Cleared by the monitoring service. The reason says whether a choice was made. */
     @Volatile
-    var onDismissed: (() -> Unit)? = null
+    var onDismissed: ((PauseDismissReason) -> Unit)? = null
 
     /** Set when the pause activity is actually on screen. */
     @Volatile
     var onShown: (() -> Unit)? = null
 
     @Volatile
+    var surface: PauseSurface = PauseSurface.NONE
+        private set
+
+    @Volatile
     private var shownGeneration = 0
 
+    @Volatile
+    private var handledGeneration = -1
+
     fun currentGeneration(): Int = shownGeneration
+
+    /**
+     * Records why this generation's pause went away. A later destroy of the
+     * same generation must not turn a choice into "no choice".
+     */
+    fun noteCleared(reason: PauseDismissReason) {
+        val generation = shownGeneration
+        if (handledGeneration == generation && reason == PauseDismissReason.WITHOUT_CHOICE) return
+        handledGeneration = generation
+        surface = PauseSurface.NONE
+        onDismissed?.invoke(reason)
+    }
 
     fun show(context: Context, request: PauseRequest, themeModeName: String) {
         shownGeneration += 1
         if (GrantChecks.read(context).overlay) {
-            val shown = PauseOverlay.show(context, request, themeModeName)
-            if (shown) {
+            if (PauseOverlay.show(context, request, themeModeName)) {
+                surface = PauseSurface.OVERLAY
                 cancelNotification(context)
                 return
             }
+            noteActivityAttempt(context, request)
+        } else {
+            DebugNotes.append(context, "intervention=notification reason=overlay-not-granted")
         }
+        surface = PauseSurface.NOTIFICATION
         showNotification(context, request)
     }
 
-    fun dismiss(context: Context) {
+    fun dismiss(context: Context, reason: PauseDismissReason = PauseDismissReason.WITHOUT_CHOICE) {
+        noteCleared(reason)
         PauseOverlay.dismiss(context)
         cancelNotification(context)
-        onDismissed?.invoke()
+        DebugNotes.append(context, "intervention=dismissed reason=$reason")
     }
 
     /**
@@ -57,6 +103,22 @@ object PausePresenter {
     fun handOffToActivity(context: Context) {
         PauseOverlay.dismiss(context)
         cancelNotification(context)
+        surface = PauseSurface.ACTIVITY
+        DebugNotes.append(context, "intervention=activity")
+    }
+
+    /**
+     * startActivity returning is not evidence the pause was visible.
+     * Background activity starts are commonly blocked without an exception.
+     */
+    private fun noteActivityAttempt(context: Context, request: PauseRequest) {
+        val outcome = try {
+            context.startActivity(PauseActivity.intent(context, request))
+            "returned"
+        } catch (error: Exception) {
+            error.javaClass.simpleName
+        }
+        DebugNotes.append(context, "activity-start=$outcome")
     }
 
     private fun showNotification(context: Context, request: PauseRequest) {
@@ -67,11 +129,13 @@ object PausePresenter {
             launch,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
+        val fallback = context.getString(R.string.pause_notification_fallback, request.appName)
+        val visible = "${request.heading}. ${request.notice} $fallback"
         val notification = NotificationCompat.Builder(context, NotificationChannels.PAUSE)
             .setSmallIcon(R.drawable.ic_stat_pause)
-            .setContentTitle(context.getString(R.string.pause_notification_title))
-            .setContentText(request.notice)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(request.notice))
+            .setContentTitle(request.heading)
+            .setContentText(visible)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(visible))
             .setContentIntent(pending)
             .setDeleteIntent(PauseClearedReceiver.pending(context))
             .setAutoCancel(false)
@@ -80,6 +144,7 @@ object PausePresenter {
             .build()
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
         manager.notify(NotificationChannels.PAUSE_NOTIFICATION_ID, notification)
+        DebugNotes.append(context, "notification posted id=${NotificationChannels.PAUSE_NOTIFICATION_ID}")
     }
 
     private fun cancelNotification(context: Context) {
@@ -90,13 +155,13 @@ object PausePresenter {
 
 /**
  * The user swiped the pause notification away without choosing. That is not a
- * Quit or an Anyways. Clear the "pause is showing" latch so the next opening
- * can show again.
+ * Leave or a Continue. The same visit is not stacked again immediately. The
+ * next visit is not suppressed.
  */
 class PauseClearedReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
         if (intent?.action != ACTION) return
-        PausePresenter.onDismissed?.invoke()
+        PausePresenter.noteCleared(PauseDismissReason.WITHOUT_CHOICE)
     }
 
     companion object {

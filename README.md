@@ -8,14 +8,13 @@ Momentwise is an intentional phone-use companion being designed to help people i
 
 ## Current Status: native app coded, signed APK not published
 
-The public site describes the Android app. It does not offer an APK download, because no signed release file has been published. A browser design reference remains at `/prototype/` until that file exists and the download URL has been checked. It is not the product.
+The public site describes the Android app. It does not offer an APK download, because no signed release file has been published. The browser design reference in `prototype/` is source only. It is not published, and it is not the product.
 
 The native project in [`android/`](android/) lists launchable apps, explains Usage Access, display-over-other-apps, and notifications before a rule is enabled, and can run a foreground monitor plus a pause. Settings can pause monitoring without deleting rules. Quit returns to the home screen. It does not force-stop other apps. That pause path has not been proven on an API 34 or API 35 device here. Constraints are in [`ANDROID_IMPLEMENTATION_PLAN.md`](ANDROID_IMPLEMENTATION_PLAN.md).
 
 Proposed application ID: `com.nawzblaze.momentwise`. The app is not published under that ID, and it is not on Google Play.
 
 - **Public Landing Page:** [https://nawzblaze.github.io/momentwise/](https://nawzblaze.github.io/momentwise/)
-- **Interactive Mobile UI Prototype:** [https://nawzblaze.github.io/momentwise/prototype/](https://nawzblaze.github.io/momentwise/prototype/)
 - **Repository:** [https://github.com/NawzBlaze/momentwise](https://github.com/NawzBlaze/momentwise)
 
 ---
@@ -68,7 +67,7 @@ momentwise/
 │       └── android.yml         # Android unit tests, debug APK, and lint
 ├── assets/
 │   └── logo.png                # Approved icon: forest-green M and golden sunrise
-├── prototype/                  # Interactive Mobile UI Prototype (Concept Preview)
+├── prototype/                  # Design reference. Not published to GitHub Pages.
 │   ├── assets/                 # Brand assets copy for prototype preview
 │   ├── app.js                  # Prototype navigation router & state machine
 │   ├── index.html              # Multi-screen Android mobile prototype shell
@@ -86,12 +85,11 @@ momentwise/
 
 ---
 
-## Interactive Android UI Prototype
+## Design reference
 
-A browser-runnable, high-fidelity clickable prototype of the proposed Momentwise mobile application is available at [`prototype/`](prototype/):
+[`prototype/`](prototype/) is an older browser design reference. It is kept in git and is not part of the published site. Do not treat it as the Android app, and do not link it from the public page. Its opening copy and sample metrics are not the product.
 
-- **Live Prototype URL:** [https://nawzblaze.github.io/momentwise/prototype/](https://nawzblaze.github.io/momentwise/prototype/)
-- **Screens Implemented:**
+- **Screens in that source:**
   1. **Welcome / Onboarding:** Brand introduction, non-punitive value proposition, 3-step mindful concept walkthrough.
   2. **Home Dashboard:** Sample intentionality metrics (pauses, reclaimed time, intentional sessions), guarded apps summary, and interactive test drives.
   3. **Guarded Apps:** Interactive selection of apps to guard with persistent toggle switches and educational permission explainer.
@@ -101,7 +99,7 @@ A browser-runnable, high-fidelity clickable prototype of the proposed Momentwise
 - **Adaptive Appearance:** Supports System (auto-detects OS color scheme), Light (warm cream and forest green), and Dark (soft charcoal and comfortable off-white) modes.
 - **Responsive Display:** On desktop displays, presents inside a simulated Android device mockup with quick-navigation controls; on mobile devices (≤560px), seamlessly fills the viewport natively.
 
-> **Important Disclosure:** This prototype uses browser-local storage and simulated sample metrics. No Android background services, accessibility APIs, device permissions, or real app monitoring are active.
+> **Important Disclosure:** This prototype uses browser-local storage and simulated sample metrics. No Android background services, accessibility APIs, device permissions, or real app monitoring are active. Its opening copy is the older design reference. The native app's new-rule defaults are separate, and this prototype was not rewritten to match them.
 
 ---
 

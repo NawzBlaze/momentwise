@@ -19,8 +19,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Schedule
@@ -51,7 +49,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nawzblaze.momentwise.MomentwiseViewModel
 import com.nawzblaze.momentwise.R
-import com.nawzblaze.momentwise.data.model.ReminderFrequency
+import com.nawzblaze.momentwise.intervention.InterventionSurface
+import com.nawzblaze.momentwise.intervention.PauseRequest
 import com.nawzblaze.momentwise.ui.components.VerticalSpacer
 import com.nawzblaze.momentwise.ui.theme.LocalMomentwiseColors
 import kotlinx.coroutines.launch
@@ -131,6 +130,29 @@ fun OpeningNoticePreviewScreen(
             }
         }
 
+        if (result == OpeningPreviewResult.CHOOSING) {
+            Text(
+                text = stringResource(R.string.preview_opening_disclaimer),
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.textMuted,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            )
+            Box(Modifier.fillMaxWidth().height(560.dp)) {
+                PauseScreen(
+                    request = previewPauseRequest(rule),
+                    onQuit = {
+                        result = OpeningPreviewResult.QUIT
+                        scope.launch { snackbarHostState.showSnackbar(quitMessage) }
+                    },
+                    onSecondary = {
+                        result = OpeningPreviewResult.CONTINUE
+                        scope.launch { snackbarHostState.showSnackbar(continueMessage) }
+                    },
+                    onDismissReminder = {},
+                )
+            }
+        } else {
         VerticalSpacer(28)
 
         Box(contentAlignment = Alignment.Center, modifier = Modifier.size(132.dp)) {
@@ -161,6 +183,13 @@ fun OpeningNoticePreviewScreen(
 
         VerticalSpacer(28)
         Text(
+            text = stringResource(R.string.pause_notification_title),
+            style = MaterialTheme.typography.titleMedium,
+            color = colors.accentText,
+            textAlign = TextAlign.Center,
+        )
+        VerticalSpacer(8)
+        Text(
             text = rule.openingNotice,
             style = MaterialTheme.typography.headlineSmall,
             color = MaterialTheme.colorScheme.onBackground,
@@ -177,38 +206,7 @@ fun OpeningNoticePreviewScreen(
         VerticalSpacer(28)
 
         when (result) {
-            OpeningPreviewResult.CHOOSING -> {
-                ChoiceButton(
-                    title = rule.quitOption.label,
-                    description = stringResource(R.string.preview_opening_quit_desc),
-                    emphasized = true,
-                    leading = Icons.AutoMirrored.Filled.ArrowBack,
-                    onClick = {
-                        result = OpeningPreviewResult.QUIT
-                        scope.launch {
-                            snackbarHostState.showSnackbar(quitMessage)
-                        }
-                    },
-                )
-                VerticalSpacer(10)
-                val continueHint = if (rule.reminderFrequency is ReminderFrequency.Never) {
-                    "Continue into app"
-                } else {
-                    "Continue into app with reminder"
-                }
-                ChoiceButton(
-                    title = rule.continueOption.label,
-                    description = continueHint,
-                    emphasized = false,
-                    leading = Icons.AutoMirrored.Filled.ArrowForward,
-                    onClick = {
-                        result = OpeningPreviewResult.CONTINUE
-                        scope.launch {
-                            snackbarHostState.showSnackbar(continueMessage)
-                        }
-                    },
-                )
-            }
+            OpeningPreviewResult.CHOOSING -> Unit
             OpeningPreviewResult.QUIT -> {
                 ResultCard(
                     icon = Icons.Filled.Check,
@@ -264,40 +262,21 @@ fun OpeningNoticePreviewScreen(
             textAlign = TextAlign.Center,
         )
         VerticalSpacer(16)
-    }
-}
-
-@Composable
-private fun ChoiceButton(
-    title: String,
-    description: String,
-    emphasized: Boolean,
-    leading: androidx.compose.ui.graphics.vector.ImageVector,
-    onClick: () -> Unit,
-) {
-    val colors = LocalMomentwiseColors.current
-    val container = if (emphasized) MaterialTheme.colorScheme.primary else colors.surfaceCard
-    val content = if (emphasized) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
-    val border = if (emphasized) container else colors.border
-    Button(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth().height(64.dp),
-        shape = RoundedCornerShape(14.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = container, contentColor = content),
-        border = androidx.compose.foundation.BorderStroke(1.dp, border),
-    ) {
-        Icon(leading, contentDescription = null, modifier = Modifier.size(18.dp))
-        Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-            Text(
-                description,
-                style = MaterialTheme.typography.bodySmall,
-                color = content.copy(alpha = 0.75f),
-            )
         }
     }
 }
+
+private fun previewPauseRequest(rule: com.nawzblaze.momentwise.data.model.AppRule) = PauseRequest(
+    packageName = rule.appId,
+    appName = rule.appName,
+    kind = PauseRequest.Kind.OPENING,
+    notice = rule.openingNotice,
+    heading = InterventionSurface.OPENING_HEADING,
+    primaryLabel = rule.quitOption.label,
+    secondaryLabel = rule.continueOption.label,
+    primarySupport = InterventionSurface.LEAVE_SUPPORT,
+    secondarySupport = InterventionSurface.continueSupport(rule.reminderFrequency.minutesOrNull()),
+)
 
 @Composable
 private fun ResultCard(

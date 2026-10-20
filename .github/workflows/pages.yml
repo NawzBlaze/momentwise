@@ -31,10 +31,18 @@ jobs:
         uses: actions/configure-pages@v5
 
       - name: Stage site files
-        # The native project is not part of the public site. Keep it out of the Pages artifact.
+        # The native project is not part of the public site. prototype/ stays in
+        # git as a design reference and is not published. After this deploys,
+        # /prototype/ 404s. Do not delete that source.
         run: |
           mkdir -p _site
-          rsync -a --exclude android --exclude _site --exclude .git --exclude .github ./ _site/
+          rsync -a \
+            --exclude android \
+            --exclude prototype \
+            --exclude _site \
+            --exclude .git \
+            --exclude .github \
+            ./ _site/
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

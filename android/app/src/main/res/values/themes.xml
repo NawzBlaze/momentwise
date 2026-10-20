@@ -3,4 +3,17 @@
     <style name="Theme.Momentwise" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:windowBackground">@color/momentwise_background_light</item>
     </style>
+
+    <!--
+      The pause activity draws its own scrim and card. A transparent window
+      lets the app behind show through when the compositor allows it. Touches
+      still belong to this activity.
+    -->
+    <style name="Theme.Momentwise.Intervention" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:backgroundDimEnabled">false</item>
+        <item name="android:windowCloseOnTouchOutside">false</item>
+    </style>
 </resources>

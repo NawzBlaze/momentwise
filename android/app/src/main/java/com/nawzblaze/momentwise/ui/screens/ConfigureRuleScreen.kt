@@ -64,8 +64,8 @@ import kotlinx.coroutines.launch
 /**
  * Screen 4 — Configure Rule (per app).
  * Sections mirror the approved prototype exactly:
- *  A. Opening notice ("What brought you here?" default).
- *  B. Response options — Option 1 "Quit" (leave app), Option 2 "Anyways" (continue).
+ *  A. Opening prompt ("What do you want to do right now?" default).
+ *  B. Response options — Option 1 "Leave {app}" (home, not force-stop), Option 2 "Continue".
  *  C. Reminders — Never / 5 / 10 / 15 / 20 / Custom, reminder notice
  *     ("You're still here?" default), disabled-note when Never.
  *  D. Advanced reminder options — collapsed by default; quit / snooze (10 min) /
