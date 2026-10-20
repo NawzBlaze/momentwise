@@ -43,6 +43,7 @@ jobs:
           rsync -a \
             --exclude android \
             --exclude prototype \
+            --exclude visual-review \
             --exclude _site \
             --exclude .git \
             --exclude .github \

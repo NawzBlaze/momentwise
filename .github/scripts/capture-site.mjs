@@ -249,7 +249,7 @@ if (lighthouseBin) {
     '--only-categories=performance,accessibility,best-practices,seo',
     '--chrome-flags=--headless=new --no-sandbox --disable-gpu',
     '--quiet',
-  ], { stdio: 'inherit', timeout: 150000 });
+  ], { stdio: 'inherit', timeout: 75000 });
   const scorePath = path.join(reviewDir, 'lighthouse.report.json');
   if (result.status !== 0 || !fs.existsSync(scorePath)) {
     const note = `lighthouse did not finish (status ${result.status}, signal ${result.signal || 'none'})`;
