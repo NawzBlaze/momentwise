@@ -736,7 +736,17 @@ class GuardSnapshotJsonTest {
         val decoded = GuardSnapshotJson.decode(saved)
         assertEquals(null, decoded.recentAwayPackage)
         assertEquals("com.instagram.android", decoded.lastGuardedPackage)
-        assertFalse(SessionClock.needsOpening(decoded, "com.instagram.android", true, 70_000))
+        assertTrue(SessionClock.needsOpening(decoded, "com.instagram.android", true, 70_000))
+        assertFalse(
+            SessionClock.needsOpening(decoded.copy(continuedVisit = true), "com.instagram.android", true, 70_000),
+        )
+        val flagged = GuardSnapshotJson.decode(
+            GuardSnapshotJson.encode(
+                decoded.copy(continuedVisit = true, explicitLeavePending = true),
+            ),
+        )
+        assertTrue(flagged.continuedVisit)
+        assertTrue(flagged.explicitLeavePending)
     }
 
     @Test

@@ -330,7 +330,8 @@ class CrossAppPauseTest {
             }
             .take(12)
             .joinToString(" | ")
-        return oneLine("package=[$posted] notifications=[$notes] status=[${statusFile()}]")
+        val choice = statusFile().lineSequence().lastOrNull { it.startsWith("choice=") }.orEmpty()
+        return oneLine("package=[$posted] notifications=[$notes] status=[${statusFile()}] $choice")
     }
 
     private fun oneLine(text: String): String {

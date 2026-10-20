@@ -161,6 +161,60 @@ class VisitGraceTest {
     }
 
     @Test
+    fun leaveDoesNotResumeAsContinueEvenIfAGraceStampRemains() {
+        val continued = SessionClock.onContinue(
+            SessionClock.onOpened(GuardSnapshot(), instagram, true, today).first,
+            intervalMinutes = 5,
+            nowMillis = 0,
+            today = today,
+        )
+        assertTrue(continued.continuedVisit)
+        val left = SessionClock.onQuit(continued).copy(
+            recentAwayPackage = instagram,
+            recentAwayAtElapsed = 1_000,
+            continuedVisit = true,
+        )
+        assertTrue(left.explicitLeavePending)
+        val (immediate, immediateCommand) = SessionClock.onOpened(left, instagram, true, today)
+        assertFalse(immediateCommand is GuardCommand.ShowOpening)
+        val (again, command) = SessionClock.onOpened(left, instagram, true, today, 5_000)
+        assertTrue(command is GuardCommand.ShowOpening)
+        assertFalse(again.explicitLeavePending)
+        assertFalse(again.continuedVisit)
+        assertEquals(GuardSnapshot.Phase.AWAITING_OPENING, again.phase)
+    }
+
+    @Test
+    fun graceStampWithoutContinueIsANewOpening() {
+        val stamped = GuardSnapshot(
+            phase = GuardSnapshot.Phase.NONE,
+            lastGuardedPackage = instagram,
+            recentAwayPackage = instagram,
+            recentAwayAtElapsed = 5_000,
+        )
+        val (again, command) = SessionClock.onOpened(stamped, instagram, true, today, 8_000)
+        assertTrue(command is GuardCommand.ShowOpening)
+        assertEquals(GuardSnapshot.Phase.AWAITING_OPENING, again.phase)
+    }
+
+    @Test
+    fun continuedVisitSurvivesAShortTripHome() {
+        val continued = SessionClock.onContinue(
+            SessionClock.onOpened(GuardSnapshot(), instagram, true, today).first,
+            intervalMinutes = 5,
+            nowMillis = 0,
+            today = today,
+        )
+        val away = SessionClock.onLeft(continued, 2_000).first
+        assertTrue(away.continuedVisit)
+        assertFalse(away.explicitLeavePending)
+        val (back, command) = SessionClock.onOpened(away, instagram, true, today, 8_000)
+        assertFalse(command is GuardCommand.ShowOpening)
+        assertEquals(GuardSnapshot.Phase.CONTINUING, back.phase)
+        assertEquals(1L, back.visitId)
+    }
+
+    @Test
     fun unansweredEndDoesNotResumeAsContinue() {
         val opening = SessionClock.onOpened(GuardSnapshot(), instagram, true, today).first
         val ended = SessionClock.onLeft(opening, 5_000).first

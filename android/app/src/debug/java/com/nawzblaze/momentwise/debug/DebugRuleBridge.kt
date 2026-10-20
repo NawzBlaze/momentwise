@@ -18,10 +18,12 @@ class DebugRuleBridge : BroadcastReceiver() {
         if (intent?.action != ACTION) return
         val packageName = (intent.getStringExtra(EXTRA_PACKAGE) ?: intent.getStringExtra("package"))
             ?.takeIf { it.isNotBlank() } ?: return
-        if (intent.getBooleanExtra(EXTRA_CONTINUE, false) || intent.getBooleanExtra(EXTRA_LEAVE, false)) {
+        val leave = intent.getBooleanExtra(EXTRA_LEAVE, false) || intent.getStringExtra(EXTRA_LEAVE) == "true"
+        val continueChoice = intent.getBooleanExtra(EXTRA_CONTINUE, false) ||
+            intent.getStringExtra(EXTRA_CONTINUE) == "true"
+        if (continueChoice || leave) {
             val pending = goAsync()
             val app = context.applicationContext as MomentwiseApplication
-            val leave = intent.getBooleanExtra(EXTRA_LEAVE, false)
             app.applicationScope.launch {
                 try {
                     val controller = InterventionController(

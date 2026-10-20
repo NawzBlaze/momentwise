@@ -63,6 +63,16 @@ data class GuardSnapshot(
     val recentAwayAtElapsed: Long? = null,
     /** Last guarded package this session knew. Not cleared when the visit ends. */
     val lastGuardedPackage: String? = null,
+    /**
+     * True only after Continue. A grace stamp without this is not a continued
+     * visit, and must not start the timer on the way back.
+     */
+    val continuedVisit: Boolean = false,
+    /**
+     * Explicit Leave ended the visit. Grace must not turn the next entry into
+     * Continue. Cleared when that next opening is shown, or when they continue.
+     */
+    val explicitLeavePending: Boolean = false,
 ) {
     enum class Phase { NONE, AWAITING_OPENING, CONTINUING }
 
@@ -93,12 +103,18 @@ object SessionClock {
         elapsedRealtime: Long = Long.MIN_VALUE,
     ): Pair<GuardSnapshot, GuardCommand> {
         val cleared = clearStaleDismissals(snapshot, today)
-        // Explicit Leave wins over a grace stamp. The handback is not Continue.
-        if (storedPackage(cleared.quitSuppressedPackage) == packageName) {
+        // The overlay handback, with no clock, is not a new opening. A later
+        // entry after explicit Leave is. Leave is not Continue.
+        if (storedPackage(cleared.quitSuppressedPackage) == packageName &&
+            (elapsedRealtime == Long.MIN_VALUE || !cleared.explicitLeavePending)
+        ) {
             return cleared to GuardCommand.None
         }
         val awayPackage = storedPackage(cleared.recentAwayPackage) ?: storedPackage(cleared.lastGuardedPackage)
-        if (awayPackage == packageName &&
+        // Leave wins over a restored grace stamp. A stamp without Continue is not a visit.
+        if (!cleared.explicitLeavePending &&
+            cleared.continuedVisit &&
+            awayPackage == packageName &&
             VisitLifecycle.withinGrace(cleared.recentAwayAtElapsed, elapsedRealtime)
         ) {
             return cleared.copy(
@@ -149,6 +165,8 @@ object SessionClock {
             phase = GuardSnapshot.Phase.AWAITING_OPENING,
             openingHandledForPackage = packageName,
             lastGuardedPackage = packageName,
+            continuedVisit = false,
+            explicitLeavePending = false,
             visitId = ready.visitId + 1,
         )
         return next to GuardCommand.ShowOpening(packageName)
@@ -167,9 +185,15 @@ object SessionClock {
         elapsedRealtime: Long = Long.MAX_VALUE,
     ): Boolean {
         if (foregroundPackage == null || !ruleEnabled) return false
-        if (snapshot.quitSuppressedPackage == foregroundPackage) return false
+        if (snapshot.quitSuppressedPackage == foregroundPackage &&
+            (elapsedRealtime == Long.MAX_VALUE || !snapshot.explicitLeavePending)
+        ) {
+            return false
+        }
         val awayPackage = storedPackage(snapshot.recentAwayPackage) ?: storedPackage(snapshot.lastGuardedPackage)
-        if (awayPackage == foregroundPackage &&
+        if (!snapshot.explicitLeavePending &&
+            snapshot.continuedVisit &&
+            awayPackage == foregroundPackage &&
             VisitLifecycle.withinGrace(snapshot.recentAwayAtElapsed, elapsedRealtime)
         ) {
             return false
@@ -366,12 +390,18 @@ object SessionClock {
      * does not start a reminder. The same package is not paused again until
      * Usage Access has seen the user leave, or open something else.
      */
-    fun onQuit(snapshot: GuardSnapshot): GuardSnapshot =
-        endSession(snapshot).copy(
-            quitSuppressedPackage = snapshot.activePackage,
+    fun onQuit(snapshot: GuardSnapshot): GuardSnapshot {
+        val pkg = snapshot.activePackage
+            ?: snapshot.openingHandledForPackage
+            ?: snapshot.lastGuardedPackage
+        return endSession(snapshot).copy(
+            quitSuppressedPackage = pkg,
+            explicitLeavePending = pkg != null,
+            continuedVisit = false,
             recentAwayPackage = null,
             recentAwayAtElapsed = null,
         )
+    }
 
     /**
      * Explicit Leave has been followed by a real later entry, or another app
@@ -416,6 +446,8 @@ object SessionClock {
             recentAwayPackage = null,
             recentAwayAtElapsed = null,
             lastGuardedPackage = pkg ?: snapshot.lastGuardedPackage,
+            continuedVisit = pkg != null,
+            explicitLeavePending = false,
             useByPackage = use,
         )
     }

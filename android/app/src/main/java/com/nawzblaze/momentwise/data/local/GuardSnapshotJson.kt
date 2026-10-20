@@ -26,6 +26,8 @@ internal object GuardSnapshotJson {
             putNullable("recentAwayPackage", snapshot.recentAwayPackage)
             putNullable("recentAwayAtElapsed", snapshot.recentAwayAtElapsed)
             putNullable("lastGuardedPackage", snapshot.lastGuardedPackage)
+            put("continuedVisit", snapshot.continuedVisit)
+            put("explicitLeavePending", snapshot.explicitLeavePending)
             put("useByPackage", encodeUse(snapshot.useByPackage))
         }.toString()
     }
@@ -77,6 +79,12 @@ internal object GuardSnapshotJson {
                 recentAwayPackage = json.optNullableString("recentAwayPackage"),
                 recentAwayAtElapsed = json.optNullableLong("recentAwayAtElapsed"),
                 lastGuardedPackage = json.optNullableString("lastGuardedPackage"),
+                continuedVisit = if (json.has("continuedVisit")) {
+                    json.optBoolean("continuedVisit")
+                } else {
+                    json.optString("phase") == GuardSnapshot.Phase.CONTINUING.name
+                },
+                explicitLeavePending = json.optBoolean("explicitLeavePending", false),
             )
         } catch (_: Exception) {
             GuardSnapshot()
