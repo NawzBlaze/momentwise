@@ -2,6 +2,6 @@
 <resources>
     <!-- Window backgrounds shown before Compose renders the first frame. -->
     <color name="momentwise_background_light">#FAF7F2</color>
-    <color name="momentwise_icon_background">#FDFAF3</color>
+    <color name="momentwise_icon_background">#FDFAF2</color>
     <color name="momentwise_background_dark">#0F1412</color>
 </resources>

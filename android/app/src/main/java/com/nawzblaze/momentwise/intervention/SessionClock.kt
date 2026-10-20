@@ -9,10 +9,10 @@ package com.nawzblaze.momentwise.intervention
  * dismiss-for-today is not a choice. It does not start a reminder, does not
  * suppress the next visit, and must not be stored as a conscious dismiss.
  *
- * Wall-clock instants are stored, not [android.os.SystemClock.elapsedRealtime],
- * because elapsed time resets on reboot. A reboot drops the in-progress session:
- * after boot, the next observed opening starts a new one. Reminder delivery is
- * the next poll after the interval, not an exact alarm.
+ * Reminders use accumulated foreground-use, not wall-clock time. See [ActiveUse].
+ * A reboot drops the open visit and the open accrual segment. Completed use is
+ * kept. Unknown time is not credited. Delivery is the next eligible poll after
+ * the use budget is met, not an exact alarm.
  */
 data class GuardSnapshot(
     val activePackage: String? = null,
@@ -41,6 +41,8 @@ data class GuardSnapshot(
      * reminder again before this wall-clock instant. The poll is not an exact alarm.
      */
     val reminderHoldUntilMillis: Long? = null,
+    /** Per-app foreground-use. Independent of which visit is currently open. */
+    val useByPackage: Map<String, AppUse> = emptyMap(),
 ) {
     enum class Phase { NONE, AWAITING_OPENING, CONTINUING }
 
@@ -77,12 +79,25 @@ object SessionClock {
         if (!ruleEnabled) {
             return endSession(ready).copy(quitSuppressedPackage = null) to GuardCommand.None
         }
-        // Same visit, opening already shown, and the user has not abandoned it.
-        // A no-choice clear is not that: the next opening signal is a new visit.
+        if (ready.dismissedOn(packageName, today)) {
+            return ready.copy(
+                activePackage = packageName,
+                phase = GuardSnapshot.Phase.CONTINUING,
+                nextReminderAtMillis = null,
+                reminderPresentedFor = null,
+                openingHandledForPackage = packageName,
+                clearedWithoutChoice = false,
+                quitSuppressedPackage = null,
+            ) to GuardCommand.None
+        }
+        // Same visit. A no-choice close is not a leave, so this resume is not
+        // a new opening. A later leave clears the flag, and the next resume can show.
+        if (ready.clearedWithoutChoice && ready.activePackage == packageName) {
+            return ready to GuardCommand.None
+        }
         if (ready.activePackage == packageName &&
             ready.phase != GuardSnapshot.Phase.NONE &&
-            ready.openingHandledForPackage == packageName &&
-            !ready.clearedWithoutChoice
+            ready.openingHandledForPackage == packageName
         ) {
             return ready to GuardCommand.None
         }
@@ -103,6 +118,8 @@ object SessionClock {
     fun needsOpening(snapshot: GuardSnapshot, foregroundPackage: String?, ruleEnabled: Boolean): Boolean {
         if (foregroundPackage == null || !ruleEnabled) return false
         if (snapshot.quitSuppressedPackage == foregroundPackage) return false
+        // Stale days are removed before this is called. A remaining entry is today.
+        if (snapshot.dismissals[foregroundPackage] != null) return false
         if (snapshot.clearedWithoutChoice && snapshot.activePackage == foregroundPackage) return false
         if (snapshot.activePackage == foregroundPackage && snapshot.phase != GuardSnapshot.Phase.NONE) {
             return false
@@ -110,36 +127,63 @@ object SessionClock {
         return true
     }
 
-    fun onLeft(snapshot: GuardSnapshot): Pair<GuardSnapshot, GuardCommand> =
-        endSession(snapshot).copy(quitSuppressedPackage = null) to GuardCommand.None
+    fun onLeft(snapshot: GuardSnapshot): Pair<GuardSnapshot, GuardCommand> {
+        val closed = closeUse(snapshot) { use ->
+            if (use.phase == AppUse.Phase.DUE) use.copy(reminderShown = false) else use
+        }
+        return endSession(closed).copy(quitSuppressedPackage = null) to GuardCommand.None
+    }
 
+    /**
+     * Samples foreground-use. [nowMillis] is not a reminder deadline.
+     * [elapsedRealtime] must be monotonic within one boot. A jump larger than
+     * [ActiveUse.MAX_CREDIT_MILLIS] is not credited.
+     */
     fun onTick(
         snapshot: GuardSnapshot,
         foregroundPackage: String?,
         nowMillis: Long,
         today: String,
         remindersEnabled: Boolean,
+        elapsedRealtime: Long = nowMillis,
+        screenInteractive: Boolean = true,
+        pauseVisible: Boolean = false,
+        intervalMinutes: Int? = null,
+        monitoringAllowed: Boolean = remindersEnabled || snapshot.phase != GuardSnapshot.Phase.NONE,
+        maxCreditMillis: Long = ActiveUse.MAX_CREDIT_MILLIS,
+        applyRuleInterval: Boolean = false,
     ): Pair<GuardSnapshot, GuardCommand> {
         val cleared = clearStaleDismissals(snapshot, today)
         val pkg = cleared.activePackage
-        if (cleared.phase != GuardSnapshot.Phase.CONTINUING || pkg == null || pkg != foregroundPackage) {
-            return cleared to GuardCommand.None
+        if (pkg == null) return cleared to GuardCommand.None
+        var use = cleared.useByPackage[pkg] ?: AppUse()
+        val dismissed = cleared.dismissedOn(pkg, today)
+        if (!dismissed && cleared.phase == GuardSnapshot.Phase.CONTINUING && use.phase == AppUse.Phase.IDLE &&
+            intervalMinutes != null
+        ) {
+            use = ActiveUse.continueInto(use, intervalMinutes)
+        } else if (!dismissed && use.phase == AppUse.Phase.ACCRUING && applyRuleInterval) {
+            use = ActiveUse.applyBudget(use, if (remindersEnabled) intervalMinutes else null)
         }
-        if (!remindersEnabled || cleared.dismissedOn(pkg, today)) {
-            return cleared to GuardCommand.None
-        }
-        val holdUntil = cleared.reminderHoldUntilMillis
-        if (holdUntil != null && nowMillis < holdUntil) {
-            return cleared to GuardCommand.None
-        }
-        val dueAt = cleared.nextReminderAtMillis
-        if (dueAt == null || nowMillis < dueAt || cleared.reminderPresentedFor == dueAt) {
-            return cleared to GuardCommand.None
-        }
-        return cleared.copy(
-            reminderPresentedFor = dueAt,
-            reminderHoldUntilMillis = null,
-        ) to GuardCommand.ShowReminder(pkg)
+        val eligible = monitoringAllowed &&
+            screenInteractive &&
+            !pauseVisible &&
+            !dismissed &&
+            cleared.phase == GuardSnapshot.Phase.CONTINUING &&
+            foregroundPackage == pkg &&
+            remindersEnabled
+        val (sampled, show) = ActiveUse.sample(
+            current = use,
+            elapsedRealtime = elapsedRealtime,
+            eligible = eligible,
+            maxCreditMillis = maxCreditMillis,
+        )
+        val next = cleared.copy(
+            useByPackage = cleared.useByPackage + (pkg to sampled),
+            nextReminderAtMillis = null,
+            reminderPresentedFor = if (show) elapsedRealtime else cleared.reminderPresentedFor,
+        )
+        return next to if (show) GuardCommand.ShowReminder(pkg) else GuardCommand.None
     }
 
     /**
@@ -164,43 +208,55 @@ object SessionClock {
     ): GuardSnapshot {
         val pkg = packageName ?: snapshot.activePackage
         val dismissed = pkg != null && snapshot.dismissedOn(pkg, today)
-        val next = if (intervalMinutes != null && intervalMinutes > 0 && !dismissed) {
-            nowMillis + intervalMinutes * 60_000L
+        val use = if (pkg == null || dismissed) {
+            snapshot.useByPackage
         } else {
-            null
+            snapshot.useByPackage + (pkg to ActiveUse.continueInto(snapshot.useByPackage[pkg] ?: AppUse(), intervalMinutes))
         }
         return snapshot.copy(
             activePackage = pkg,
             phase = GuardSnapshot.Phase.CONTINUING,
-            nextReminderAtMillis = next,
+            nextReminderAtMillis = null,
             reminderPresentedFor = null,
             quitSuppressedPackage = null,
             clearedWithoutChoice = false,
             reminderHoldUntilMillis = null,
+            useByPackage = use,
         )
     }
 
     fun onSnooze(snapshot: GuardSnapshot, snoozeMinutes: Int, nowMillis: Long): GuardSnapshot {
-        val minutes = snoozeMinutes.coerceIn(1, 60)
-        val next = nowMillis + minutes * 60_000L
+        val pkg = snapshot.activePackage
+        val use = if (pkg == null) {
+            snapshot.useByPackage
+        } else {
+            snapshot.useByPackage + (pkg to ActiveUse.snooze(snoozeMinutes))
+        }
         return snapshot.copy(
-            phase = GuardSnapshot.Phase.CONTINUING,
-            nextReminderAtMillis = next,
-            reminderPresentedFor = null,
-            clearedWithoutChoice = false,
-            reminderHoldUntilMillis = null,
-        )
-    }
-
-    /** Stops reminders for this app until the next local day. The rule stays enabled. */
-    fun onDismissForToday(snapshot: GuardSnapshot, packageName: String, today: String): GuardSnapshot {
-        val pkg = snapshot.activePackage ?: packageName
-        return snapshot.copy(
-            activePackage = snapshot.activePackage ?: packageName,
             phase = GuardSnapshot.Phase.CONTINUING,
             nextReminderAtMillis = null,
             reminderPresentedFor = null,
+            clearedWithoutChoice = false,
+            reminderHoldUntilMillis = null,
+            useByPackage = use,
+        )
+    }
+
+    /**
+     * Continues into the app and suppresses openings and reminders for this
+     * app until the next local day. The rule stays enabled. Not Continue:
+     * no reminder is scheduled. Not Leave: the other app is not sent home.
+     */
+    fun onDismissForToday(snapshot: GuardSnapshot, packageName: String, today: String): GuardSnapshot {
+        val pkg = packageName.ifBlank { snapshot.activePackage } ?: return snapshot
+        return snapshot.copy(
+            activePackage = pkg,
+            phase = GuardSnapshot.Phase.CONTINUING,
+            nextReminderAtMillis = null,
+            reminderPresentedFor = null,
+            openingHandledForPackage = pkg,
             dismissals = snapshot.dismissals + (pkg to today),
+            quitSuppressedPackage = null,
             clearedWithoutChoice = false,
             reminderHoldUntilMillis = null,
         )
@@ -213,17 +269,20 @@ object SessionClock {
      */
     fun onClearedWithoutChoice(snapshot: GuardSnapshot, nowMillis: Long): GuardSnapshot {
         if (snapshot.phase == GuardSnapshot.Phase.NONE) return snapshot
-        val holdingReminder = snapshot.phase == GuardSnapshot.Phase.CONTINUING &&
-            snapshot.reminderPresentedFor != null
+        val pkg = snapshot.activePackage
+        val use = pkg?.let { snapshot.useByPackage[it] }
+        val held = use?.phase == AppUse.Phase.DUE
+        val uses = if (pkg != null && held && use != null) {
+            snapshot.useByPackage + (pkg to use.copy(reminderShown = true, anchorElapsed = null))
+        } else {
+            snapshot.useByPackage
+        }
         return snapshot.copy(
             clearedWithoutChoice = true,
             quitSuppressedPackage = null,
-            reminderPresentedFor = if (holdingReminder) null else snapshot.reminderPresentedFor,
-            reminderHoldUntilMillis = if (holdingReminder) {
-                nowMillis + REMINDER_REDISPLAY_HOLD_MILLIS
-            } else {
-                snapshot.reminderHoldUntilMillis
-            },
+            reminderPresentedFor = if (held) null else snapshot.reminderPresentedFor,
+            reminderHoldUntilMillis = null,
+            useByPackage = uses,
         )
     }
 
@@ -234,7 +293,9 @@ object SessionClock {
      */
     fun onBoot(snapshot: GuardSnapshot): GuardSnapshot {
         val hadSession = snapshot.phase != GuardSnapshot.Phase.NONE || snapshot.activePackage != null
+        val kept = snapshot.useByPackage.mapValues { (_, use) -> ActiveUse.onBoot(use) }
         return endSession(snapshot).copy(
+            useByPackage = kept,
             sessionDroppedOnBoot = hadSession || snapshot.sessionDroppedOnBoot,
         )
     }
@@ -277,12 +338,9 @@ object SessionClock {
         }
         if (cleared.phase != GuardSnapshot.Phase.CONTINUING) return cleared to GuardCommand.None
         if (!remindersEnabled || cleared.dismissedOn(pkg, today)) return cleared to GuardCommand.None
-        val holdUntil = cleared.reminderHoldUntilMillis
-        if (holdUntil != null && nowMillis < holdUntil) return cleared to GuardCommand.None
-        val dueAt = cleared.nextReminderAtMillis ?: return cleared to GuardCommand.None
-        if (nowMillis < dueAt) return cleared to GuardCommand.None
-        return cleared.copy(reminderPresentedFor = dueAt, reminderHoldUntilMillis = null) to
-            GuardCommand.ShowReminder(pkg)
+        val use = cleared.useByPackage[pkg]
+        if (use?.phase != AppUse.Phase.DUE) return cleared to GuardCommand.None
+        return cleared to GuardCommand.ShowReminder(pkg)
     }
 
     fun clearStaleDismissals(snapshot: GuardSnapshot, today: String): GuardSnapshot {
@@ -290,7 +348,12 @@ object SessionClock {
         return snapshot.copy(dismissals = snapshot.dismissals.filterValues { it == today })
     }
 
-    private fun endSession(snapshot: GuardSnapshot): GuardSnapshot = snapshot.copy(
+    private fun closeUse(snapshot: GuardSnapshot, adjust: (AppUse) -> AppUse = { ActiveUse.close(it) }): GuardSnapshot {
+        if (snapshot.useByPackage.isEmpty()) return snapshot
+        return snapshot.copy(useByPackage = snapshot.useByPackage.mapValues { (_, use) -> adjust(ActiveUse.close(use)) })
+    }
+
+    private fun endSession(snapshot: GuardSnapshot): GuardSnapshot = closeUse(snapshot).copy(
         activePackage = null,
         phase = GuardSnapshot.Phase.NONE,
         nextReminderAtMillis = null,

@@ -267,6 +267,17 @@ details p { margin-top: 8px; }
   margin: 0 auto;
 }
 .pause-card .eyebrow { margin-bottom: 14px; }
+.pause-wordmark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0 0 14px;
+  font-size: 0.95rem;
+  font-weight: 560;
+}
+.pause-wordmark img { border-radius: 6px; }
+.pause-tertiary { margin: 12px 0 0; color: var(--text-soft); font-size: 0.92rem; }
 .pause-card h2, .pause-card h3 {
   margin: 0;
   font-size: 1.45rem;

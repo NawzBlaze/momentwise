@@ -3,7 +3,6 @@ package com.nawzblaze.momentwise.ui.screens
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -16,7 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -35,7 +33,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -47,7 +44,6 @@ import com.nawzblaze.momentwise.data.model.AppRule
 import com.nawzblaze.momentwise.ui.components.AppRuleChip
 import com.nawzblaze.momentwise.ui.components.IconActionRow
 import com.nawzblaze.momentwise.ui.components.InfoNote
-import com.nawzblaze.momentwise.ui.components.MarkupText
 import com.nawzblaze.momentwise.ui.components.SectionCard
 import com.nawzblaze.momentwise.ui.components.SectionEyebrow
 import com.nawzblaze.momentwise.ui.components.VerticalSpacer
@@ -231,23 +227,6 @@ fun HomeScreen(
 
             VerticalSpacer(16)
 
-            // How it works
-            SectionCard {
-                Text(
-                    text = stringResource(R.string.home_how_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                VerticalSpacer(12)
-                HowItWorksStep(1, stringResource(R.string.home_how_step_1))
-                VerticalSpacer(10)
-                HowItWorksStep(2, stringResource(R.string.home_how_step_2))
-                VerticalSpacer(10)
-                HowItWorksStep(3, stringResource(R.string.home_how_step_3))
-            }
-
-            VerticalSpacer(16)
-
             if (session.sessionDroppedOnBoot) {
                 InfoNote(
                     icon = Icons.Outlined.Info,
@@ -285,29 +264,4 @@ private fun ActiveRuleChips(
     }
 }
 
-@Composable
-private fun HowItWorksStep(number: Int, richText: String) {
-    val colors = LocalMomentwiseColors.current
-    Row(verticalAlignment = Alignment.Top) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .size(22.dp)
-                .clip(CircleShape)
-                .background(colors.accentSubtle),
-        ) {
-            Text(
-                text = number.toString(),
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold,
-                color = colors.accentText,
-            )
-        }
-        Spacer(Modifier.width(12.dp))
-        MarkupText(
-            source = richText,
-            style = MaterialTheme.typography.bodyMedium,
-            color = colors.textSecondary,
-        )
-    }
-}
+

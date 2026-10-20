@@ -259,8 +259,16 @@ class SessionClockTest {
             today,
         )
         val left = SessionClock.onLeft(dismissed).first
-        val (_, command) = SessionClock.onOpened(left, instagram, ruleEnabled = true, today)
-        assertTrue(command is GuardCommand.ShowOpening)
+        val (_, sameDay) = SessionClock.onOpened(left, instagram, ruleEnabled = true, today)
+        assertEquals(GuardCommand.None, sameDay)
+        assertFalse(SessionClock.needsOpening(
+            SessionClock.clearStaleDismissals(left, today),
+            instagram,
+            true,
+        ))
+        val tomorrowSnapshot = SessionClock.clearStaleDismissals(left, tomorrow)
+        val (_, nextDay) = SessionClock.onOpened(tomorrowSnapshot, instagram, ruleEnabled = true, tomorrow)
+        assertTrue(nextDay is GuardCommand.ShowOpening)
         assertEquals(today, left.dismissals[instagram])
     }
 
@@ -298,7 +306,9 @@ class SessionClockTest {
         val opened = SessionClock.onOpened(GuardSnapshot(), instagram, true, today).first
         val continued = SessionClock.onContinue(opened, intervalMinutes = 10, nowMillis = 1_000, today)
         assertEquals(GuardSnapshot.Phase.CONTINUING, continued.phase)
-        assertEquals(1_000 + 10 * 60_000L, continued.nextReminderAtMillis)
+        assertNull(continued.nextReminderAtMillis)
+        assertEquals(10 * 60_000L, continued.useByPackage[instagram]?.budgetMillis)
+        assertEquals(0L, continued.useByPackage[instagram]?.accumulatedMillis)
         assertEquals(instagram, continued.activePackage)
     }
 
@@ -313,17 +323,19 @@ class SessionClockTest {
 
     @Test
     fun tickShowsADueReminderOnce() {
-        val continuing = GuardSnapshot(
+        val due = GuardSnapshot(
             activePackage = instagram,
             phase = GuardSnapshot.Phase.CONTINUING,
-            nextReminderAtMillis = 5_000,
+            useByPackage = mapOf(instagram to AppUse(accumulatedMillis = 5_000, budgetMillis = 5_000, phase = AppUse.Phase.DUE)),
         )
         val (shown, command) = SessionClock.onTick(
-            continuing,
+            due,
             foregroundPackage = instagram,
             nowMillis = 5_000,
             today = today,
             remindersEnabled = true,
+            elapsedRealtime = 5_000,
+            intervalMinutes = 5,
         )
         assertTrue(command is GuardCommand.ShowReminder)
         val (again, second) = SessionClock.onTick(
@@ -332,9 +344,11 @@ class SessionClockTest {
             nowMillis = 6_000,
             today = today,
             remindersEnabled = true,
+            elapsedRealtime = 6_000,
+            intervalMinutes = 5,
         )
         assertEquals(GuardCommand.None, second)
-        assertEquals(shown, again)
+        assertEquals(shown.useByPackage[instagram]?.reminderShown, again.useByPackage[instagram]?.reminderShown)
     }
 
     @Test
@@ -360,8 +374,10 @@ class SessionClockTest {
             reminderPresentedFor = 1_000,
         )
         val snoozed = SessionClock.onSnooze(snapshot, snoozeMinutes = 99, nowMillis = 2_000)
-        assertEquals(2_000 + 60 * 60_000L, snoozed.nextReminderAtMillis)
-        assertNull(snoozed.reminderPresentedFor)
+        assertNull(snoozed.nextReminderAtMillis)
+        assertEquals(60 * 60_000L, snoozed.useByPackage[instagram]?.budgetMillis)
+        assertEquals(AppUse.Phase.SNOOZE, snoozed.useByPackage[instagram]?.phase)
+        assertEquals(0L, snoozed.useByPackage[instagram]?.accumulatedMillis)
     }
 
     @Test
@@ -417,8 +433,9 @@ class SessionClockTest {
         val continuing = GuardSnapshot(
             activePackage = instagram,
             phase = GuardSnapshot.Phase.CONTINUING,
-            nextReminderAtMillis = 5_000,
-            reminderPresentedFor = 5_000,
+            useByPackage = mapOf(
+                instagram to AppUse(accumulatedMillis = 5_000, budgetMillis = 5_000, phase = AppUse.Phase.DUE),
+            ),
         )
         val (recovered, command) = SessionClock.recoverUnansweredPause(
             continuing,
@@ -428,8 +445,7 @@ class SessionClockTest {
             remindersEnabled = true,
         )
         assertTrue(command is GuardCommand.ShowReminder)
-        assertEquals(5_000L, recovered.nextReminderAtMillis)
-        assertEquals(5_000L, recovered.reminderPresentedFor)
+        assertEquals(5_000L, recovered.useByPackage[instagram]?.accumulatedMillis)
     }
 
     @Test
@@ -506,8 +522,11 @@ class SessionClockTest {
     fun aNewOpeningSignalAfterANoChoiceClearIsNotBlocked() {
         val opened = SessionClock.onOpened(GuardSnapshot(), instagram, true, today).first
         val cleared = SessionClock.onClearedWithoutChoice(opened, nowMillis = 2_000)
-        val (_, command) = SessionClock.onOpened(cleared, instagram, true, today)
-        assertTrue(command is GuardCommand.ShowOpening)
+        val (_, sameVisit) = SessionClock.onOpened(cleared, instagram, true, today)
+        assertEquals(GuardCommand.None, sameVisit)
+        val left = SessionClock.onLeft(cleared).first
+        val (_, afterLeave) = SessionClock.onOpened(left, instagram, true, today)
+        assertTrue(afterLeave is GuardCommand.ShowOpening)
         assertTrue(
             PauseShowPolicy.shouldShowNewOpening(pauseVisible = false, alreadyContinuing = false),
         )
@@ -533,47 +552,51 @@ class SessionClockTest {
         )
         assertEquals(instagram, continued.activePackage)
         assertEquals(GuardSnapshot.Phase.CONTINUING, continued.phase)
-        assertEquals(1_000 + 5 * 60_000L, continued.nextReminderAtMillis)
-        val (shown, command) = SessionClock.onTick(
-            continued,
-            foregroundPackage = instagram,
-            nowMillis = continued.nextReminderAtMillis!!,
-            today = today,
-            remindersEnabled = true,
-        )
+        assertEquals(5 * 60_000L, continued.useByPackage[instagram]?.budgetMillis)
+        val (shown, command) = accrueUntilDue(continued, startElapsed = 1_000)
         assertTrue(command is GuardCommand.ShowReminder)
-        assertEquals(continued.nextReminderAtMillis, shown.reminderPresentedFor)
+        assertEquals(instagram, shown.activePackage)
     }
 
     @Test
-    fun reminderClearedWithoutChoiceShowsAgainAfterTheHoldAndNotBefore() {
-        val due = 5_000L
+    fun reminderClearedWithoutChoiceDoesNotRestackUntilALaterVisit() {
         val shown = GuardSnapshot(
             activePackage = instagram,
             phase = GuardSnapshot.Phase.CONTINUING,
-            nextReminderAtMillis = due,
-            reminderPresentedFor = due,
+            useByPackage = mapOf(
+                instagram to AppUse(
+                    accumulatedMillis = 5_000,
+                    budgetMillis = 5_000,
+                    phase = AppUse.Phase.DUE,
+                    reminderShown = true,
+                ),
+            ),
         )
         val cleared = SessionClock.onClearedWithoutChoice(shown, nowMillis = 6_000)
-        assertNull(cleared.reminderPresentedFor)
-        assertEquals(due, cleared.nextReminderAtMillis)
         assertEquals(GuardSnapshot.Phase.CONTINUING, cleared.phase)
-        val (_, tooSoon) = SessionClock.onTick(
+        assertTrue(cleared.useByPackage[instagram]?.reminderShown == true)
+        val (_, sameVisit) = SessionClock.onTick(
             cleared,
             foregroundPackage = instagram,
-            nowMillis = 6_000 + SessionClock.REMINDER_REDISPLAY_HOLD_MILLIS - 1,
+            nowMillis = 7_000,
             today = today,
             remindersEnabled = true,
+            elapsedRealtime = 7_000,
+            intervalMinutes = 5,
         )
-        assertEquals(GuardCommand.None, tooSoon)
-        val (_, again) = SessionClock.onTick(
-            cleared,
+        assertEquals(GuardCommand.None, sameVisit)
+        val left = SessionClock.onLeft(cleared).first
+        val resumed = SessionClock.onContinue(left, intervalMinutes = 5, nowMillis = 8_000, today, instagram)
+        val (_, later) = SessionClock.onTick(
+            resumed,
             foregroundPackage = instagram,
-            nowMillis = 6_000 + SessionClock.REMINDER_REDISPLAY_HOLD_MILLIS,
+            nowMillis = 9_000,
             today = today,
             remindersEnabled = true,
+            elapsedRealtime = 9_000,
+            intervalMinutes = 5,
         )
-        assertTrue(again is GuardCommand.ShowReminder)
+        assertTrue(later is GuardCommand.ShowReminder)
     }
 
     @Test
@@ -590,6 +613,31 @@ class SessionClockTest {
         assertEquals(tiktok, next.activePackage)
         assertNull(next.nextReminderAtMillis)
         assertEquals(GuardSnapshot.Phase.AWAITING_OPENING, next.phase)
+        assertEquals(5 * 60_000L, next.useByPackage[instagram]?.budgetMillis)
+        assertNull(next.useByPackage[tiktok])
+    }
+
+    private fun accrueUntilDue(start: GuardSnapshot, startElapsed: Long): Pair<GuardSnapshot, GuardCommand> {
+        var snapshot = start
+        var elapsed = startElapsed
+        var command: GuardCommand = GuardCommand.None
+        repeat(400) {
+            elapsed += 1_000
+            val (next, step) = SessionClock.onTick(
+                snapshot,
+                foregroundPackage = instagram,
+                nowMillis = elapsed,
+                today = today,
+                remindersEnabled = true,
+                elapsedRealtime = elapsed,
+                intervalMinutes = 5,
+                maxCreditMillis = 1_000,
+            )
+            snapshot = next
+            command = step
+            if (step is GuardCommand.ShowReminder) return next to step
+        }
+        return snapshot to command
     }
 
     @Test

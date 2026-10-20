@@ -5,14 +5,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -33,7 +32,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.nawzblaze.momentwise.R
 import com.nawzblaze.momentwise.intervention.InterventionSurface
 import com.nawzblaze.momentwise.intervention.PauseRequest
@@ -60,7 +58,7 @@ fun PauseScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0x9E14291E))
+            .background(Color(0x6614291E))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
@@ -68,45 +66,39 @@ fun PauseScreen(
             )
             .semantics { contentDescription = scrimDescription },
     ) {
-        BoxWithConstraints(
-            modifier = Modifier.fillMaxSize(),
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 20.dp),
             contentAlignment = Alignment.Center,
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
                 modifier = Modifier
-                    .padding(horizontal = 20.dp)
+                    .widthIn(max = 360.dp)
                     .fillMaxWidth()
-                    .heightIn(max = maxHeight * InterventionSurface.CARD_HEIGHT_FRACTION)
-                    .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(24.dp))
-                    .border(1.dp, colors.border, RoundedCornerShape(24.dp))
+                    .heightIn(max = 520.dp)
+                    .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(18.dp))
+                    .border(1.dp, colors.border, RoundedCornerShape(18.dp))
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 22.dp, vertical = 22.dp)
+                    .padding(horizontal = 20.dp, vertical = 22.dp)
                     .semantics { contentDescription = InterventionSurface.WINDOW_TITLE },
             ) {
                 Text(
-                    text = InterventionSurface.EYEBROW,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = colors.accentText,
-                    letterSpacing = 1.4.sp,
-                    textAlign = TextAlign.Center,
-                )
-                VerticalSpacer(14)
-                Text(
                     text = request.heading,
-                    style = MaterialTheme.typography.headlineSmall,
+                    style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.onBackground,
                     fontWeight = FontWeight.SemiBold,
                     textAlign = TextAlign.Center,
                 )
-                if (request.notice.isNotBlank()) {
+                if (request.notice.isNotBlank() && request.notice != request.heading) {
                     VerticalSpacer(8)
                     Text(
                         text = request.notice,
-                        style = MaterialTheme.typography.bodyLarge,
+                        style = MaterialTheme.typography.bodyMedium,
                         color = colors.textSecondary,
                         textAlign = TextAlign.Center,
+                        maxLines = 3,
                     )
                 }
                 if (request.fromNotification) {
@@ -118,7 +110,7 @@ fun PauseScreen(
                         textAlign = TextAlign.Center,
                     )
                 }
-                VerticalSpacer(22)
+                VerticalSpacer(16)
                 PauseChoiceButton(
                     label = request.primaryLabel,
                     support = request.primarySupport,
@@ -132,7 +124,7 @@ fun PauseScreen(
                     emphasized = false,
                     onClick = onSecondary,
                 )
-                if (request.kind == PauseRequest.Kind.REMINDER && request.tertiaryLabel != null) {
+                if (request.tertiaryLabel != null) {
                     TextButton(onClick = onDismissReminder, modifier = Modifier.fillMaxWidth()) {
                         Text(
                             text = request.tertiaryLabel,
@@ -140,6 +132,12 @@ fun PauseScreen(
                             color = colors.textSecondary,
                         )
                     }
+                    Text(
+                        text = InterventionSurface.dismissHelp(request.appName),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.textMuted,
+                        textAlign = TextAlign.Center,
+                    )
                 }
             }
         }
@@ -174,7 +172,7 @@ private fun PauseChoiceButton(
     }
     val modifier = Modifier
         .fillMaxWidth()
-        .heightIn(min = 56.dp)
+        .heightIn(min = 48.dp)
         .semantics { contentDescription = description }
     if (emphasized) {
         Button(

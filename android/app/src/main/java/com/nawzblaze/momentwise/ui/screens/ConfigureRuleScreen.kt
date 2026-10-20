@@ -464,18 +464,6 @@ private fun AdvancedSection(
                 )
                 VerticalSpacer(12)
 
-                // Synced reminder notice — bound to the same draft state as
-                // Section C, so the two fields can never disagree.
-                MomentwiseTextField(
-                    value = draft.reminderNotice,
-                    onValueChange = { onDraftChange(draft.copy(reminderNotice = it)) },
-                    label = stringResource(R.string.configure_reminder_notice_label),
-                    placeholder = RuleDefaults.REMINDER_NOTICE,
-                    helpText = stringResource(R.string.configure_advanced_notice_synced),
-                    maxLength = RuleDefaults.MAX_NOTICE_LENGTH,
-                )
-                VerticalSpacer(14)
-
                 AdvancedActionCard(title = stringResource(R.string.configure_advanced_action_1)) {
                     MomentwiseTextField(
                         value = draft.advancedQuitLabel,

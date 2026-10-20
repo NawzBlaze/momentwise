@@ -22,7 +22,7 @@ object RuleDefaults {
     const val REMINDER_NOTICE = "You're still here?"
     const val ADV_QUIT_LABEL = "Okay, I'm quitting"
     const val ADV_SNOOZE_LABEL = "Wait"
-    const val ADV_DISMISS_LABEL = "Dismiss reminder"
+    const val ADV_DISMISS_LABEL = "Dismiss for today"
 
     /** Custom-interval field's starting value when Custom is first selected. */
     const val CUSTOM_MINUTES_START = 8

@@ -36,9 +36,8 @@ import com.nawzblaze.momentwise.R
 import com.nawzblaze.momentwise.monitoring.GrantChecks
 import com.nawzblaze.momentwise.monitoring.GrantIntents
 import com.nawzblaze.momentwise.data.model.ThemeMode
-import com.nawzblaze.momentwise.ui.components.GrantStatusLine
+import com.nawzblaze.momentwise.ui.components.GrantControl
 import com.nawzblaze.momentwise.ui.components.MomentwiseTopBar
-import com.nawzblaze.momentwise.ui.components.grantActionLabel
 import com.nawzblaze.momentwise.ui.components.RuleSwitch
 import com.nawzblaze.momentwise.ui.components.SectionCard
 import com.nawzblaze.momentwise.ui.components.ThemeSegmentedControl
@@ -227,7 +226,6 @@ fun SettingsScreen(
                 AccessRow(
                     label = stringResource(R.string.disclosure_overlay_title),
                     allowed = grants.overlay,
-                    optional = true,
                     onAction = { GrantIntents.launch(context, GrantIntents.overlay(context)) },
                 )
                 VerticalSpacer(10)
@@ -321,21 +319,15 @@ private fun AccessRow(
     label: String,
     allowed: Boolean,
     onAction: () -> Unit,
-    optional: Boolean = false,
 ) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.weight(1f)) {
-            Text(label, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-            VerticalSpacer(4)
-            GrantStatusLine(allowed = allowed, optional = optional)
-        }
-        if (allowed) {
-            TextButton(onClick = onAction) { Text(grantActionLabel(allowed = true)) }
-        } else {
-            OutlinedButton(onClick = onAction, shape = RoundedCornerShape(10.dp)) {
-                Text(grantActionLabel(allowed = false))
-            }
-        }
+        Text(
+            label,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.weight(1f),
+        )
+        GrantControl(allowed = allowed, onClick = onAction)
     }
 }
 

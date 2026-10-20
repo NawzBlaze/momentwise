@@ -83,7 +83,7 @@ internal object AppRuleJson {
                 quitLabel = json.optString("advQuitLabel").ifBlank { RuleDefaults.ADV_QUIT_LABEL },
                 snoozeLabel = json.optString("advSnoozeLabel").ifBlank { RuleDefaults.ADV_SNOOZE_LABEL },
                 snoozeMinutes = snooze,
-                dismissLabel = json.optString("advDismissLabel").ifBlank { RuleDefaults.ADV_DISMISS_LABEL },
+                dismissLabel = migrateDismissLabel(json.optString("advDismissLabel")),
             ),
             isSample = json.optBoolean("isSample", false),
         )
@@ -104,8 +104,18 @@ internal object AppRuleJson {
     /** The previous shipped label only. A renamed button stays. */
     private fun migrateContinueLabel(raw: String): String {
         val trimmed = raw.trim()
-        return if (trimmed.isEmpty() || trimmed == LEGACY_CONTINUE_LABEL) {
+        return if (trimmed.isEmpty() || LEGACY_CONTINUE_LABELS.any { it.equals(trimmed, ignoreCase = true) }) {
             RuleDefaults.CONTINUE_OPTION_LABEL
+        } else {
+            trimmed
+        }
+    }
+
+    /** The previous shipped reminder action only. A renamed button stays. */
+    private fun migrateDismissLabel(raw: String): String {
+        val trimmed = raw.trim()
+        return if (trimmed.isEmpty() || trimmed == LEGACY_DISMISS_LABEL) {
+            RuleDefaults.ADV_DISMISS_LABEL
         } else {
             trimmed
         }
@@ -114,6 +124,14 @@ internal object AppRuleJson {
     private val LEGACY_OPENING_NOTICES = setOf(
         "You Are Distracted",
         "What do you want to do right now?",
+        "Take a breath. Choose what you want to do next.",
+        "Is this where you want your time to go?",
+        "Take a moment. Choose what comes next.",
+        "What did you come here for?",
     )
-    private const val LEGACY_CONTINUE_LABEL = "Continue"
+    private val LEGACY_CONTINUE_LABELS = setOf(
+        "Continue",
+        "I'm here with purpose",
+    )
+    private const val LEGACY_DISMISS_LABEL = "Dismiss reminder"
 }

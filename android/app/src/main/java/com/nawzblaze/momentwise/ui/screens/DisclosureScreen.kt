@@ -14,7 +14,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -29,9 +28,8 @@ import com.nawzblaze.momentwise.MomentwiseViewModel
 import com.nawzblaze.momentwise.R
 import com.nawzblaze.momentwise.monitoring.GrantChecks
 import com.nawzblaze.momentwise.monitoring.GrantIntents
-import com.nawzblaze.momentwise.ui.components.GrantStatusLine
+import com.nawzblaze.momentwise.ui.components.GrantControl
 import com.nawzblaze.momentwise.ui.components.MomentwiseTopBar
-import com.nawzblaze.momentwise.ui.components.grantActionLabel
 import com.nawzblaze.momentwise.ui.components.SectionCard
 import com.nawzblaze.momentwise.ui.components.VerticalSpacer
 import com.nawzblaze.momentwise.ui.theme.LocalMomentwiseColors
@@ -95,7 +93,6 @@ fun DisclosureScreen(
                 title = stringResource(R.string.disclosure_overlay_title),
                 body = stringResource(R.string.disclosure_overlay_body),
                 allowed = grants.overlay,
-                optional = true,
                 onAction = { GrantIntents.launch(context, GrantIntents.overlay(context)) },
             )
             VerticalSpacer(12)
@@ -155,22 +152,13 @@ private fun GrantBlock(
     body: String,
     allowed: Boolean,
     onAction: () -> Unit,
-    optional: Boolean = false,
 ) {
     val colors = LocalMomentwiseColors.current
     SectionCard {
         Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-        VerticalSpacer(6)
-        GrantStatusLine(allowed = allowed, optional = optional)
         VerticalSpacer(8)
         Text(body, style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
         VerticalSpacer(12)
-        if (allowed) {
-            TextButton(onClick = onAction) { Text(grantActionLabel(allowed = true)) }
-        } else {
-            OutlinedButton(onClick = onAction, shape = RoundedCornerShape(10.dp)) {
-                Text(grantActionLabel(allowed = false))
-            }
-        }
+        GrantControl(allowed = allowed, onClick = onAction)
     }
 }
