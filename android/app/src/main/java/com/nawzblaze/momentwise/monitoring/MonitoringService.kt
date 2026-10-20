@@ -270,7 +270,7 @@ class MonitoringService : Service() {
         }
         awaitRules()
         awaitSession()
-        seedAndRecover()
+        seedAndRecover(afterProcessStart = true)
         var resumeFromScreenOff = false
         while (coroutineContext[Job]?.isActive != false && !stopRequested) {
             if (!screenInteractive()) {
@@ -286,7 +286,7 @@ class MonitoringService : Service() {
             }
             if (resumeFromScreenOff) {
                 resumeFromScreenOff = false
-                seedAndRecover()
+                seedAndRecover(afterProcessStart = false)
             }
             try {
                 tick()
@@ -340,7 +340,7 @@ class MonitoringService : Service() {
      * and no opening was shown for it, show that opening. A one-second poll
      * cannot see a resume that happened while this process was dead.
      */
-    private suspend fun seedAndRecover() {
+    private suspend fun seedAndRecover(afterProcessStart: Boolean) {
         val now = System.currentTimeMillis()
         val observed = readEvents(EventWindow.seedStart(now), now)
         detector = UsageEventReducer.reduce(
@@ -353,7 +353,20 @@ class MonitoringService : Service() {
         ).state
         val stored = sessions().current()
         sessionCache = SessionClock.adoptStored(stored, sessionCache)
-        val reconciled = SessionClock.reconcileAfterRestart(sessionCache, detector.lastPackage)
+        val elapsedNow = android.os.SystemClock.elapsedRealtime()
+        val reconciled = if (!afterProcessStart &&
+            sessionCache.phase != GuardSnapshot.Phase.NONE &&
+            detector.lastPackage != null &&
+            detector.lastPackage != sessionCache.activePackage
+        ) {
+            // The screen woke on the launcher. That is a temporary leave.
+            SessionClock.onTemporarilyAway(sessionCache, elapsedNow)
+        } else {
+            SessionClock.reconcileAfterRestart(sessionCache, detector.lastPackage, elapsedNow)
+        }
+        if (reconciled.phase != sessionCache.phase) {
+            noteDebug("seed ended last=${detector.lastPackage} away=${sessionCache.backgroundedAtElapsed} boot=$afterProcessStart")
+        }
         persistIfUnchanged(sessionCache, reconciled)
         noteDebug(
             "seed events=${observed.size} last=${detector.lastPackage} phase=${sessionCache.phase} screen=${screenInteractive()}",

@@ -446,13 +446,26 @@ object SessionClock {
 
     /**
      * After process death, keep the session when Usage Access has not reported
-     * a package yet. An empty window is not proof the user left. End it only
-     * when a different package is actually observed.
+     * a package yet. An empty window is not proof the user left. A different
+     * package ends it only when this process did not already start the grace
+     * minute. Waking the screen and seeing the launcher is not a new visit.
      */
-    fun reconcileAfterRestart(snapshot: GuardSnapshot, observedPackage: String?): GuardSnapshot {
-        if (snapshot.phase == GuardSnapshot.Phase.NONE) return snapshot
-        if (observedPackage == null || observedPackage == snapshot.activePackage) return snapshot
-        return endSession(snapshot)
+    fun reconcileAfterRestart(
+        snapshot: GuardSnapshot,
+        observedPackage: String?,
+        elapsedRealtime: Long = Long.MAX_VALUE,
+    ): GuardSnapshot {
+        val current = expireGrace(snapshot, elapsedRealtime)
+        if (current.phase == GuardSnapshot.Phase.NONE) return current
+        if (observedPackage == null || observedPackage == current.activePackage) {
+            return if (observedPackage == current.activePackage) {
+                current.copy(backgroundedAtElapsed = null)
+            } else {
+                current
+            }
+        }
+        if (VisitLifecycle.withinGrace(current.backgroundedAtElapsed, elapsedRealtime)) return current
+        return endSession(current)
     }
 
     /**

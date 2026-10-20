@@ -121,6 +121,28 @@ class VisitGraceTest {
     }
 
     @Test
+    fun wakingOntoTheLauncherDoesNotEndAVisitInsideGrace() {
+        val away = SessionClock.onTemporarilyAway(
+            SessionClock.onContinue(
+                SessionClock.onOpened(GuardSnapshot(), instagram, true, today).first,
+                intervalMinutes = 5,
+                nowMillis = 0,
+                today = today,
+            ),
+            elapsedRealtime = 10_000L,
+        )
+        val kept = SessionClock.reconcileAfterRestart(away, "com.android.launcher", 15_000L)
+        assertEquals(GuardSnapshot.Phase.CONTINUING, kept.phase)
+        assertEquals(instagram, kept.activePackage)
+        val ended = SessionClock.reconcileAfterRestart(
+            away.copy(backgroundedAtElapsed = null),
+            "com.android.launcher",
+            15_000L,
+        )
+        assertEquals(GuardSnapshot.Phase.NONE, ended.phase)
+    }
+
+    @Test
     fun explicitLeaveShowsAgainEvenIfTheReturnIsQuick() {
         val continued = SessionClock.onContinue(
             SessionClock.onOpened(GuardSnapshot(), instagram, true, today).first,
