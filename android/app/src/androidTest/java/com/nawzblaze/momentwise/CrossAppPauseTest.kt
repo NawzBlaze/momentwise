@@ -74,7 +74,9 @@ class CrossAppPauseTest {
      */
     @Test
     fun usageQueryOnThisEmulatorIsRecorded() {
-        shell("am force-stop $APP")
+        // Do not force-stop Momentwise. This instrumentation runs in that
+        // process, and force-stop kills the test.
+        shell("am stopservice $APP/.monitoring.MonitoringService")
         shell("run-as $APP rm -f files/debug-status.txt")
         shell("appops set $APP GET_USAGE_STATS allow")
         shell("cmd appops set $APP GET_USAGE_STATS allow")
@@ -95,8 +97,10 @@ class CrossAppPauseTest {
     private fun prepare(overlay: Boolean): String {
         val target = "com.nawzblaze.momentwise.fixture"
         assertNotEquals(APP, target)
-        shell("am force-stop $APP")
+        // Do not force-stop Momentwise. Instrumentation runs in that process.
+        shell("am stopservice $APP/.monitoring.MonitoringService")
         shell("am force-stop $target")
+        shell("run-as $APP rm -f files/debug-status.txt")
 
         val grant = shell("pm grant $APP android.permission.POST_NOTIFICATIONS")
         assertFalse(
