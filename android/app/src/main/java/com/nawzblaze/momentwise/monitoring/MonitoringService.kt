@@ -79,6 +79,9 @@ class MonitoringService : Service() {
     /** One recovery per process. An empty usage window does not count as a decision. */
     private var recoveredUnanswered = false
 
+    /** The user swiped the pause away. Do not immediately put the same one back. */
+    private var pauseClearedByUser = false
+
     @Volatile
     private var sessionCache: GuardSnapshot = GuardSnapshot()
 
@@ -124,7 +127,10 @@ class MonitoringService : Service() {
         // hit disk, and API 34 kills the process if this call is late.
         if (!startAsForeground()) return START_NOT_STICKY
         MonitorPresence.markStartAttempt(this, System.currentTimeMillis())
-        PausePresenter.onDismissed = { pauseVisible = false }
+        PausePresenter.onDismissed = {
+            pauseVisible = false
+            pauseClearedByUser = true
+        }
         PausePresenter.onShown = { pauseVisible = true }
         startCollectors()
         synchronized(gate) {
@@ -326,9 +332,10 @@ class MonitoringService : Service() {
                         "opened pkg=$pkg rule=${rule != null} applied=$applied cmd=${command.javaClass.simpleName}",
                     )
                     if (command is GuardCommand.ShowOpening && rule != null) {
-                        if (!applied) {
-                            showMissedOpening(pkg, sessionCache)
-                        } else {
+                        // A lost session write must not drop the pause. The other
+                        // writer may have recorded the opening and then been cancelled
+                        // before the cover or notification was added.
+                        if (!pauseVisible && !pauseClearedByUser && !alreadyContinuing(pkg)) {
                             showPause(rule, PauseRequest.Kind.OPENING)
                         }
                     } else if (rule == null) {
@@ -337,11 +344,13 @@ class MonitoringService : Service() {
                 }
             }
             DetectorSignal.LEFT -> {
+                pauseClearedByUser = false
                 val (next, _) = SessionClock.onLeft(snapshot)
                 persistIfUnchanged(snapshot, next)
                 dismissPause()
             }
             DetectorSignal.NONE -> {
+                if (showUnshownOpening(detector.lastPackage)) return
                 if (showMissedOpening(detector.lastPackage, snapshot)) return
                 val rule = enabled.find { it.appId == detector.lastPackage }
                 val (next, command) = SessionClock.onTick(
@@ -471,6 +480,25 @@ class MonitoringService : Service() {
      * @return true when an opening was shown, so the caller must not also
      * schedule a reminder on this tick.
      */
+    /**
+     * The session says an opening is waiting, but nothing is on screen.
+     * Happens when the poll is cancelled after the write and before the UI.
+     */
+    private suspend fun showUnshownOpening(foreground: String?): Boolean {
+        if (pauseVisible || pauseClearedByUser || foreground == null) return false
+        val snapshot = sessionCache
+        if (snapshot.phase != GuardSnapshot.Phase.AWAITING_OPENING) return false
+        if (snapshot.activePackage != foreground) return false
+        val rule = ruleFor(foreground) ?: return false
+        showPause(rule, PauseRequest.Kind.OPENING)
+        return true
+    }
+
+    private suspend fun alreadyContinuing(packageName: String): Boolean {
+        val current = sessions().current()
+        return current.phase == GuardSnapshot.Phase.CONTINUING && current.activePackage == packageName
+    }
+
     private suspend fun ruleFor(packageName: String): AppRule? {
         enabledRules.find { it.appId == packageName }?.let { return it }
         val fresh = app().container.appRuleRepository.rules.first().filter { it.enabled }
