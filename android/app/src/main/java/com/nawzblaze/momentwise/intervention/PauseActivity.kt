@@ -15,6 +15,7 @@ import androidx.lifecycle.lifecycleScope
 import com.nawzblaze.momentwise.MomentwiseApplication
 import com.nawzblaze.momentwise.data.model.ThemeMode
 import com.nawzblaze.momentwise.monitoring.InterventionController
+import com.nawzblaze.momentwise.monitoring.PauseDismissReason
 import com.nawzblaze.momentwise.monitoring.PausePresenter
 import com.nawzblaze.momentwise.ui.screens.PauseScreen
 import com.nawzblaze.momentwise.ui.theme.MomentwiseTheme
@@ -66,7 +67,7 @@ class PauseActivity : ComponentActivity() {
                         onSecondary = {
                             act { controller ->
                                 if (current.kind == PauseRequest.Kind.OPENING) {
-                                    controller.continueIntoApp()
+                                    controller.continueIntoApp(current.packageName)
                                 } else {
                                     controller.snooze(current)
                                 }
@@ -89,7 +90,7 @@ class PauseActivity : ComponentActivity() {
 
     override fun onDestroy() {
         if (isFinishing && pauseGeneration == PausePresenter.currentGeneration()) {
-            PausePresenter.onDismissed?.invoke()
+            PausePresenter.noteCleared(PauseDismissReason.WITHOUT_CHOICE)
         }
         super.onDestroy()
     }

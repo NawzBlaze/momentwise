@@ -149,6 +149,88 @@ class UsageEventReducerTest {
         val seeded = UsageEventReducer.seed("com.instagram.android", 80)
         assertEquals("com.instagram.android", seeded.lastPackage)
         assertEquals(80, seeded.lastEventTimeMillis)
+        assertNull(seeded.stoppedPackage)
+    }
+
+    @Test
+    fun stopThatEndsTheWindowIsALeaveAndTheNextResumeIsANewOpening() {
+        val instagram = "com.instagram.android"
+        val watching = DetectorState(lastPackage = instagram, lastEventTimeMillis = 10)
+        val stopped = UsageEventReducer.reduce(
+            watching,
+            listOf(ForegroundEvent(instagram, 20, kind = ForegroundEvent.Kind.STOPPED)),
+            self,
+            ignored,
+        )
+        assertEquals(DetectorSignal.LEFT, stopped.signal)
+        assertEquals(instagram, stopped.packageName)
+        assertNull(stopped.state.lastPackage)
+        assertNull(stopped.state.stoppedPackage)
+
+        val returned = UsageEventReducer.reduce(
+            stopped.state,
+            listOf(ForegroundEvent(instagram, 40)),
+            self,
+            ignored,
+        )
+        assertEquals(DetectorSignal.OPENED, returned.signal)
+        assertEquals(instagram, returned.packageName)
+    }
+
+    @Test
+    fun stopAndResumeInTheSameWindowIsNotANewVisit() {
+        val instagram = "com.instagram.android"
+        val watching = DetectorState(lastPackage = instagram, lastEventTimeMillis = 10)
+        val result = UsageEventReducer.reduce(
+            watching,
+            listOf(
+                ForegroundEvent(instagram, 20, kind = ForegroundEvent.Kind.STOPPED),
+                ForegroundEvent(instagram, 21),
+            ),
+            self,
+            ignored,
+        )
+        assertEquals(DetectorSignal.NONE, result.signal)
+        assertEquals(instagram, result.state.lastPackage)
+        assertNull(result.state.stoppedPackage)
+    }
+
+    @Test
+    fun stopWhileThePauseIsShowingIsHeldUntilThePauseIsGone() {
+        val instagram = "com.instagram.android"
+        val watching = DetectorState(lastPackage = instagram, lastEventTimeMillis = 10)
+        val held = UsageEventReducer.reduce(
+            watching,
+            listOf(ForegroundEvent(instagram, 20, kind = ForegroundEvent.Kind.STOPPED)),
+            self,
+            ignored,
+            suspendStops = true,
+        )
+        assertEquals(DetectorSignal.NONE, held.signal)
+        assertEquals(instagram, held.state.lastPackage)
+        assertEquals(instagram, held.state.stoppedPackage)
+
+        val confirmed = UsageEventReducer.confirmPendingStop(held.state)
+        assertEquals(DetectorSignal.LEFT, confirmed.signal)
+        assertNull(confirmed.state.lastPackage)
+        assertEquals(DetectorSignal.NONE, UsageEventReducer.confirmPendingStop(confirmed.state).signal)
+
+        val handedBack = UsageEventReducer.reduce(
+            held.state,
+            listOf(ForegroundEvent(instagram, 20 + 500)),
+            self,
+            ignored,
+        )
+        assertEquals(DetectorSignal.NONE, handedBack.signal)
+        assertEquals(instagram, handedBack.state.lastPackage)
+
+        val later = UsageEventReducer.reduce(
+            held.state,
+            listOf(ForegroundEvent(instagram, 20 + UsageEventReducer.HELD_STOP_IS_NEW_VISIT_AFTER_MILLIS)),
+            self,
+            ignored,
+        )
+        assertEquals(DetectorSignal.OPENED, later.signal)
     }
 }
 
@@ -402,6 +484,133 @@ class SessionClockTest {
         val (_, command) = SessionClock.onOpened(GuardSnapshot(), "com.chrome", ruleEnabled = false, today)
         assertEquals(GuardCommand.None, command)
     }
+
+    @Test
+    fun dismissWithoutChoiceIsNotContinueAndDoesNotSuppressTheNextOpening() {
+        val opened = SessionClock.onOpened(GuardSnapshot(), instagram, true, today).first
+        val cleared = SessionClock.onClearedWithoutChoice(opened, nowMillis = 2_000)
+        assertEquals(GuardSnapshot.Phase.AWAITING_OPENING, cleared.phase)
+        assertNull(cleared.nextReminderAtMillis)
+        assertNull(cleared.quitSuppressedPackage)
+        assertTrue(cleared.clearedWithoutChoice)
+        assertFalse(SessionClock.needsOpening(cleared, instagram, true))
+
+        val left = SessionClock.onLeft(cleared).first
+        assertEquals(GuardSnapshot.Phase.NONE, left.phase)
+        assertFalse(left.clearedWithoutChoice)
+        val (_, again) = SessionClock.onOpened(left, instagram, true, today)
+        assertTrue(again is GuardCommand.ShowOpening)
+    }
+
+    @Test
+    fun aNewOpeningSignalAfterANoChoiceClearIsNotBlocked() {
+        val opened = SessionClock.onOpened(GuardSnapshot(), instagram, true, today).first
+        val cleared = SessionClock.onClearedWithoutChoice(opened, nowMillis = 2_000)
+        val (_, command) = SessionClock.onOpened(cleared, instagram, true, today)
+        assertTrue(command is GuardCommand.ShowOpening)
+        assertTrue(
+            PauseShowPolicy.shouldShowNewOpening(pauseVisible = false, alreadyContinuing = false),
+        )
+        assertFalse(
+            PauseShowPolicy.shouldRecoverSameVisit(
+                pauseVisible = false,
+                clearedWithoutChoice = true,
+                phase = GuardSnapshot.Phase.AWAITING_OPENING,
+                activePackage = instagram,
+                foreground = instagram,
+            ),
+        )
+    }
+
+    @Test
+    fun continueSchedulesFromTheAnsweredPackageWhenTheSessionWriteWasLost() {
+        val continued = SessionClock.onContinue(
+            snapshot = GuardSnapshot(),
+            intervalMinutes = 5,
+            nowMillis = 1_000,
+            today = today,
+            packageName = instagram,
+        )
+        assertEquals(instagram, continued.activePackage)
+        assertEquals(GuardSnapshot.Phase.CONTINUING, continued.phase)
+        assertEquals(1_000 + 5 * 60_000L, continued.nextReminderAtMillis)
+        val (shown, command) = SessionClock.onTick(
+            continued,
+            foregroundPackage = instagram,
+            nowMillis = continued.nextReminderAtMillis!!,
+            today = today,
+            remindersEnabled = true,
+        )
+        assertTrue(command is GuardCommand.ShowReminder)
+        assertEquals(continued.nextReminderAtMillis, shown.reminderPresentedFor)
+    }
+
+    @Test
+    fun reminderClearedWithoutChoiceShowsAgainAfterTheHoldAndNotBefore() {
+        val due = 5_000L
+        val shown = GuardSnapshot(
+            activePackage = instagram,
+            phase = GuardSnapshot.Phase.CONTINUING,
+            nextReminderAtMillis = due,
+            reminderPresentedFor = due,
+        )
+        val cleared = SessionClock.onClearedWithoutChoice(shown, nowMillis = 6_000)
+        assertNull(cleared.reminderPresentedFor)
+        assertEquals(due, cleared.nextReminderAtMillis)
+        assertEquals(GuardSnapshot.Phase.CONTINUING, cleared.phase)
+        val (_, tooSoon) = SessionClock.onTick(
+            cleared,
+            foregroundPackage = instagram,
+            nowMillis = 6_000 + SessionClock.REMINDER_REDISPLAY_HOLD_MILLIS - 1,
+            today = today,
+            remindersEnabled = true,
+        )
+        assertEquals(GuardCommand.None, tooSoon)
+        val (_, again) = SessionClock.onTick(
+            cleared,
+            foregroundPackage = instagram,
+            nowMillis = 6_000 + SessionClock.REMINDER_REDISPLAY_HOLD_MILLIS,
+            today = today,
+            remindersEnabled = true,
+        )
+        assertTrue(again is GuardCommand.ShowReminder)
+    }
+
+    @Test
+    fun anotherAppDoesNotInheritTheReminder() {
+        val continued = SessionClock.onContinue(
+            SessionClock.onOpened(GuardSnapshot(), instagram, true, today).first,
+            intervalMinutes = 5,
+            nowMillis = 1_000,
+            today = today,
+        )
+        val tiktok = "com.zhiliaoapp.musically"
+        val (next, command) = SessionClock.onOpened(continued, tiktok, true, today)
+        assertTrue(command is GuardCommand.ShowOpening)
+        assertEquals(tiktok, next.activePackage)
+        assertNull(next.nextReminderAtMillis)
+        assertEquals(GuardSnapshot.Phase.AWAITING_OPENING, next.phase)
+    }
+
+    @Test
+    fun stoppingMonitoringEndsTheVisitSoAStaleReminderCannotFire() {
+        val continuing = GuardSnapshot(
+            activePackage = instagram,
+            phase = GuardSnapshot.Phase.CONTINUING,
+            nextReminderAtMillis = 5_000,
+        )
+        val stopped = SessionClock.onLeft(continuing).first
+        assertEquals(GuardSnapshot.Phase.NONE, stopped.phase)
+        assertNull(stopped.nextReminderAtMillis)
+        val (_, command) = SessionClock.onTick(
+            stopped,
+            foregroundPackage = instagram,
+            nowMillis = 9_000,
+            today = today,
+            remindersEnabled = true,
+        )
+        assertEquals(GuardCommand.None, command)
+    }
 }
 
 class CatalogMigrationTest {
@@ -459,6 +668,8 @@ class GuardSnapshotJsonTest {
             openingHandledForPackage = "com.instagram.android",
             dismissals = mapOf("com.zhiliaoapp.musically" to "2026-10-19"),
             sessionDroppedOnBoot = true,
+            clearedWithoutChoice = true,
+            reminderHoldUntilMillis = 1_700_000_060_000,
         )
         assertEquals(original, GuardSnapshotJson.decode(GuardSnapshotJson.encode(original)))
     }

@@ -75,6 +75,34 @@ class CrossAppPauseTest {
     }
 
     /**
+     * Home, then open the fixture again. A no-choice leave must not suppress
+     * the next opening. This is an emulator fixture, not a phone.
+     */
+    @Test
+    fun leaveAndReopenShowsTheOpeningAgain() {
+        val target = prepare(overlay = true)
+        openFixture(target)
+        assertTrue(
+            "First opening was not visible. ${diagnostics()}",
+            waitFor { statusFile().contains("intervention=overlay shown") && overlayWindowVisible() },
+        )
+        shell("input keyevent KEYCODE_HOME")
+        assertTrue(
+            "Overlay stayed up after Home. ${diagnostics()}",
+            waitFor { !overlayWindowVisible() },
+        )
+        openFixture(target)
+        val shownAgain = waitFor {
+            overlayWindowVisible() &&
+                statusFile().lineSequence().count { it.contains("intervention=overlay shown") } >= 2
+        }
+        assertTrue(
+            "Second visit did not show the opening. ${diagnostics()}",
+            shownAgain,
+        )
+    }
+
+    /**
      * Times queryEvents in the app process on this emulator. Not a phone, and
      * not a battery percentage.
      */
@@ -137,7 +165,10 @@ class CrossAppPauseTest {
         assertTrue("Could not enable the fixture rule: $enable", enable.contains("ok"))
         assertTrue(
             "Monitoring notification was not posted. ${diagnostics()}",
-            waitFor { notificationDump().contains("Momentwise is guarding") },
+            waitFor {
+                val dump = notificationDump()
+                dump.contains("Momentwise is on") && dump.contains("Watching your selected apps.")
+            },
         )
         return target
     }

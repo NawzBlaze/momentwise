@@ -1,5 +1,6 @@
 package com.nawzblaze.momentwise.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -76,8 +77,8 @@ fun PauseScreen(
                     .padding(horizontal = 20.dp)
                     .fillMaxWidth()
                     .height(maxHeight * InterventionSurface.CARD_HEIGHT_FRACTION)
-                    .background(MaterialTheme.colorScheme.background, RoundedCornerShape(24.dp))
-                    .border(1.dp, colors.accent, RoundedCornerShape(24.dp))
+                    .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(24.dp))
+                    .border(1.dp, colors.border, RoundedCornerShape(24.dp))
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 22.dp, vertical = 20.dp)
                     .semantics { contentDescription = InterventionSurface.WINDOW_TITLE },
@@ -125,6 +126,7 @@ fun PauseScreen(
                     onClick = onSecondary,
                     modifier = Modifier.fillMaxWidth().height(52.dp),
                     shape = RoundedCornerShape(14.dp),
+                    border = BorderStroke(1.dp, colors.textSecondary),
                     colors = ButtonDefaults.outlinedButtonColors(
                         contentColor = MaterialTheme.colorScheme.onSurface,
                     ),
@@ -137,6 +139,7 @@ fun PauseScreen(
                         onClick = onDismissReminder,
                         modifier = Modifier.fillMaxWidth().height(52.dp),
                         shape = RoundedCornerShape(14.dp),
+                        border = BorderStroke(1.dp, colors.border),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
                     ) {
                         Text(request.tertiaryLabel, fontWeight = FontWeight.SemiBold)

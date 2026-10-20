@@ -29,6 +29,7 @@ import com.nawzblaze.momentwise.intervention.GuardSnapshot
 import com.nawzblaze.momentwise.intervention.InterventionSurface
 import com.nawzblaze.momentwise.intervention.PauseActivity
 import com.nawzblaze.momentwise.intervention.PauseRequest
+import com.nawzblaze.momentwise.intervention.PauseShowPolicy
 import com.nawzblaze.momentwise.intervention.SessionClock
 import com.nawzblaze.momentwise.intervention.UsageEventReducer
 import java.time.LocalDate
@@ -127,9 +128,21 @@ class MonitoringService : Service() {
         // hit disk, and API 34 kills the process if this call is late.
         if (!startAsForeground()) return START_NOT_STICKY
         MonitorPresence.markStartAttempt(this, System.currentTimeMillis())
-        PausePresenter.onDismissed = {
+        PausePresenter.onDismissed = { reason ->
             pauseVisible = false
-            pauseClearedByUser = true
+            when (reason) {
+                PauseDismissReason.CHOICE -> {
+                    pauseClearedByUser = false
+                    detector = UsageEventReducer.clearPendingStop(detector)
+                }
+                PauseDismissReason.LEFT, PauseDismissReason.STOPPED -> pauseClearedByUser = false
+                PauseDismissReason.WITHOUT_CHOICE -> {
+                    // Same visit only. A later OPENED does not consult this flag.
+                    pauseClearedByUser = true
+                    val pkg = sessionCache.activePackage
+                    scope.launch { recordClearedWithoutChoice(pkg) }
+                }
+            }
         }
         PausePresenter.onShown = { pauseVisible = true }
         startCollectors()
@@ -155,13 +168,13 @@ class MonitoringService : Service() {
     }
 
     override fun onDestroy() {
+        PausePresenter.dismiss(this, PauseDismissReason.STOPPED)
         pollJob?.cancel()
         scope.cancel()
         if (screenReceiverRegistered) {
             runCatching { unregisterReceiver(screenReceiver) }
             screenReceiverRegistered = false
         }
-        PausePresenter.dismiss(this)
         super.onDestroy()
     }
 
@@ -305,10 +318,16 @@ class MonitoringService : Service() {
             ignoredPackages = ignoredPackages(now),
             ignoreSelf = pauseVisible,
             pauseClassName = PauseActivity::class.java.name,
+            // An overlay does not stop the app underneath. A pause activity does.
+            // Only the activity may hold a stop, or closing it looks like a leave
+            // and the opening is stacked again immediately.
+            suspendStops = PausePresenter.surface == PauseSurface.ACTIVITY,
         )
+        val signal = reduced.signal
+        val signaledPackage = reduced.packageName
         detector = reduced.state
-        if (reduced.signal != com.nawzblaze.momentwise.intervention.DetectorSignal.NONE) {
-            noteDebug("tick ${reduced.signal} pkg=${reduced.packageName} last=${detector.lastPackage}")
+        if (signal != DetectorSignal.NONE) {
+            noteDebug("tick $signal pkg=$signaledPackage last=${detector.lastPackage}")
         }
         var snapshot = SessionClock.clearStaleDismissals(sessionCache, today)
 
@@ -316,13 +335,15 @@ class MonitoringService : Service() {
         if (active != null && enabled.none { it.appId == active }) {
             val left = SessionClock.onLeft(snapshot).first
             if (persistIfUnchanged(snapshot, left)) snapshot = left
-            dismissPause()
+            dismissPause(PauseDismissReason.STOPPED)
         }
 
-        when (reduced.signal) {
+        when (signal) {
             DetectorSignal.OPENED -> {
-                val pkg = reduced.packageName
+                val pkg = signaledPackage
                 if (pkg != null) {
+                    // A new visit. A no-choice clear of the previous visit must not block this.
+                    pauseClearedByUser = false
                     // The collector can still be on an empty emission when the
                     // resume arrives. Read the repository before dropping it.
                     val rule = ruleFor(pkg)
@@ -335,19 +356,19 @@ class MonitoringService : Service() {
                         // A lost session write must not drop the pause. The other
                         // writer may have recorded the opening and then been cancelled
                         // before the cover or notification was added.
-                        if (!pauseVisible && !pauseClearedByUser && !alreadyContinuing(pkg)) {
+                        if (PauseShowPolicy.shouldShowNewOpening(pauseVisible, alreadyContinuing(pkg))) {
                             showPause(rule, PauseRequest.Kind.OPENING)
                         }
                     } else if (rule == null) {
-                        dismissPause()
+                        dismissPause(PauseDismissReason.LEFT)
                     }
                 }
             }
             DetectorSignal.LEFT -> {
-                pauseClearedByUser = false
                 val (next, _) = SessionClock.onLeft(snapshot)
                 persistIfUnchanged(snapshot, next)
-                dismissPause()
+                dismissPause(PauseDismissReason.LEFT)
+                pauseClearedByUser = false
             }
             DetectorSignal.NONE -> {
                 if (showUnshownOpening(detector.lastPackage)) return
@@ -417,7 +438,7 @@ class MonitoringService : Service() {
     }
 
     private suspend fun showPause(rule: AppRule, kind: PauseRequest.Kind) {
-        if (pauseVisible) dismissPause()
+        if (pauseVisible) dismissPause(PauseDismissReason.STOPPED)
         val request = if (kind == PauseRequest.Kind.OPENING) {
             PauseRequest(
                 packageName = rule.appId,
@@ -450,10 +471,21 @@ class MonitoringService : Service() {
         }
     }
 
-    private suspend fun dismissPause() {
+    private suspend fun dismissPause(reason: PauseDismissReason) {
         if (!pauseVisible) return
         pauseVisible = false
-        withContext(Dispatchers.Main) { PausePresenter.dismiss(this@MonitoringService) }
+        withContext(Dispatchers.Main) { PausePresenter.dismiss(this@MonitoringService, reason) }
+    }
+
+    private suspend fun recordClearedWithoutChoice(packageName: String?) {
+        // A newer opening already cleared the latch. Do not stamp that visit.
+        if (!pauseClearedByUser) return
+        val now = System.currentTimeMillis()
+        sessions().update { current ->
+            if (packageName != null && current.activePackage != packageName) current
+            else SessionClock.onClearedWithoutChoice(current, now)
+        }
+        sessionCache = sessions().current()
     }
 
     private fun readEvents(from: Long, to: Long): List<com.nawzblaze.momentwise.intervention.ForegroundEvent> {
@@ -477,19 +509,26 @@ class MonitoringService : Service() {
     }
 
     /**
+     * The session says an opening is waiting, but nothing is on screen.
+     * Happens when the poll is cancelled after the write and before the UI.
+     * A no-choice clear is not this case: do not stack the same visit again.
+     *
      * @return true when an opening was shown, so the caller must not also
      * schedule a reminder on this tick.
      */
-    /**
-     * The session says an opening is waiting, but nothing is on screen.
-     * Happens when the poll is cancelled after the write and before the UI.
-     */
     private suspend fun showUnshownOpening(foreground: String?): Boolean {
-        if (pauseVisible || pauseClearedByUser || foreground == null) return false
         val snapshot = sessionCache
-        if (snapshot.phase != GuardSnapshot.Phase.AWAITING_OPENING) return false
-        if (snapshot.activePackage != foreground) return false
-        val rule = ruleFor(foreground) ?: return false
+        if (!PauseShowPolicy.shouldRecoverSameVisit(
+                pauseVisible = pauseVisible,
+                clearedWithoutChoice = pauseClearedByUser || snapshot.clearedWithoutChoice,
+                phase = snapshot.phase,
+                activePackage = snapshot.activePackage,
+                foreground = foreground,
+            )
+        ) {
+            return false
+        }
+        val rule = ruleFor(foreground!!) ?: return false
         showPause(rule, PauseRequest.Kind.OPENING)
         return true
     }
@@ -572,6 +611,7 @@ class MonitoringService : Service() {
             .setContentTitle(getString(R.string.monitor_notification_title))
             .setContentText(getString(R.string.monitor_notification_body))
             .setOngoing(true)
+            .setOnlyAlertOnce(true)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setContentIntent(openAppPendingIntent())
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
@@ -589,13 +629,25 @@ class MonitoringService : Service() {
         )
     }
 
+    /**
+     * Monitoring is no longer allowed. End the visit so a leftover timer does
+     * not fire as a reminder when monitoring starts again. Saved rules stay.
+     */
+    private suspend fun endVisitBecauseMonitoringStopped() {
+        val current = sessionCache
+        if (current.phase == GuardSnapshot.Phase.NONE && current.activePackage == null) return
+        sessions().update { SessionClock.onLeft(it).first }
+        sessionCache = sessions().current()
+    }
+
     private suspend fun stopQuietly() {
         val generation = synchronized(gate) {
             if (stopRequested) return
             stopRequested = true
             startGeneration
         }
-        dismissPause()
+        endVisitBecauseMonitoringStopped()
+        dismissPause(PauseDismissReason.STOPPED)
         withContext(Dispatchers.Main) {
             val stillCurrent = synchronized(gate) { generation == startGeneration }
             if (!stillCurrent) return@withContext

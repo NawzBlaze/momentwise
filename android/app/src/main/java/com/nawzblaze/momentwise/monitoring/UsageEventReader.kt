@@ -7,9 +7,13 @@ import android.os.Build
 import com.nawzblaze.momentwise.intervention.ForegroundEvent
 
 /**
- * Reads resume events only. `ACTIVITY_RESUMED` (API 29+) and `MOVE_TO_FOREGROUND`
- * are the same numeric value on current platforms; both are checked so the
- * older constant is still handled while minSdk is 26.
+ * Reads resume and stop events. `ACTIVITY_RESUMED` (API 29+) and
+ * `MOVE_TO_FOREGROUND` are the same numeric value on current platforms; both
+ * are checked so the older constant is still handled while minSdk is 26.
+ *
+ * `ACTIVITY_STOPPED` is read on API 29+. A pause (`ACTIVITY_PAUSED` /
+ * `MOVE_TO_BACKGROUND`) is not a leave: guarded apps emit it on ordinary
+ * navigation. A stop that is not resumed in the same window is a leave.
  */
 object UsageEventReader {
 
@@ -21,16 +25,21 @@ object UsageEventReader {
         val out = ArrayList<ForegroundEvent>()
         while (events.hasNextEvent()) {
             events.getNextEvent(event)
-            if (!isResume(event.eventType)) continue
+            val kind = kindOf(event.eventType) ?: continue
             val packageName = event.packageName ?: continue
             if (packageName.isBlank()) continue
-            out += ForegroundEvent(packageName, event.timeStamp, event.className)
+            out += ForegroundEvent(packageName, event.timeStamp, event.className, kind)
         }
         return out
     }
 
-    private fun isResume(type: Int): Boolean {
-        if (type == UsageEvents.Event.MOVE_TO_FOREGROUND) return true
-        return Build.VERSION.SDK_INT >= 29 && type == UsageEvents.Event.ACTIVITY_RESUMED
+    private fun kindOf(type: Int): ForegroundEvent.Kind? {
+        if (type == UsageEvents.Event.MOVE_TO_FOREGROUND) return ForegroundEvent.Kind.RESUMED
+        if (Build.VERSION.SDK_INT < 29) return null
+        return when (type) {
+            UsageEvents.Event.ACTIVITY_RESUMED -> ForegroundEvent.Kind.RESUMED
+            UsageEvents.Event.ACTIVITY_STOPPED -> ForegroundEvent.Kind.STOPPED
+            else -> null
+        }
     }
 }

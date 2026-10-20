@@ -88,6 +88,7 @@ object PauseOverlay {
                 }
             }
             windowManager.addView(overlay, params)
+            host = overlay
             composeView.setContent {
                 val mode = ThemeMode.fromStorageKey(themeModeName)
                 MomentwiseTheme(themeMode = mode) {
@@ -97,7 +98,7 @@ object PauseOverlay {
                         onSecondary = {
                             perform(appContext) { controller ->
                                 if (request.kind == PauseRequest.Kind.OPENING) {
-                                    controller.continueIntoApp()
+                                    controller.continueIntoApp(request.packageName)
                                 } else {
                                     controller.snooze(request)
                                 }
@@ -107,7 +108,6 @@ object PauseOverlay {
                     )
                 }
             }
-            host = overlay
             DebugNotes.append(appContext, "intervention=overlay shown")
             true
         } catch (error: Exception) {
@@ -128,6 +128,15 @@ object PauseOverlay {
             runCatching { windowManager.removeViewImmediate(current) }
         }
         current.destroy()
+    }
+
+    /** The system removed the window. Our own [dismiss] nulls [host] first, so it does not land here. */
+    internal fun systemRemoved(removed: FrameLayout) {
+        val current = host ?: return
+        if (current !== removed) return
+        host = null
+        current.destroy()
+        PausePresenter.noteCleared(PauseDismissReason.WITHOUT_CHOICE)
     }
 
     private fun perform(context: Context, block: suspend (InterventionController) -> Unit) {
@@ -160,6 +169,11 @@ private class OverlayHost(context: Context) :
 
     fun resume() {
         registry.currentState = Lifecycle.State.RESUMED
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        PauseOverlay.systemRemoved(this)
     }
 
     fun destroy() {

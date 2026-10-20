@@ -26,25 +26,58 @@ import com.nawzblaze.momentwise.intervention.PauseRequest
  * If overlay is not granted, only the notification is shown. A notification
  * is not described as a cover.
  */
+enum class PauseSurface { NONE, OVERLAY, ACTIVITY, NOTIFICATION }
+
+enum class PauseDismissReason {
+    /** Leave, Continue, snooze, or dismiss-for-today. */
+    CHOICE,
+    /** Usage Access saw a leave. */
+    LEFT,
+    /** Monitoring stopped, or the process is shutting down. Not a choice. */
+    STOPPED,
+    /** Notification swipe, activity finish, or the system removed the overlay. Not a choice. */
+    WITHOUT_CHOICE,
+}
+
 object PausePresenter {
 
-    /** Cleared by the monitoring service so a later pause is not blocked. */
+    /** Cleared by the monitoring service. The reason says whether a choice was made. */
     @Volatile
-    var onDismissed: (() -> Unit)? = null
+    var onDismissed: ((PauseDismissReason) -> Unit)? = null
 
     /** Set when the pause activity is actually on screen. */
     @Volatile
     var onShown: (() -> Unit)? = null
 
     @Volatile
+    var surface: PauseSurface = PauseSurface.NONE
+        private set
+
+    @Volatile
     private var shownGeneration = 0
 
+    @Volatile
+    private var handledGeneration = -1
+
     fun currentGeneration(): Int = shownGeneration
+
+    /**
+     * Records why this generation's pause went away. A later destroy of the
+     * same generation must not turn a choice into "no choice".
+     */
+    fun noteCleared(reason: PauseDismissReason) {
+        val generation = shownGeneration
+        if (handledGeneration == generation && reason == PauseDismissReason.WITHOUT_CHOICE) return
+        handledGeneration = generation
+        surface = PauseSurface.NONE
+        onDismissed?.invoke(reason)
+    }
 
     fun show(context: Context, request: PauseRequest, themeModeName: String) {
         shownGeneration += 1
         if (GrantChecks.read(context).overlay) {
             if (PauseOverlay.show(context, request, themeModeName)) {
+                surface = PauseSurface.OVERLAY
                 cancelNotification(context)
                 return
             }
@@ -52,13 +85,15 @@ object PausePresenter {
         } else {
             DebugNotes.append(context, "intervention=notification reason=overlay-not-granted")
         }
+        surface = PauseSurface.NOTIFICATION
         showNotification(context, request)
     }
 
-    fun dismiss(context: Context) {
+    fun dismiss(context: Context, reason: PauseDismissReason = PauseDismissReason.WITHOUT_CHOICE) {
+        noteCleared(reason)
         PauseOverlay.dismiss(context)
         cancelNotification(context)
-        onDismissed?.invoke()
+        DebugNotes.append(context, "intervention=dismissed reason=$reason")
     }
 
     /**
@@ -68,6 +103,7 @@ object PausePresenter {
     fun handOffToActivity(context: Context) {
         PauseOverlay.dismiss(context)
         cancelNotification(context)
+        surface = PauseSurface.ACTIVITY
         DebugNotes.append(context, "intervention=activity")
     }
 
@@ -119,13 +155,13 @@ object PausePresenter {
 
 /**
  * The user swiped the pause notification away without choosing. That is not a
- * Leave or a Continue. Clear the "pause is showing" latch so the next opening
- * can show again.
+ * Leave or a Continue. The same visit is not stacked again immediately. The
+ * next visit is not suppressed.
  */
 class PauseClearedReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
         if (intent?.action != ACTION) return
-        PausePresenter.onDismissed?.invoke()
+        PausePresenter.noteCleared(PauseDismissReason.WITHOUT_CHOICE)
     }
 
     companion object {
