@@ -14,7 +14,7 @@ class InterventionCopyTest {
         assertEquals("Step away for now.", InterventionSurface.LEAVE_SUPPORT)
         assertEquals("Dismiss for today", InterventionSurface.DISMISS_FOR_TODAY)
         assertEquals("No more prompts for Instagram today.", InterventionSurface.dismissHelp("Instagram"))
-        assertFalse(InterventionSurface.OPENING_HEADING.contains("Before you scroll"))
+        assertFalse(InterventionSurface.OPENING_HEADING.contains("What did you come here for"))
         assertFalse(InterventionSurface.OPENING_SUPPORT.contains("What do you want to do right now?"))
         assertFalse(InterventionSurface.OPENING_SUPPORT.contains("Anyways"))
     }
