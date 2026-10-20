@@ -49,7 +49,7 @@ if package != "com.nawzblaze.momentwise":
     sys.exit(f"Unexpected package id: {package}")
 if version_name != "1.0.0":
     sys.exit(f"Unexpected versionName: {version_name}")
-if version_code != "11":
+if version_code != "12":
     sys.exit(f"Unexpected versionCode: {version_code}")
 PY
 
@@ -57,12 +57,20 @@ install -d signed-artifact
 cp "$apk" signed-artifact/momentwise-1.0.0-signed.apk
 sha256sum signed-artifact/momentwise-1.0.0-signed.apk | tee signed-artifact/momentwise-1.0.0-signed.apk.sha256
 digest="$(printf '%s\n' "$verify" | awk -F': ' '/Signer #1 certificate SHA-256 digest:/{print $2; exit}')"
+expected="b550cab577b31a5cec5a543cc6e3a8c2b68684798ba10efcae43be43c385b8e8"
+normalized="$(printf '%s' "$digest" | tr -d '[:space:]' | tr -d ':' | tr '[:upper:]' '[:lower:]')"
+if [ "$normalized" != "$expected" ]; then
+  echo "Signer certificate does not match the existing Momentwise release identity."
+  echo "Refusing this APK. The keystore was not printed."
+  exit 1
+fi
 cat > signed-artifact/signing-verification.txt <<EOF
 package=com.nawzblaze.momentwise
 versionName=1.0.0
-versionCode=11
+versionCode=12
 apksigner=verified
-certificate_sha256=$digest
+certificate_sha256=$normalized
+expected_certificate_sha256=$expected
 $(cat signed-artifact/momentwise-1.0.0-signed.apk.sha256)
 EOF
 

@@ -53,8 +53,12 @@ object VisitMachine {
         selfPackage: String,
         today: String,
         signaledHasRule: Boolean,
+        elapsedRealtime: Long = signalTimeMillis,
     ): Step {
-        val cleared = SessionClock.clearStaleDismissals(snapshot, today)
+        val cleared = SessionClock.expireGrace(
+            SessionClock.clearStaleDismissals(snapshot, today),
+            elapsedRealtime,
+        )
         var handback = latch.handbackPackage
         if (!pauseVisible && handback != null && handback in resumedPackages &&
             signalTimeMillis > latch.overlayNoiseUntilMillis
@@ -88,16 +92,38 @@ object VisitMachine {
         val nextLatch = latch.copy(handbackPackage = handback)
         return when (effect) {
             VisitPolicy.Effect.END_VISIT -> {
-                val (ended, _) = SessionClock.onLeft(cleared)
+                // Home and an app switch keep the visit for one minute. Explicit
+                // Leave already ended it through SessionClock.onQuit, so this
+                // observed leave only clears that suppression.
+                val away = SessionClock.onTemporarilyAway(cleared, elapsedRealtime)
+                val ended = away.phase == GuardSnapshot.Phase.NONE
+                // The overlay handback must not swallow the return, or the
+                // grace minute keeps running while the app is in front again.
                 Step(
-                    snapshot = ended,
+                    snapshot = away,
                     latch = nextLatch.copy(handbackPackage = null, systemRemovals = 0),
-                    ui = if (pauseVisible) Ui.DISMISS else Ui.NONE,
+                    ui = if (ended && pauseVisible) Ui.DISMISS else Ui.NONE,
                 )
             }
             VisitPolicy.Effect.BEGIN_VISIT -> {
                 val pkg = policyPackage ?: return Step(cleared, nextLatch)
-                val (opened, command) = SessionClock.onOpened(cleared, pkg, signaledHasRule, today)
+                // Home is sometimes an ignored-package leave. A switch to another
+                // unguarded app is the same kind of absence. Ending it here made
+                // the return look like a new visit.
+                if (!signaledHasRule && cleared.phase != GuardSnapshot.Phase.NONE && cleared.activePackage != null) {
+                    val away = SessionClock.onTemporarilyAway(cleared, elapsedRealtime)
+                    return Step(
+                        snapshot = away,
+                        latch = nextLatch.copy(handbackPackage = null, systemRemovals = 0),
+                    )
+                }
+                val (opened, command) = SessionClock.onOpened(
+                    cleared,
+                    pkg,
+                    signaledHasRule,
+                    today,
+                    elapsedRealtime,
+                )
                 if (command is GuardCommand.ShowOpening && signaledHasRule) {
                     Step(
                         snapshot = opened,
@@ -114,7 +140,16 @@ object VisitMachine {
                     Step(opened, nextLatch.copy(handbackPackage = null, systemRemovals = 0))
                 }
             }
-            VisitPolicy.Effect.NONE -> Step(cleared, nextLatch)
+            VisitPolicy.Effect.NONE -> {
+                val returned = policySignal == DetectorSignal.OPENED &&
+                    policyPackage != null &&
+                    policyPackage == cleared.activePackage &&
+                    cleared.backgroundedAtElapsed != null
+                Step(
+                    snapshot = if (returned) cleared.copy(backgroundedAtElapsed = null) else cleared,
+                    latch = nextLatch,
+                )
+            }
         }
     }
 

@@ -719,6 +719,7 @@ class GuardSnapshotJsonTest {
             clearedWithoutChoice = true,
             reminderHoldUntilMillis = 1_700_000_060_000,
             visitId = 4,
+            backgroundedAtElapsed = 80_000,
         )
         assertEquals(original, GuardSnapshotJson.decode(GuardSnapshotJson.encode(original)))
     }
@@ -727,6 +728,25 @@ class GuardSnapshotJsonTest {
     fun corruptStorageDoesNotThrow() {
         assertEquals(GuardSnapshot(), GuardSnapshotJson.decode(null))
         assertEquals(GuardSnapshot(), GuardSnapshotJson.decode("not-json"))
+    }
+
+    @Test
+    fun jsonNullIsNotThePackageNameNull() {
+        val saved = """{"phase":"NONE","recentAwayPackage":null,"recentAwayAtElapsed":50000,"lastGuardedPackage":"com.instagram.android","visitId":4}"""
+        val decoded = GuardSnapshotJson.decode(saved)
+        assertEquals(null, decoded.recentAwayPackage)
+        assertEquals("com.instagram.android", decoded.lastGuardedPackage)
+        assertTrue(SessionClock.needsOpening(decoded, "com.instagram.android", true, 70_000))
+        assertFalse(
+            SessionClock.needsOpening(decoded.copy(continuedVisit = true), "com.instagram.android", true, 70_000),
+        )
+        val flagged = GuardSnapshotJson.decode(
+            GuardSnapshotJson.encode(
+                decoded.copy(continuedVisit = true, explicitLeavePending = true),
+            ),
+        )
+        assertTrue(flagged.continuedVisit)
+        assertTrue(flagged.explicitLeavePending)
     }
 
     @Test

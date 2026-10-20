@@ -22,10 +22,11 @@ data class AppUse(
 
 object ActiveUse {
     /**
-     * A one-second poll plus a little slack. Anything longer is not evidence
-     * that the guarded app stayed in front.
+     * See [VisitLifecycle.MAX_FOREGROUND_GAP_MILLIS]. A 2.5 second cap dropped
+     * every sample once UsageStats and disk IO made the poll slower than that,
+     * so a five-minute reminder never arrived.
      */
-    const val MAX_CREDIT_MILLIS = 2_500L
+    const val MAX_CREDIT_MILLIS = VisitLifecycle.MAX_FOREGROUND_GAP_MILLIS
 
     fun minutesToMillis(minutes: Int?): Long {
         if (minutes == null || minutes <= 0) return 0

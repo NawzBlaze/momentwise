@@ -158,6 +158,44 @@ class CrossAppPauseTest {
     }
 
     /**
+     * Continue, Home, then a quick return is the same visit. Explicit Leave is
+     * the other test. This emulator is not a phone, and the fixture is not Instagram.
+     */
+    @Test
+    fun continueThenHomeWithinGraceDoesNotShowAgain() {
+        val target = prepare(overlay = true)
+        openFixture(target)
+        assertTrue(
+            "Opening was not visible. ${diagnostics()}",
+            waitFor { overlayWindowVisible() },
+        )
+        val shows = statusFile().lineSequence().count { it.contains("intervention=overlay shown") }
+        shell(
+            "am broadcast -p $APP -a com.nawzblaze.momentwise.DEBUG_ENABLE_RULE " +
+                "--es target_package $target --ez inject_continue true",
+        )
+        assertTrue(
+            "Continue did not dismiss the overlay. ${diagnostics()}",
+            waitFor { !overlayWindowVisible() },
+        )
+        shell("input keyevent KEYCODE_HOME")
+        Thread.sleep(3_000)
+        openFixture(target)
+        Thread.sleep(4_000)
+        val notes = statusFile()
+        val showsAfter = notes.lineSequence().count { it.contains("intervention=overlay shown") }
+        assertEquals(
+            "A return within the grace minute counted as a new opening. tail=${notes.takeLast(500)}",
+            shows,
+            showsAfter,
+        )
+        assertFalse(
+            "A return within the grace minute showed another opening. shows=$showsAfter ${diagnostics()}",
+            overlayWindowVisible(),
+        )
+    }
+
+    /**
      * Times queryEvents in the app process on this emulator. Not a phone, and
      * not a battery percentage.
      */
@@ -292,10 +330,14 @@ class CrossAppPauseTest {
             }
             .take(12)
             .joinToString(" | ")
-        return oneLine("status=[${statusFile()}] package=[$posted] notifications=[$notes]")
+        val choice = statusFile().lineSequence().lastOrNull { it.startsWith("choice=") }.orEmpty()
+        return oneLine("package=[$posted] notifications=[$notes] status=[${statusFile()}] $choice")
     }
 
-    private fun oneLine(text: String): String = text.replace(Regex("\\s+"), " ").take(700)
+    private fun oneLine(text: String): String {
+        val flat = text.replace(Regex("\\s+"), " ")
+        return if (flat.length <= 700) flat else flat.takeLast(700)
+    }
 
     private fun shell(command: String): String {
         val automation = InstrumentationRegistry.getInstrumentation().uiAutomation

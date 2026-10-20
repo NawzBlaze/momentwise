@@ -13,13 +13,23 @@ import java.time.LocalDate
  * the other app, and Continue does not relaunch it. The reminder starts only
  * after Continue.
  */
+/** Set by explicit Leave so a quick return still shows the opening. Process-local. */
+internal object LeaveSignal {
+    @Volatile var packageName: String? = null
+}
+
 class InterventionController(
     private val context: Context,
     private val rules: AppRuleRepository,
     private val sessions: GuardSessionRepository,
 ) {
     suspend fun quit() {
-        sessions.update { SessionClock.onQuit(it) }
+        sessions.update {
+            val pkg = it.activePackage ?: it.lastGuardedPackage ?: it.openingHandledForPackage
+            LeaveSignal.packageName = pkg
+            SessionClock.onQuit(it)
+        }
+        DebugNotes.append(context, "choice=leave")
         // Start home while the overlay, if any, is still visible. Some Android
         // 15 builds only allow that background start when an overlay is already up.
         val home = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).apply {
@@ -45,6 +55,7 @@ class InterventionController(
                 packageName = packageName,
             )
         }
+        DebugNotes.append(context, "choice=continue pkg=$packageName")
         PausePresenter.dismiss(context, PauseDismissReason.CHOICE)
     }
 

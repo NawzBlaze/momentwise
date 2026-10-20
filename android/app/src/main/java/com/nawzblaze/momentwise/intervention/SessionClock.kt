@@ -48,6 +48,31 @@ data class GuardSnapshot(
     val reminderHoldUntilMillis: Long? = null,
     /** Per-app foreground-use. Independent of which visit is currently open. */
     val useByPackage: Map<String, AppUse> = emptyMap(),
+    /**
+     * Monotonic time when this visit left the foreground without explicit Leave.
+     * Null while the visit is in front, or when there is no grace to honor.
+     * Not a wall-clock deadline.
+     */
+    val backgroundedAtElapsed: Long? = null,
+    /**
+     * Package whose visit ended without explicit Leave, and when. A return
+     * inside [VisitLifecycle.GRACE_MILLIS] is still that visit. Cleared by Leave.
+     * Not a wall-clock deadline.
+     */
+    val recentAwayPackage: String? = null,
+    val recentAwayAtElapsed: Long? = null,
+    /** Last guarded package this session knew. Not cleared when the visit ends. */
+    val lastGuardedPackage: String? = null,
+    /**
+     * True only after Continue. A grace stamp without this is not a continued
+     * visit, and must not start the timer on the way back.
+     */
+    val continuedVisit: Boolean = false,
+    /**
+     * Explicit Leave ended the visit. Grace must not turn the next entry into
+     * Continue. Cleared when that next opening is shown, or when they continue.
+     */
+    val explicitLeavePending: Boolean = false,
 ) {
     enum class Phase { NONE, AWAITING_OPENING, CONTINUING }
 
@@ -63,6 +88,10 @@ sealed interface GuardCommand {
 
 object SessionClock {
 
+    /** Android JSON can decode a null package as the word "null". That is not an app. */
+    private fun storedPackage(value: String?): String? =
+        value?.takeUnless { it.isBlank() || it == "null" }
+
     /** Not an exact alarm. The next poll after this hold may show the reminder again. */
     const val REMINDER_REDISPLAY_HOLD_MILLIS = 60_000L
 
@@ -71,10 +100,36 @@ object SessionClock {
         packageName: String,
         ruleEnabled: Boolean,
         today: String,
+        elapsedRealtime: Long = Long.MIN_VALUE,
     ): Pair<GuardSnapshot, GuardCommand> {
         val cleared = clearStaleDismissals(snapshot, today)
-        if (cleared.quitSuppressedPackage == packageName) {
+        // The overlay handback, with no clock, is not a new opening. A later
+        // entry after explicit Leave is. Leave is not Continue.
+        if (storedPackage(cleared.quitSuppressedPackage) == packageName &&
+            (elapsedRealtime == Long.MIN_VALUE || !cleared.explicitLeavePending)
+        ) {
             return cleared to GuardCommand.None
+        }
+        val awayPackage = storedPackage(cleared.recentAwayPackage) ?: storedPackage(cleared.lastGuardedPackage)
+        // Leave wins over a restored grace stamp. A stamp without Continue is not a visit.
+        if (!cleared.explicitLeavePending &&
+            cleared.continuedVisit &&
+            awayPackage == packageName &&
+            VisitLifecycle.withinGrace(cleared.recentAwayAtElapsed, elapsedRealtime)
+        ) {
+            return cleared.copy(
+                activePackage = packageName,
+                phase = if (cleared.phase == GuardSnapshot.Phase.NONE) {
+                    GuardSnapshot.Phase.CONTINUING
+                } else {
+                    cleared.phase
+                },
+                openingHandledForPackage = packageName,
+                backgroundedAtElapsed = null,
+                recentAwayPackage = null,
+                recentAwayAtElapsed = null,
+                quitSuppressedPackage = null,
+            ) to GuardCommand.None
         }
         val ready = if (cleared.quitSuppressedPackage != null) {
             cleared.copy(quitSuppressedPackage = null)
@@ -98,18 +153,20 @@ object SessionClock {
         // Same visit. A no-choice close is not a leave, so this resume is not
         // a new opening. A later leave clears the flag, and the next resume can show.
         if (ready.clearedWithoutChoice && ready.activePackage == packageName) {
-            return ready to GuardCommand.None
+            return ready.copy(backgroundedAtElapsed = null) to GuardCommand.None
         }
-        if (ready.activePackage == packageName &&
-            ready.phase != GuardSnapshot.Phase.NONE &&
-            ready.openingHandledForPackage == packageName
-        ) {
-            return ready to GuardCommand.None
+        // An open visit stays one visit even if the opening flag was not
+        // persisted. A new opening requires the visit to have ended first.
+        if (ready.activePackage == packageName && ready.phase != GuardSnapshot.Phase.NONE) {
+            return ready.copy(backgroundedAtElapsed = null) to GuardCommand.None
         }
         val next = endSession(ready).copy(
             activePackage = packageName,
             phase = GuardSnapshot.Phase.AWAITING_OPENING,
             openingHandledForPackage = packageName,
+            lastGuardedPackage = packageName,
+            continuedVisit = false,
+            explicitLeavePending = false,
             visitId = ready.visitId + 1,
         )
         return next to GuardCommand.ShowOpening(packageName)
@@ -121,24 +178,160 @@ object SessionClock {
      * or the usage event arrived late. It is not a second opening, and it does
      * not put back a pause the user just closed without choosing.
      */
-    fun needsOpening(snapshot: GuardSnapshot, foregroundPackage: String?, ruleEnabled: Boolean): Boolean {
+    fun needsOpening(
+        snapshot: GuardSnapshot,
+        foregroundPackage: String?,
+        ruleEnabled: Boolean,
+        elapsedRealtime: Long = Long.MAX_VALUE,
+    ): Boolean {
         if (foregroundPackage == null || !ruleEnabled) return false
-        if (snapshot.quitSuppressedPackage == foregroundPackage) return false
+        if (snapshot.quitSuppressedPackage == foregroundPackage &&
+            (elapsedRealtime == Long.MAX_VALUE || !snapshot.explicitLeavePending)
+        ) {
+            return false
+        }
+        val awayPackage = storedPackage(snapshot.recentAwayPackage) ?: storedPackage(snapshot.lastGuardedPackage)
+        if (!snapshot.explicitLeavePending &&
+            snapshot.continuedVisit &&
+            awayPackage == foregroundPackage &&
+            VisitLifecycle.withinGrace(snapshot.recentAwayAtElapsed, elapsedRealtime)
+        ) {
+            return false
+        }
         // Stale days are removed before this is called. A remaining entry is today.
         if (snapshot.dismissals[foregroundPackage] != null) return false
-        if (snapshot.clearedWithoutChoice && snapshot.activePackage == foregroundPackage) return false
-        if (snapshot.activePackage == foregroundPackage && snapshot.phase != GuardSnapshot.Phase.NONE) {
+        if (VisitLifecycle.withinGrace(snapshot.backgroundedAtElapsed, elapsedRealtime) &&
+            snapshot.activePackage == foregroundPackage
+        ) {
             return false
+        }
+        if (!VisitLifecycle.graceExpired(snapshot.backgroundedAtElapsed, elapsedRealtime)) {
+            if (snapshot.clearedWithoutChoice && snapshot.activePackage == foregroundPackage) return false
+            if (snapshot.activePackage == foregroundPackage && snapshot.phase != GuardSnapshot.Phase.NONE) {
+                return false
+            }
         }
         return true
     }
 
-    fun onLeft(snapshot: GuardSnapshot): Pair<GuardSnapshot, GuardCommand> {
+    fun onLeft(snapshot: GuardSnapshot, elapsedRealtime: Long = 0L): Pair<GuardSnapshot, GuardCommand> {
         val closed = closeUse(snapshot) { use ->
             if (use.phase == AppUse.Phase.DUE) use.copy(reminderShown = false) else use
         }
-        return endSession(closed).copy(quitSuppressedPackage = null) to GuardCommand.None
+        return markAway(closed, elapsedRealtime).copy(quitSuppressedPackage = null) to GuardCommand.None
     }
+
+    /**
+     * Home, an app switch, or a brief leave. Stops accrual by clearing the
+     * anchor, and keeps the visit for [VisitLifecycle.GRACE_MILLIS]. Explicit
+     * Leave does not come through here: [onQuit] already ended that visit.
+     */
+    fun onTemporarilyAway(snapshot: GuardSnapshot, elapsedRealtime: Long): GuardSnapshot {
+        if (snapshot.quitSuppressedPackage != null) {
+            // The leave after explicit Leave was observed. Do not start a grace
+            // minute; the next entry is a new opening.
+            return endSession(snapshot).copy(
+                quitSuppressedPackage = null,
+                backgroundedAtElapsed = null,
+                recentAwayPackage = null,
+                recentAwayAtElapsed = null,
+            )
+        }
+        if (snapshot.phase == GuardSnapshot.Phase.NONE || snapshot.activePackage == null) {
+            return endSession(snapshot).copy(quitSuppressedPackage = null, backgroundedAtElapsed = null)
+        }
+        return closeUse(snapshot).copy(backgroundedAtElapsed = elapsedRealtime)
+    }
+
+    /** A return at or after the grace boundary is a new visit. Clock going backwards is not a resumed visit. */
+    fun expireGrace(snapshot: GuardSnapshot, elapsedRealtime: Long): GuardSnapshot {
+        if (!VisitLifecycle.graceExpired(snapshot.backgroundedAtElapsed, elapsedRealtime)) return snapshot
+        val started = snapshot.backgroundedAtElapsed ?: elapsedRealtime
+        return markAway(snapshot, started).copy(quitSuppressedPackage = null)
+    }
+
+    /**
+     * Disk JSON does not store [AppUse.anchorElapsed], on purpose: a reboot must
+     * not invent the gap. Reloading that JSON on every poll wiped the anchor and
+     * the timer never advanced. Keep the in-memory anchor when the visit is the
+     * same. A different visit, choice, or package takes the stored snapshot.
+     */
+    fun adoptStored(stored: GuardSnapshot, memory: GuardSnapshot): GuardSnapshot {
+        if (stored.visitId != memory.visitId ||
+            stored.phase != memory.phase ||
+            stored.activePackage != memory.activePackage ||
+            stored.clearedWithoutChoice != memory.clearedWithoutChoice ||
+            stored.quitSuppressedPackage != memory.quitSuppressedPackage
+        ) {
+            return stored
+        }
+        val use = stored.useByPackage.mapValues { (pkg, disk) ->
+            val live = memory.useByPackage[pkg] ?: return@mapValues disk
+            if (live.phase != disk.phase || live.budgetMillis != disk.budgetMillis) disk
+            else disk.copy(
+                accumulatedMillis = maxOf(disk.accumulatedMillis, live.accumulatedMillis),
+                anchorElapsed = live.anchorElapsed,
+                reminderShown = disk.reminderShown || live.reminderShown,
+            )
+        }
+        return stored.copy(useByPackage = use, backgroundedAtElapsed = memory.backgroundedAtElapsed)
+    }
+
+    /**
+     * A choice that landed in storage must not be overwritten by a poll that
+     * started earlier. Accrual that is only ahead in memory is not a choice.
+     */
+    fun canReplace(stored: GuardSnapshot, base: GuardSnapshot): Boolean {
+        if (stored.visitId != base.visitId ||
+            stored.phase != base.phase ||
+            stored.activePackage != base.activePackage ||
+            stored.clearedWithoutChoice != base.clearedWithoutChoice ||
+            stored.quitSuppressedPackage != base.quitSuppressedPackage ||
+            stored.dismissals != base.dismissals ||
+            stored.openingHandledForPackage != base.openingHandledForPackage
+        ) {
+            return false
+        }
+        val pkg = base.activePackage ?: return true
+        val disk = stored.useByPackage[pkg]
+        val live = base.useByPackage[pkg]
+        if (disk == null || live == null) return disk == live
+        if (disk.phase != live.phase || disk.budgetMillis != live.budgetMillis) return false
+        return disk.accumulatedMillis <= live.accumulatedMillis
+    }
+
+    /** Phase, grace, and a reminder are written immediately. Plain accrual can wait five seconds. */
+    fun shouldFlush(before: GuardSnapshot, after: GuardSnapshot): Boolean {
+        if (before.phase != after.phase ||
+            before.visitId != after.visitId ||
+            before.activePackage != after.activePackage ||
+            before.backgroundedAtElapsed != after.backgroundedAtElapsed ||
+            before.clearedWithoutChoice != after.clearedWithoutChoice ||
+            before.quitSuppressedPackage != after.quitSuppressedPackage ||
+            before.dismissals != after.dismissals ||
+            before.openingHandledForPackage != after.openingHandledForPackage
+        ) {
+            return true
+        }
+        val packages = before.useByPackage.keys + after.useByPackage.keys
+        for (pkg in packages) {
+            val earlier = before.useByPackage[pkg]
+            val later = after.useByPackage[pkg]
+            if (earlier == null || later == null) return true
+            if (earlier.phase != later.phase ||
+                earlier.budgetMillis != later.budgetMillis ||
+                earlier.reminderShown != later.reminderShown
+            ) {
+                return true
+            }
+            if (kotlin.math.abs(later.accumulatedMillis - earlier.accumulatedMillis) >= FLUSH_USE_EVERY_MILLIS) {
+                return true
+            }
+        }
+        return false
+    }
+
+    const val FLUSH_USE_EVERY_MILLIS = 5_000L
 
     /**
      * Samples foreground-use. [nowMillis] is not a reminder deadline.
@@ -197,8 +390,30 @@ object SessionClock {
      * does not start a reminder. The same package is not paused again until
      * Usage Access has seen the user leave, or open something else.
      */
-    fun onQuit(snapshot: GuardSnapshot): GuardSnapshot =
-        endSession(snapshot).copy(quitSuppressedPackage = snapshot.activePackage)
+    fun onQuit(snapshot: GuardSnapshot): GuardSnapshot {
+        val pkg = snapshot.activePackage
+            ?: snapshot.openingHandledForPackage
+            ?: snapshot.lastGuardedPackage
+        return endSession(snapshot).copy(
+            quitSuppressedPackage = pkg,
+            explicitLeavePending = pkg != null,
+            continuedVisit = false,
+            recentAwayPackage = null,
+            recentAwayAtElapsed = null,
+        )
+    }
+
+    /**
+     * Explicit Leave has been followed by a real later entry, or another app
+     * is already in front. The overlay handback is over, so the next open is
+     * a new visit. This does not start a grace minute.
+     */
+    fun finishExplicitLeave(snapshot: GuardSnapshot): GuardSnapshot = snapshot.copy(
+        quitSuppressedPackage = null,
+        recentAwayPackage = null,
+        recentAwayAtElapsed = null,
+        backgroundedAtElapsed = null,
+    )
 
     /**
      * Continue starts the reminder from this moment when the interval is enabled.
@@ -227,6 +442,12 @@ object SessionClock {
             quitSuppressedPackage = null,
             clearedWithoutChoice = false,
             reminderHoldUntilMillis = null,
+            backgroundedAtElapsed = null,
+            recentAwayPackage = null,
+            recentAwayAtElapsed = null,
+            lastGuardedPackage = pkg ?: snapshot.lastGuardedPackage,
+            continuedVisit = pkg != null,
+            explicitLeavePending = false,
             useByPackage = use,
         )
     }
@@ -244,6 +465,7 @@ object SessionClock {
             reminderPresentedFor = null,
             clearedWithoutChoice = false,
             reminderHoldUntilMillis = null,
+            backgroundedAtElapsed = null,
             useByPackage = use,
         )
     }
@@ -265,6 +487,7 @@ object SessionClock {
             quitSuppressedPackage = null,
             clearedWithoutChoice = false,
             reminderHoldUntilMillis = null,
+            backgroundedAtElapsed = null,
         )
     }
 
@@ -319,13 +542,26 @@ object SessionClock {
 
     /**
      * After process death, keep the session when Usage Access has not reported
-     * a package yet. An empty window is not proof the user left. End it only
-     * when a different package is actually observed.
+     * a package yet. An empty window is not proof the user left. A different
+     * package ends it only when this process did not already start the grace
+     * minute. Waking the screen and seeing the launcher is not a new visit.
      */
-    fun reconcileAfterRestart(snapshot: GuardSnapshot, observedPackage: String?): GuardSnapshot {
-        if (snapshot.phase == GuardSnapshot.Phase.NONE) return snapshot
-        if (observedPackage == null || observedPackage == snapshot.activePackage) return snapshot
-        return endSession(snapshot)
+    fun reconcileAfterRestart(
+        snapshot: GuardSnapshot,
+        observedPackage: String?,
+        elapsedRealtime: Long = Long.MAX_VALUE,
+    ): GuardSnapshot {
+        val current = expireGrace(snapshot, elapsedRealtime)
+        if (current.phase == GuardSnapshot.Phase.NONE) return current
+        if (observedPackage == null || observedPackage == current.activePackage) {
+            return if (observedPackage == current.activePackage) {
+                current.copy(backgroundedAtElapsed = null)
+            } else {
+                current
+            }
+        }
+        if (VisitLifecycle.withinGrace(current.backgroundedAtElapsed, elapsedRealtime)) return current
+        return markAway(current, elapsedRealtime)
     }
 
     /**
@@ -367,6 +603,35 @@ object SessionClock {
         return snapshot.copy(useByPackage = snapshot.useByPackage.mapValues { (_, use) -> adjust(ActiveUse.close(use)) })
     }
 
+    /**
+     * A non-Leave end. Grace applies only after Continue. Ending an unanswered
+     * opening must not resume as if they had continued.
+     */
+    private fun markAway(snapshot: GuardSnapshot, elapsedRealtime: Long): GuardSnapshot {
+        val ended = endSession(snapshot)
+        if (snapshot.phase != GuardSnapshot.Phase.CONTINUING) {
+            return ended.copy(
+                backgroundedAtElapsed = null,
+                recentAwayPackage = null,
+                recentAwayAtElapsed = null,
+            )
+        }
+        val awayAt = when {
+            elapsedRealtime > 0L -> elapsedRealtime
+            snapshot.backgroundedAtElapsed != null -> snapshot.backgroundedAtElapsed
+            else -> ended.recentAwayAtElapsed
+        }
+        val pkg = snapshot.activePackage
+            ?: snapshot.openingHandledForPackage
+            ?: snapshot.lastGuardedPackage
+            ?: snapshot.recentAwayPackage
+        return ended.copy(
+            backgroundedAtElapsed = null,
+            recentAwayPackage = pkg,
+            recentAwayAtElapsed = if (pkg == null) null else awayAt,
+        )
+    }
+
     private fun endSession(snapshot: GuardSnapshot): GuardSnapshot = closeUse(snapshot).copy(
         activePackage = null,
         phase = GuardSnapshot.Phase.NONE,
@@ -375,6 +640,12 @@ object SessionClock {
         openingHandledForPackage = null,
         clearedWithoutChoice = false,
         reminderHoldUntilMillis = null,
+        backgroundedAtElapsed = null,
+        recentAwayPackage = snapshot.activePackage
+            ?: snapshot.openingHandledForPackage
+            ?: snapshot.lastGuardedPackage
+            ?: snapshot.recentAwayPackage,
+        recentAwayAtElapsed = snapshot.backgroundedAtElapsed ?: snapshot.recentAwayAtElapsed,
     )
 }
 
