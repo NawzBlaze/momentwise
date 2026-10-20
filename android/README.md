@@ -15,8 +15,9 @@ A single-module Jetpack Compose app:
 - Welcome, Home, Apps, Configure Rule, opening-notice preview, reminder preview, Settings.
 - Per-app rules in DataStore, keyed by package name. Validation, rule isolation, the usage-event reducer, and the reminder session clock have JVM unit tests.
 - Launchable apps from the device. Foundation sample ids are dropped, not copied onto real apps.
-- Usage Access, display over other apps, and notifications are explained before a rule is enabled. Decline leaves monitoring off.
-- A `specialUse` foreground service and a pause. With display-over-other-apps, that pause is a visible middle card and scrim. Without it, it is a notification that does not block the other app. Leave is a home intent, not a force-stop. This has not been run on a physical phone here.
+- Usage Access, display over other apps, and notifications are explained before a rule is enabled. The rows re-read Android on return. Green Allowed means the grant is on. A button tap does not mark a grant. Decline leaves monitoring off and does not delete rules.
+- A new rule's pause asks "Is this where you want your time to go?" Leave goes home. "I'm here with purpose" stays, and its supporting line uses the saved interval. Never does not promise a reminder. Dismiss reminder is only on the reminder card. The in-app preview uses that same card and does not start a session. A saved custom prompt is kept.
+- A `specialUse` foreground service and a pause. With display-over-other-apps, that pause is a visible middle card and scrim. Without it, it is a notification that does not block the other app. Leave is a home intent, not a force-stop. The one-second poll is unchanged. A shorter usage-event window during a steady poll is not a phone lag or battery measurement. This has not been run on a physical phone here.
 - After process death, an unanswered opening or a due reminder is shown again if Usage Access still sees that app. An empty event window does not end the session. This decision is unit-tested, not device-tested.
 
 The intervention design, and what is still unverified on a device, is in

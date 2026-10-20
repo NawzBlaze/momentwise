@@ -118,6 +118,8 @@ class PauseActivity : ComponentActivity() {
         private const val EXTRA_SECONDARY = "pause_secondary"
         private const val EXTRA_TERTIARY = "pause_tertiary"
         private const val EXTRA_SNOOZE = "pause_snooze"
+        private const val EXTRA_PRIMARY_SUPPORT = "pause_primary_support"
+        private const val EXTRA_SECONDARY_SUPPORT = "pause_secondary_support"
         private const val EXTRA_FROM_NOTIFICATION = "pause_from_notification"
 
         fun intent(context: Context, request: PauseRequest): Intent =
@@ -131,6 +133,8 @@ class PauseActivity : ComponentActivity() {
                 putExtra(EXTRA_PRIMARY, request.primaryLabel)
                 putExtra(EXTRA_SECONDARY, request.secondaryLabel)
                 putExtra(EXTRA_TERTIARY, request.tertiaryLabel)
+                putExtra(EXTRA_PRIMARY_SUPPORT, request.primarySupport)
+                putExtra(EXTRA_SECONDARY_SUPPORT, request.secondarySupport)
                 putExtra(EXTRA_SNOOZE, request.snoozeMinutes)
                 putExtra(EXTRA_FROM_NOTIFICATION, request.fromNotification)
             }
@@ -149,6 +153,15 @@ class PauseActivity : ComponentActivity() {
                 primaryLabel = intent.getStringExtra(EXTRA_PRIMARY).orEmpty(),
                 secondaryLabel = intent.getStringExtra(EXTRA_SECONDARY).orEmpty(),
                 tertiaryLabel = intent.getStringExtra(EXTRA_TERTIARY),
+                primarySupport = intent.getStringExtra(EXTRA_PRIMARY_SUPPORT)
+                    ?.ifBlank { null } ?: InterventionSurface.LEAVE_SUPPORT,
+                secondarySupport = intent.getStringExtra(EXTRA_SECONDARY_SUPPORT)
+                    ?.ifBlank { null }
+                    ?: if (kind == PauseRequest.Kind.REMINDER) {
+                        InterventionSurface.snoozeSupport(intent.getIntExtra(EXTRA_SNOOZE, 10))
+                    } else {
+                        ""
+                    },
                 snoozeMinutes = intent.getIntExtra(EXTRA_SNOOZE, 10),
                 fromNotification = intent.getBooleanExtra(EXTRA_FROM_NOTIFICATION, false),
             )

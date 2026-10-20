@@ -1,7 +1,6 @@
 package com.nawzblaze.momentwise.ui.screens
 
 import android.Manifest
-import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -34,9 +33,12 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nawzblaze.momentwise.MomentwiseViewModel
 import com.nawzblaze.momentwise.R
+import com.nawzblaze.momentwise.monitoring.GrantChecks
 import com.nawzblaze.momentwise.monitoring.GrantIntents
 import com.nawzblaze.momentwise.data.model.ThemeMode
+import com.nawzblaze.momentwise.ui.components.GrantStatusLine
 import com.nawzblaze.momentwise.ui.components.MomentwiseTopBar
+import com.nawzblaze.momentwise.ui.components.grantActionLabel
 import com.nawzblaze.momentwise.ui.components.RuleSwitch
 import com.nawzblaze.momentwise.ui.components.SectionCard
 import com.nawzblaze.momentwise.ui.components.ThemeSegmentedControl
@@ -64,7 +66,7 @@ fun SettingsScreen(
     var confirmReset by remember { mutableStateOf(false) }
     val notificationPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
-    ) { }
+    ) { GrantRefresh.bump() }
 
     if (confirmReset) {
         AlertDialog(
@@ -219,23 +221,21 @@ fun SettingsScreen(
                 AccessRow(
                     label = stringResource(R.string.disclosure_usage_title),
                     allowed = grants.usageAccess,
-                    action = stringResource(R.string.disclosure_usage_action),
                     onAction = { GrantIntents.launch(context, GrantIntents.usageAccess(context)) },
                 )
                 VerticalSpacer(10)
                 AccessRow(
                     label = stringResource(R.string.disclosure_overlay_title),
                     allowed = grants.overlay,
-                    action = stringResource(R.string.disclosure_overlay_action),
+                    optional = true,
                     onAction = { GrantIntents.launch(context, GrantIntents.overlay(context)) },
                 )
                 VerticalSpacer(10)
                 AccessRow(
                     label = stringResource(R.string.disclosure_notifications_title),
                     allowed = grants.notifications,
-                    action = stringResource(R.string.disclosure_notifications_action),
                     onAction = {
-                        if (Build.VERSION.SDK_INT >= 33 && !grants.notifications) {
+                        if (GrantChecks.notificationRuntimeMissing(context)) {
                             notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
                         } else {
                             GrantIntents.launch(context, GrantIntents.notificationSettings(context))
@@ -320,21 +320,21 @@ fun SettingsScreen(
 private fun AccessRow(
     label: String,
     allowed: Boolean,
-    action: String,
     onAction: () -> Unit,
+    optional: Boolean = false,
 ) {
-    val colors = LocalMomentwiseColors.current
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.weight(1f)) {
             Text(label, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-            Text(
-                text = stringResource(if (allowed) R.string.grant_allowed else R.string.grant_not_allowed),
-                style = MaterialTheme.typography.bodySmall,
-                color = if (allowed) colors.statusGreen else colors.textTertiary,
-            )
+            VerticalSpacer(4)
+            GrantStatusLine(allowed = allowed, optional = optional)
         }
-        OutlinedButton(onClick = onAction, shape = RoundedCornerShape(10.dp)) {
-            Text(action)
+        if (allowed) {
+            TextButton(onClick = onAction) { Text(grantActionLabel(allowed = true)) }
+        } else {
+            OutlinedButton(onClick = onAction, shape = RoundedCornerShape(10.dp)) {
+                Text(grantActionLabel(allowed = false))
+            }
         }
     }
 }

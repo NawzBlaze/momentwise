@@ -10,6 +10,8 @@ data class PauseRequest(
     val primaryLabel: String,
     val secondaryLabel: String,
     val tertiaryLabel: String? = null,
+    val primarySupport: String = InterventionSurface.LEAVE_SUPPORT,
+    val secondarySupport: String = "",
     val snoozeMinutes: Int = 10,
     val fromNotification: Boolean = false,
 ) {

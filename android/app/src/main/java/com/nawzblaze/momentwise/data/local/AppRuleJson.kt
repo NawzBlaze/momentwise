@@ -73,7 +73,7 @@ internal object AppRuleJson {
                 action = RuleAction.LEAVE_APP,
             ),
             continueOption = ResponseOption(
-                label = json.optString("option2Label").ifBlank { RuleDefaults.CONTINUE_OPTION_LABEL },
+                label = migrateContinueLabel(json.optString("option2Label")),
                 action = RuleAction.CONTINUE_INTO_APP,
             ),
             reminderFrequency = ReminderFrequencyCodec.decode(json.optString("reminderFrequency")),
@@ -90,19 +90,30 @@ internal object AppRuleJson {
     }
 
     /**
-     * Blank notices, and the older foundation string "You Are Distracted", fall
-     * back to the current default. A saved prompt is kept, including the
-     * previous default "What brought you here?". Changing the new-rule default
-     * must not rewrite that.
+     * Blank notices and the two shipped generic prompts fall back to the
+     * current default. A saved custom prompt is kept, including
+     * "What brought you here?". Intervals are not touched here.
      */
     private fun migrateOpeningNotice(raw: String): String {
         val trimmed = raw.trim()
-        return if (trimmed.isEmpty() || trimmed.equals(LEGACY_OPENING_NOTICE, ignoreCase = true)) {
-            RuleDefaults.OPENING_NOTICE
+        val legacy = trimmed.isEmpty() ||
+            LEGACY_OPENING_NOTICES.any { it.equals(trimmed, ignoreCase = true) }
+        return if (legacy) RuleDefaults.OPENING_NOTICE else trimmed
+    }
+
+    /** The previous shipped label only. A renamed button stays. */
+    private fun migrateContinueLabel(raw: String): String {
+        val trimmed = raw.trim()
+        return if (trimmed.isEmpty() || trimmed == LEGACY_CONTINUE_LABEL) {
+            RuleDefaults.CONTINUE_OPTION_LABEL
         } else {
             trimmed
         }
     }
 
-    private const val LEGACY_OPENING_NOTICE = "You Are Distracted"
+    private val LEGACY_OPENING_NOTICES = setOf(
+        "You Are Distracted",
+        "What do you want to do right now?",
+    )
+    private const val LEGACY_CONTINUE_LABEL = "Continue"
 }

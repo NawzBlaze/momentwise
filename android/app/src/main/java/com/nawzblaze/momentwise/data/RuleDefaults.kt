@@ -9,15 +9,16 @@ import com.nawzblaze.momentwise.intervention.InterventionSurface
 /**
  * Defaults for a newly configured rule.
  *
- * Saved copy is not rewritten when these change. A stored notice, button
- * label, or interval stays as the user saved it. The browser prototype is a
- * separate design reference and still has the older wording.
+ * A stored custom notice, button label, or interval stays as the user saved
+ * it. Decoding replaces only the previous shipped generic prompt and the
+ * previous shipped Continue label. The browser prototype is a separate
+ * design reference and still has the older wording.
  */
 object RuleDefaults {
     const val OPENING_HEADING = InterventionSurface.OPENING_HEADING
-    const val OPENING_NOTICE = "What do you want to do right now?"
+    const val OPENING_NOTICE = InterventionSurface.OPENING_SUPPORT
     const val QUIT_OPTION_LABEL = "Leave"
-    const val CONTINUE_OPTION_LABEL = "Continue"
+    const val CONTINUE_OPTION_LABEL = InterventionSurface.CONTINUE_LABEL
     const val REMINDER_NOTICE = "You're still here?"
     const val ADV_QUIT_LABEL = "Okay, I'm quitting"
     const val ADV_SNOOZE_LABEL = "Wait"

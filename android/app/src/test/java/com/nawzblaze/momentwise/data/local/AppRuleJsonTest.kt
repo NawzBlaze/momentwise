@@ -81,6 +81,23 @@ class AppRuleJsonTest {
     }
 
     @Test
+    fun shippedGenericPromptAndContinueLabelAreReplaced() {
+        val saved = JSONArray().put(
+            JSONObject()
+                .put("appId", "com.instagram.android")
+                .put("appName", "Instagram")
+                .put("openingNotice", "What do you want to do right now?")
+                .put("option2Label", "Continue")
+                .put("reminderFrequency", "minutes:5"),
+        )
+        val rule = AppRuleJson.decodeList(saved.toString())!!.single()
+
+        assertEquals(RuleDefaults.OPENING_NOTICE, rule.openingNotice)
+        assertEquals(RuleDefaults.CONTINUE_OPTION_LABEL, rule.continueOption.label)
+        assertEquals(ReminderFrequency.EveryMinutes(5), rule.reminderFrequency)
+    }
+
+    @Test
     fun corruptStorageDoesNotThrow() {
         assertNull(AppRuleJson.decodeList(null))
         assertNull(AppRuleJson.decodeList(""))

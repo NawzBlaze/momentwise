@@ -310,7 +310,7 @@ class MonitoringService : Service() {
         val now = System.currentTimeMillis()
         noteBeat(now)
         val today = LocalDate.now().toString()
-        val events = readEvents(EventWindow.queryStart(now), now)
+        val events = readEvents(EventWindow.steadyStart(now, detector.lastEventTimeMillis), now)
         val reduced = UsageEventReducer.reduce(
             state = detector,
             events = events,
@@ -448,6 +448,10 @@ class MonitoringService : Service() {
                 heading = InterventionSurface.OPENING_HEADING,
                 primaryLabel = rule.quitOption.label,
                 secondaryLabel = rule.continueOption.label,
+                primarySupport = InterventionSurface.LEAVE_SUPPORT,
+                secondarySupport = InterventionSurface.continueSupport(
+                    rule.reminderFrequency.minutesOrNull(),
+                ),
             )
         } else {
             PauseRequest(
@@ -459,6 +463,8 @@ class MonitoringService : Service() {
                 primaryLabel = rule.reminderActions.quitLabel,
                 secondaryLabel = rule.reminderActions.snoozeLabel,
                 tertiaryLabel = rule.reminderActions.dismissLabel,
+                primarySupport = InterventionSurface.LEAVE_SUPPORT,
+                secondarySupport = InterventionSurface.snoozeSupport(rule.reminderActions.snoozeMinutes),
                 snoozeMinutes = rule.reminderActions.snoozeMinutes,
             )
         }

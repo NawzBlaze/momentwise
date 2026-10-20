@@ -48,9 +48,10 @@
         <span class="nav-toggle-label">Menu</span>
       </button>
       <nav id="site-nav" class="site-nav" aria-label="Primary">
+        <a href="#benefits">Why it helps</a>
         <a href="#how">How it works</a>
         <a href="#permissions">Permissions</a>
-        <a href="#download">Download</a>
+        <a href="#faq">Questions</a>
       </nav>
       <div class="header-tools">
         <a class="header-source" href="https://github.com/NawzBlaze/momentwise" target="_blank" rel="noopener noreferrer">Source</a>
@@ -76,12 +77,44 @@
             <button type="button" class="button button-primary" disabled aria-disabled="true">Download for Android</button>
             <a class="button button-secondary" href="https://github.com/NawzBlaze/momentwise" target="_blank" rel="noopener noreferrer">View source code</a>
           </div>
-          <p class="status-line">Download for Android is not available. A signed release has not been published, and this page will not link a missing file.</p>
+          <p class="status-line">A signed download is not available yet.</p>
         </div>
         <figure class="mark-panel">
-          <img src="./assets/logo.png" alt="Momentwise mark: a flowing forest-green M with a golden sunrise." width="220" height="220">
-          <figcaption>The Momentwise mark. Not a screenshot of the app.</figcaption>
+          <div class="pause-card">
+            <p class="eyebrow">MOMENTWISE</p>
+            <h2>Is this where you want your time to go?</h2>
+            <p class="support">Take a breath. Choose what you want to do next.</p>
+            <div class="pause-choice primary">
+              <strong>Leave Instagram</strong>
+              <span>Step away and return to your home screen.</span>
+            </div>
+            <div class="pause-choice secondary">
+              <strong>I'm here with purpose</strong>
+              <span>Continue, with a reminder in 5 minutes.</span>
+            </div>
+          </div>
+          <figcaption>The pause, drawn from the product copy. Not a photograph of a phone.</figcaption>
         </figure>
+      </div>
+    </section>
+
+    <section id="benefits" class="section section-alt" aria-labelledby="benefits-title">
+      <div class="container">
+        <h2 id="benefits-title">A pause, not a lock</h2>
+        <div class="benefits">
+          <article class="benefit">
+            <h3>Notice the automatic tap</h3>
+            <p>The question appears when you open an app you chose. It does not hide the app or take the choice away.</p>
+          </article>
+          <article class="benefit">
+            <h3>Leave, or stay on purpose</h3>
+            <p>Leave returns to the home screen. Staying starts your reminder only if you set one.</p>
+          </article>
+          <article class="benefit">
+            <h3>Your words, your interval</h3>
+            <p>Write your own prompt. Set a reminder, including Never. Each app keeps its own rule.</p>
+          </article>
+        </div>
       </div>
     </section>
 
@@ -98,12 +131,12 @@
           <li>
             <span class="step-index">2</span>
             <h3>Pause when you open one</h3>
-            <p>A new rule asks what you want to do right now. Leave goes home. Continue stays. Closing the pause without choosing is not Continue.</p>
+            <p>The pause asks if this is where you want your time to go. Leave goes home. Staying is a choice. Closing the pause without choosing is not that choice.</p>
           </li>
           <li>
             <span class="step-index">3</span>
             <h3>Reminders, if you want them</h3>
-            <p>A new rule starts at 5 minutes, after Continue. Never still shows the opening and does not schedule a reminder. The interval is not an exact alarm.</p>
+            <p>A new rule checks in after 5 minutes, once you choose to stay. Never still shows the opening and does not schedule a reminder.</p>
           </li>
           <li>
             <span class="step-index">4</span>
@@ -132,16 +165,27 @@
             <dd>Optional. When allowed, a card covers about the middle of the screen and the other app stays visible behind a scrim. Touches do not pass through. You can skip it.</dd>
           </div>
         </dl>
-        <p>Rules stay on the device. There is no Momentwise account. The app does not include an advertising or analytics SDK. Android and GitHub have their own logs.</p>
+        <p>Rules stay on the phone. There is no Momentwise account.</p>
       </div>
     </section>
 
-    <section id="download" class="section" aria-labelledby="download-title">
+    <section id="faq" class="section" aria-labelledby="faq-title">
       <div class="container narrow">
-        <h2 id="download-title">Download</h2>
-        <p>Momentwise is not on Google Play. A signed Android download is not published yet, so the button above stays off.</p>
-        <p>The source is public. Build and signing notes live in the repository, not on this page. A debug build is not the release.</p>
-        <p>Leave does not force-stop the other app. A phone battery manager can stop monitoring. The pause can be about a second late, and some phones delay it further. That has not been measured as a battery percentage.</p>
+        <h2 id="faq-title">Questions</h2>
+        <div class="faq">
+          <details>
+            <summary>Does Momentwise block the other app?</summary>
+            <p>No. Leave returns to the home screen. It does not force-stop the other app. If display over other apps is off, you get a notification instead, and the other app is not covered.</p>
+          </details>
+          <details>
+            <summary>Can I turn reminders off?</summary>
+            <p>Yes. Never still shows the opening pause and does not schedule a reminder. A custom interval uses the minutes you saved, not a fixed 5.</p>
+          </details>
+          <details>
+            <summary>Where is the download?</summary>
+            <p>Momentwise is not on Google Play. A signed download is not published yet, so the button stays off.</p>
+          </details>
+        </div>
       </div>
     </section>
   </main>
@@ -161,7 +205,7 @@
         <li><a href="#permissions">Permissions</a></li>
         <li><a href="#download">Download</a></li>
       </ul>
-      <p class="footer-note">Not a Play release. No signed APK is published. The pause has not been proven on a physical phone from this workspace.</p>
+      <p class="footer-note">Not on Google Play. A signed download is not available yet.</p>
     </div>
   </footer>
   <script src="./script.js"></script>

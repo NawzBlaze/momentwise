@@ -11,7 +11,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -21,6 +21,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -32,6 +33,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.nawzblaze.momentwise.R
 import com.nawzblaze.momentwise.intervention.InterventionSurface
 import com.nawzblaze.momentwise.intervention.PauseRequest
@@ -76,36 +78,39 @@ fun PauseScreen(
                 modifier = Modifier
                     .padding(horizontal = 20.dp)
                     .fillMaxWidth()
-                    .height(maxHeight * InterventionSurface.CARD_HEIGHT_FRACTION)
+                    .heightIn(max = maxHeight * InterventionSurface.CARD_HEIGHT_FRACTION)
                     .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(24.dp))
                     .border(1.dp, colors.border, RoundedCornerShape(24.dp))
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 22.dp, vertical = 20.dp)
+                    .padding(horizontal = 22.dp, vertical = 22.dp)
                     .semantics { contentDescription = InterventionSurface.WINDOW_TITLE },
             ) {
                 Text(
-                    text = request.appName,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = colors.textTertiary,
+                    text = InterventionSurface.EYEBROW,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.accentText,
+                    letterSpacing = 1.4.sp,
                     textAlign = TextAlign.Center,
                 )
-                VerticalSpacer(8)
+                VerticalSpacer(14)
                 Text(
                     text = request.heading,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = colors.accentText,
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onBackground,
                     fontWeight = FontWeight.SemiBold,
                     textAlign = TextAlign.Center,
                 )
-                VerticalSpacer(10)
-                Text(
-                    text = request.notice,
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    textAlign = TextAlign.Center,
-                )
+                if (request.notice.isNotBlank()) {
+                    VerticalSpacer(8)
+                    Text(
+                        text = request.notice,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = colors.textSecondary,
+                        textAlign = TextAlign.Center,
+                    )
+                }
                 if (request.fromNotification) {
-                    VerticalSpacer(10)
+                    VerticalSpacer(8)
                     Text(
                         text = stringResource(R.string.pause_from_notification),
                         style = MaterialTheme.typography.bodySmall,
@@ -113,46 +118,81 @@ fun PauseScreen(
                         textAlign = TextAlign.Center,
                     )
                 }
-                VerticalSpacer(18)
-                Button(
+                VerticalSpacer(22)
+                PauseChoiceButton(
+                    label = request.primaryLabel,
+                    support = request.primarySupport,
+                    emphasized = true,
                     onClick = onQuit,
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
-                    shape = RoundedCornerShape(14.dp),
-                ) {
-                    Text(request.primaryLabel, fontWeight = FontWeight.SemiBold)
-                }
+                )
                 VerticalSpacer(10)
-                OutlinedButton(
+                PauseChoiceButton(
+                    label = request.secondaryLabel,
+                    support = request.secondarySupport,
+                    emphasized = false,
                     onClick = onSecondary,
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
-                    shape = RoundedCornerShape(14.dp),
-                    border = BorderStroke(1.dp, colors.textSecondary),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = MaterialTheme.colorScheme.onSurface,
-                    ),
-                ) {
-                    Text(request.secondaryLabel, fontWeight = FontWeight.SemiBold)
-                }
+                )
                 if (request.kind == PauseRequest.Kind.REMINDER && request.tertiaryLabel != null) {
-                    VerticalSpacer(8)
-                    OutlinedButton(
-                        onClick = onDismissReminder,
-                        modifier = Modifier.fillMaxWidth().height(52.dp),
-                        shape = RoundedCornerShape(14.dp),
-                        border = BorderStroke(1.dp, colors.border),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
-                    ) {
-                        Text(request.tertiaryLabel, fontWeight = FontWeight.SemiBold)
+                    TextButton(onClick = onDismissReminder, modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = request.tertiaryLabel,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.textSecondary,
+                        )
                     }
                 }
-                VerticalSpacer(14)
+            }
+        }
+    }
+}
+
+@Composable
+private fun PauseChoiceButton(
+    label: String,
+    support: String,
+    emphasized: Boolean,
+    onClick: () -> Unit,
+) {
+    val colors = LocalMomentwiseColors.current
+    val description = if (support.isBlank()) label else "$label. $support"
+    val content: @Composable () -> Unit = {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(label, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+            if (support.isNotBlank()) {
                 Text(
-                    text = stringResource(R.string.pause_quit_honesty),
+                    text = support,
                     style = MaterialTheme.typography.bodySmall,
-                    color = colors.textMuted,
                     textAlign = TextAlign.Center,
+                    color = if (emphasized) {
+                        MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.86f)
+                    } else {
+                        colors.textSecondary
+                    },
                 )
             }
         }
+    }
+    val modifier = Modifier
+        .fillMaxWidth()
+        .heightIn(min = 56.dp)
+        .semantics { contentDescription = description }
+    if (emphasized) {
+        Button(
+            onClick = onClick,
+            modifier = modifier,
+            shape = RoundedCornerShape(14.dp),
+            content = { content() },
+        )
+    } else {
+        OutlinedButton(
+            onClick = onClick,
+            modifier = modifier,
+            shape = RoundedCornerShape(14.dp),
+            border = BorderStroke(1.dp, colors.textSecondary),
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = MaterialTheme.colorScheme.onSurface,
+            ),
+            content = { content() },
+        )
     }
 }

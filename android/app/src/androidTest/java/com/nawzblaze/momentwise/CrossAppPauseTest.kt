@@ -232,7 +232,7 @@ class CrossAppPauseTest {
         val notes = notificationDump().lineSequence()
             .filter {
                 it.contains("Momentwise") || it.contains("momentwise") ||
-                    it.contains("not blocked") || it.contains("Before you scroll") ||
+                    it.contains("not blocked") || it.contains("Is this where") ||
                     it.contains("guarding")
             }
             .take(12)
@@ -250,6 +250,6 @@ class CrossAppPauseTest {
 
     companion object {
         private const val APP = "com.nawzblaze.momentwise"
-        private const val PROMPT = "What do you want to do right now?"
+        private const val PROMPT = "Take a breath"
     }
 }
