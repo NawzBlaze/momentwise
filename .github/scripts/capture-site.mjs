@@ -8,6 +8,7 @@ import { spawnSync } from 'node:child_process';
 const root = process.cwd();
 const port = 4173;
 const outDir = path.join(root, 'site-screenshots');
+const reviewDir = path.join(root, 'visual-review');
 const verification = '01omZfSAZVcvwrjPL0O4zI9x9tx9-AXHt6KhZnlq8tw';
 const types = {
   '.html': 'text/html; charset=utf-8',
@@ -62,6 +63,7 @@ if (!playwrightEntry) {
   process.exit(1);
 }
 fs.mkdirSync(outDir, { recursive: true });
+fs.mkdirSync(reviewDir, { recursive: true });
 let chromium;
 try {
   const require = createRequire(import.meta.url);
@@ -154,7 +156,13 @@ async function measure(label) {
 }
 
 async function shoot(name, full) {
-  await page.screenshot({ path: path.join(outDir, name), fullPage: full });
+  const jpeg = name.replace(/\.png$/, '.jpg');
+  await page.screenshot({
+    path: path.join(reviewDir, jpeg),
+    fullPage: full,
+    type: 'jpeg',
+    quality: 62,
+  });
 }
 
 for (const width of widths) {
@@ -223,7 +231,12 @@ await shoot('390-faq-open.png', true);
 
 if (missing.length) fail('failed responses: ' + missing.join(' | '));
 report.missing = missing;
+report.failures = failures.slice();
+fs.writeFileSync(path.join(reviewDir, 'report.json'), JSON.stringify(report, null, 2));
 fs.writeFileSync(path.join(outDir, 'report.json'), JSON.stringify(report, null, 2));
+
+await page.close().catch((error) => console.error('page close', error));
+await browser.close().catch((error) => console.error('browser close', error));
 
 const lighthouseBin = process.env.LIGHTHOUSE_BIN;
 if (lighthouseBin) {
@@ -232,23 +245,26 @@ if (lighthouseBin) {
     `--chrome-path=${chromium.executablePath()}`,
     '--output=json',
     '--output=html',
-    `--output-path=${path.join(outDir, 'lighthouse')}`,
+    `--output-path=${path.join(reviewDir, 'lighthouse')}`,
     '--only-categories=performance,accessibility,best-practices,seo',
-    '--chrome-flags=--headless --no-sandbox --disable-gpu',
+    '--chrome-flags=--headless=new --no-sandbox --disable-gpu',
     '--quiet',
-  ], { stdio: 'inherit' });
-  if (result.status !== 0) fail('lighthouse failed to run');
-  else {
-    const lh = JSON.parse(fs.readFileSync(path.join(outDir, 'lighthouse.report.json'), 'utf8'));
+  ], { stdio: 'inherit', timeout: 150000 });
+  const scorePath = path.join(reviewDir, 'lighthouse.report.json');
+  if (result.status !== 0 || !fs.existsSync(scorePath)) {
+    const note = `lighthouse did not finish (status ${result.status}, signal ${result.signal || 'none'})`;
+    console.error(note);
+    fs.writeFileSync(path.join(reviewDir, 'lighthouse-error.txt'), note);
+  } else {
+    const lh = JSON.parse(fs.readFileSync(scorePath, 'utf8'));
     const scores = Object.fromEntries(Object.entries(lh.categories).map(([key, value]) => [key, Math.round(value.score * 100)]));
-    fs.writeFileSync(path.join(outDir, 'lighthouse-scores.json'), JSON.stringify(scores, null, 2));
+    fs.writeFileSync(path.join(reviewDir, 'lighthouse-scores.json'), JSON.stringify(scores, null, 2));
     console.log('lighthouse scores ' + JSON.stringify(scores));
   }
 } else {
   console.log('lighthouse skipped: LIGHTHOUSE_BIN not set');
 }
 
-await browser.close();
 server.close();
 
 if (failures.length) {

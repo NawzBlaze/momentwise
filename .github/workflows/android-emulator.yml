@@ -2,6 +2,8 @@ name: Android emulator
 
 on:
   pull_request:
+    paths-ignore:
+      - visual-review/**
   workflow_dispatch:
 
 concurrency:

@@ -23,5 +23,6 @@ build/
 _site/
 signed-artifact/
 site-screenshots/
+visual-review/
 *.tmp
 *.log
