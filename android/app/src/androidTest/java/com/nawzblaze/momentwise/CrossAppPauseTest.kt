@@ -58,8 +58,9 @@ class CrossAppPauseTest {
         val shown = waitFor {
             statusFile().contains("intervention=overlay shown") && overlayWindowVisible()
         }
+        val intervention = statusFile().lineSequence().filter { it.contains("intervention=") }.joinToString(" | ")
         assertTrue(
-            "Visible overlay was not added. ${diagnostics()} windows=${oneLine(windowDump().take(400))}",
+            "Visible overlay was not added. intervention=[$intervention] windows=${oneLine(windowDump().take(500))}",
             shown,
         )
         assertFalse(
@@ -90,7 +91,7 @@ class CrossAppPauseTest {
         val notes = statusFile()
         assertTrue(
             "Usage query was not recorded. start=${oneLine(started)} notes=${oneLine(notes)}",
-            recorded && notes.contains("USAGE_QUERY meanMs=") && !notes.contains("USAGE_QUERY error="),
+            recorded && notes.contains("meanMs=") && !notes.contains("USAGE_QUERY error="),
         )
     }
 

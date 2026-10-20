@@ -60,32 +60,16 @@ object PauseOverlay {
             overlay.contentDescription = WINDOW_TITLE
             overlay.isClickable = true
             overlay.setOnTouchListener { _, _ -> true }
+            // Compose resolves the owner from this window root, not only the child.
+            overlay.setViewTreeLifecycleOwner(overlay)
+            overlay.setViewTreeSavedStateRegistryOwner(overlay)
+            overlay.setViewTreeViewModelStoreOwner(overlay)
             val composeView = ComposeView(themed).apply {
                 setViewTreeLifecycleOwner(overlay)
                 setViewTreeSavedStateRegistryOwner(overlay)
                 setViewTreeViewModelStoreOwner(overlay)
-                setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
+                setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
                 isClickable = true
-                setOnTouchListener { _, _ -> true }
-                setContent {
-                    val mode = ThemeMode.fromStorageKey(themeModeName)
-                    MomentwiseTheme(themeMode = mode) {
-                        PauseScreen(
-                            request = request,
-                            onQuit = { perform(appContext) { it.quit() } },
-                            onSecondary = {
-                                perform(appContext) { controller ->
-                                    if (request.kind == PauseRequest.Kind.OPENING) {
-                                        controller.continueIntoApp()
-                                    } else {
-                                        controller.snooze(request)
-                                    }
-                                }
-                            },
-                            onDismissReminder = { perform(appContext) { it.dismissForToday(request) } },
-                        )
-                    }
-                }
             }
             overlay.addView(composeView)
             val params = WindowManager.LayoutParams(
@@ -104,6 +88,25 @@ object PauseOverlay {
                 }
             }
             windowManager.addView(overlay, params)
+            composeView.setContent {
+                val mode = ThemeMode.fromStorageKey(themeModeName)
+                MomentwiseTheme(themeMode = mode) {
+                    PauseScreen(
+                        request = request,
+                        onQuit = { perform(appContext) { it.quit() } },
+                        onSecondary = {
+                            perform(appContext) { controller ->
+                                if (request.kind == PauseRequest.Kind.OPENING) {
+                                    controller.continueIntoApp()
+                                } else {
+                                    controller.snooze(request)
+                                }
+                            }
+                        },
+                        onDismissReminder = { perform(appContext) { it.dismissForToday(request) } },
+                    )
+                }
+            }
             host = overlay
             DebugNotes.append(appContext, "intervention=overlay shown")
             true
