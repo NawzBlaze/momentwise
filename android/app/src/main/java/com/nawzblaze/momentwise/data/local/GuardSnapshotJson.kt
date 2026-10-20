@@ -20,6 +20,7 @@ internal object GuardSnapshotJson {
             put("sessionDroppedOnBoot", snapshot.sessionDroppedOnBoot)
             putNullable("quitSuppressedPackage", snapshot.quitSuppressedPackage)
             put("clearedWithoutChoice", snapshot.clearedWithoutChoice)
+            put("visitId", snapshot.visitId)
             putNullable("reminderHoldUntilMillis", snapshot.reminderHoldUntilMillis)
             put("useByPackage", encodeUse(snapshot.useByPackage))
         }.toString()
@@ -65,6 +66,7 @@ internal object GuardSnapshotJson {
                 sessionDroppedOnBoot = json.optBoolean("sessionDroppedOnBoot", false),
                 quitSuppressedPackage = json.optString("quitSuppressedPackage").ifBlank { null },
                 clearedWithoutChoice = json.optBoolean("clearedWithoutChoice", false),
+                visitId = json.optLong("visitId", 0L),
                 reminderHoldUntilMillis = json.optNullableLong("reminderHoldUntilMillis"),
                 useByPackage = decodeUse(json.optJSONObject("useByPackage")),
             )

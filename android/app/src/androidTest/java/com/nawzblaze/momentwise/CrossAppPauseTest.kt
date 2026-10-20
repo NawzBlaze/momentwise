@@ -3,6 +3,7 @@ package com.nawzblaze.momentwise
 import android.os.ParcelFileDescriptor
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
@@ -99,6 +100,44 @@ class CrossAppPauseTest {
         assertTrue(
             "Second visit did not show the opening. ${diagnostics()}",
             shownAgain,
+        )
+    }
+
+    /**
+     * The card must still be up after several polls. A one-second flash is the
+     * reported phone bug. This emulator is not that phone.
+     */
+    @Test
+    fun overlayStaysUpAcrossSeveralPolls() {
+        val target = prepare(overlay = true)
+        openFixture(target)
+        assertTrue(
+            "Opening was not visible. ${diagnostics()}",
+            waitFor { overlayWindowVisible() },
+        )
+        Thread.sleep(4_000)
+        assertTrue(
+            "Overlay disappeared within 4 seconds. ${diagnostics()}",
+            overlayWindowVisible(),
+        )
+        val shows = statusFile().lineSequence().count { it.contains("intervention=overlay shown") }
+        shell(
+            "am broadcast -p $APP -a com.nawzblaze.momentwise.DEBUG_ENABLE_RULE " +
+                "--es target_package $target --ez inject_continue true",
+        )
+        assertTrue(
+            "Continue did not dismiss the overlay. ${diagnostics()}",
+            waitFor { !overlayWindowVisible() },
+        )
+        Thread.sleep(4_000)
+        assertFalse(
+            "Overlay came back after Continue without a leave. ${diagnostics()}",
+            overlayWindowVisible(),
+        )
+        assertEquals(
+            "Continue started another opening. ${diagnostics()}",
+            shows,
+            statusFile().lineSequence().count { it.contains("intervention=overlay shown") },
         )
     }
 

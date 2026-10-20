@@ -3,10 +3,11 @@ package com.nawzblaze.momentwise.intervention
 /**
  * Decides whether a usage signal is a new visit.
  *
- * A pause window can stop the guarded app, or make Momentwise the foreground,
- * without the user leaving. That is not a leave, and the following resume is
- * not a new opening. A new visit starts only after a different package is
- * actually in front and the guarded app is later resumed.
+ * A pause window can stop the guarded app, or make the launcher the foreground,
+ * without the user leaving. While the card is visible that is not a leave and
+ * not a new visit. Once the card is gone, a later leave ends the visit so the
+ * next open can show again. Overlay-era events are filtered by [VisitMachine]
+ * before they reach this policy.
  */
 object VisitPolicy {
 
@@ -34,10 +35,9 @@ object VisitPolicy {
     ): Effect = when (signal) {
         DetectorSignal.NONE -> Effect.NONE
         DetectorSignal.LEFT -> when {
-            // The card, or an opening that has not been answered, can park the
-            // launcher or Momentwise. That is not the user leaving Instagram.
+            // The card is up. Launcher, Momentwise, and a stop of the guarded
+            // app are the overlay taking focus, not the user leaving.
             latch.pauseVisible -> Effect.NONE
-            latch.phase == GuardSnapshot.Phase.AWAITING_OPENING -> Effect.NONE
             else -> Effect.END_VISIT
         }
         DetectorSignal.OPENED -> {
@@ -45,9 +45,11 @@ object VisitPolicy {
                 Effect.NONE
             } else if (signaledPackage == latch.openPackage) {
                 Effect.NONE
-            } else if (latch.pauseVisible || latch.phase == GuardSnapshot.Phase.AWAITING_OPENING) {
-                // A different app while the choice is still up is a real switch.
-                Effect.BEGIN_VISIT
+            } else if (latch.pauseVisible) {
+                // A different package while the card is up must not replace the
+                // visit or dismiss the card. The overlay consumes touches; a
+                // usage event here is the window change, not a chosen switch.
+                Effect.NONE
             } else {
                 Effect.BEGIN_VISIT
             }

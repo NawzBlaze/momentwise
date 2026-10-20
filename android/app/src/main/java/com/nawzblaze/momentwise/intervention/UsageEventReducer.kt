@@ -52,6 +52,8 @@ data class DetectorResult(
     val state: DetectorState,
     val signal: DetectorSignal,
     val packageName: String? = null,
+    /** Wall-clock time of the event that produced [signal]. Not a reminder deadline. */
+    val signalTimeMillis: Long = Long.MIN_VALUE,
 )
 
 object UsageEventReducer {
@@ -79,6 +81,7 @@ object UsageEventReducer {
         var stoppedThisWindow: String? = null
         var signal = DetectorSignal.NONE
         var signaledPackage: String? = null
+        var signalTime = Long.MIN_VALUE
 
         for (event in fresh) {
             lastTime = event.timeMillis
@@ -111,6 +114,7 @@ object UsageEventReducer {
                 if (gap >= HELD_STOP_IS_NEW_VISIT_AFTER_MILLIS) {
                     signal = DetectorSignal.OPENED
                     signaledPackage = event.packageName
+                    signalTime = event.timeMillis
                 }
                 continue
             }
@@ -134,11 +138,13 @@ object UsageEventReducer {
                 signal = DetectorSignal.OPENED
                 signaledPackage = event.packageName
             }
+            signalTime = event.timeMillis
         }
 
         if (stoppedThisWindow != null && signal == DetectorSignal.NONE && !suspendStops) {
             signal = DetectorSignal.LEFT
             signaledPackage = stoppedThisWindow
+            signalTime = stoppedAtMillis
             lastPackage = null
             stoppedPackage = null
             stoppedAtMillis = Long.MIN_VALUE
@@ -149,6 +155,7 @@ object UsageEventReducer {
             state = DetectorState(lastPackage, lastTime, stoppedPackage, stoppedAtMillis),
             signal = signal,
             packageName = signaledPackage,
+            signalTimeMillis = signalTime,
         )
     }
 

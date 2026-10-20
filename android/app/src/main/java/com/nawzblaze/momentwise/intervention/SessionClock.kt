@@ -37,6 +37,11 @@ data class GuardSnapshot(
      */
     val clearedWithoutChoice: Boolean = false,
     /**
+     * Identity of the current or most recent visit. Incremented only when a new
+     * opening visit starts. A callback whose id does not match is stale.
+     */
+    val visitId: Long = 0,
+    /**
      * After a reminder UI is cleared without a choice, do not show that same
      * reminder again before this wall-clock instant. The poll is not an exact alarm.
      */
@@ -105,6 +110,7 @@ object SessionClock {
             activePackage = packageName,
             phase = GuardSnapshot.Phase.AWAITING_OPENING,
             openingHandledForPackage = packageName,
+            visitId = ready.visitId + 1,
         )
         return next to GuardCommand.ShowOpening(packageName)
     }
@@ -267,8 +273,16 @@ object SessionClock {
      * and not dismiss-for-today. The visit stays open so the same pause is not
      * stacked again immediately. A later leave ends it.
      */
-    fun onClearedWithoutChoice(snapshot: GuardSnapshot, nowMillis: Long): GuardSnapshot {
-        if (snapshot.phase == GuardSnapshot.Phase.NONE) return snapshot
+    fun onClearedWithoutChoice(
+        snapshot: GuardSnapshot,
+        nowMillis: Long,
+        visitId: Long = snapshot.visitId,
+    ): GuardSnapshot {
+        if (visitId != snapshot.visitId) return snapshot
+        // Continue already won this visit. A late overlay detach is not a no-choice.
+        if (snapshot.phase == GuardSnapshot.Phase.NONE || snapshot.phase == GuardSnapshot.Phase.CONTINUING) {
+            return snapshot
+        }
         val pkg = snapshot.activePackage
         val use = pkg?.let { snapshot.useByPackage[it] }
         val held = use?.phase == AppUse.Phase.DUE
