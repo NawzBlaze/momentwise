@@ -134,16 +134,24 @@ class MonitoringService : Service() {
             when (reason) {
                 PauseDismissReason.CHOICE -> {
                     pauseClearedByUser = false
+                    openingReshows = 0
                     detector = UsageEventReducer.clearPendingStop(detector)
                 }
                 PauseDismissReason.LEFT, PauseDismissReason.STOPPED -> pauseClearedByUser = false
                 PauseDismissReason.WITHOUT_CHOICE -> {
-                    // Same visit. Do not confirm the pause-caused stop as a leave,
-                    // or the next resume looks like a new opening and the card flickers.
-                    pauseClearedByUser = true
+                    // Same visit. Do not confirm the pause-caused stop as a leave.
+                    // One system removal of an unanswered opening is put back.
+                    // A second removal stops the add/remove loop and is a no-choice.
                     detector = UsageEventReducer.clearPendingStop(detector)
-                    val pkg = sessionCache.activePackage
-                    scope.launch { recordClearedWithoutChoice(pkg) }
+                    val awaiting = sessionCache.phase == GuardSnapshot.Phase.AWAITING_OPENING
+                    if (awaiting && openingReshows < 1) {
+                        openingReshows += 1
+                        pauseClearedByUser = false
+                    } else {
+                        pauseClearedByUser = true
+                        val pkg = sessionCache.activePackage
+                        scope.launch { recordClearedWithoutChoice(pkg) }
+                    }
                 }
             }
         }
@@ -220,7 +228,10 @@ class MonitoringService : Service() {
         var resumeFromScreenOff = false
         while (coroutineContext[Job]?.isActive != false && !stopRequested) {
             if (!screenInteractive()) {
-                if (!resumeFromScreenOff) noteDebug("screen off")
+                if (!resumeFromScreenOff) {
+                    noteDebug("screen off")
+                    accrueUse(LocalDate.now().toString(), System.currentTimeMillis())
+                }
                 resumeFromScreenOff = true
                 withTimeoutOrNull(UsagePoll.SCREEN_OFF_INTERVAL_MILLIS) {
                     screenOn.receive()
@@ -336,6 +347,7 @@ class MonitoringService : Service() {
             latch = VisitPolicy.Latch(
                 openPackage = snapshot.activePackage,
                 pauseVisible = pauseVisible,
+                phase = snapshot.phase,
             ),
             signal = signal,
             signaledPackage = signaledPackage,
@@ -363,6 +375,7 @@ class MonitoringService : Service() {
                 val pkg = signaledPackage
                 if (pkg != null) {
                     pauseClearedByUser = false
+                    openingReshows = 0
                     val rule = ruleFor(pkg)
                     val (next, command) = SessionClock.onOpened(snapshot, pkg, rule != null, today)
                     val applied = persistIfUnchanged(snapshot, next)
@@ -379,23 +392,45 @@ class MonitoringService : Service() {
                 }
             }
             VisitPolicy.Effect.NONE -> if (signal == DetectorSignal.NONE) {
-                if (showUnshownOpening(detector.lastPackage)) return
-                if (showMissedOpening(detector.lastPackage, snapshot)) return
-                val rule = enabled.find { it.appId == detector.lastPackage }
-                val (next, command) = SessionClock.onTick(
-                    snapshot = snapshot,
-                    foregroundPackage = detector.lastPackage,
-                    nowMillis = now,
-                    today = today,
-                    remindersEnabled = rule?.reminderFrequency?.isEnabled == true,
-                )
-                val applied = persistIfUnchanged(snapshot, next)
-                if (applied && command is GuardCommand.ShowReminder && rule != null) {
-                    showPause(rule, PauseRequest.Kind.REMINDER)
+                if (showUnshownOpening(detector.lastPackage)) {
+                    maybeRecoverUnanswered(detector.lastPackage, now)
+                    return
+                }
+                if (showMissedOpening(detector.lastPackage, snapshot)) {
+                    maybeRecoverUnanswered(detector.lastPackage, now)
+                    return
                 }
             }
         }
+        accrueUse(today, now)
         maybeRecoverUnanswered(detector.lastPackage, now)
+    }
+
+    /**
+     * Credits only a short gap while the guarded app is still eligible.
+     * Wall-clock time since Continue is not a reminder deadline.
+     */
+    private suspend fun accrueUse(today: String, nowMillis: Long) {
+        val snapshot = sessionCache
+        val pkg = snapshot.activePackage ?: return
+        val rule = enabledRules.find { it.appId == pkg }
+        val (next, command) = SessionClock.onTick(
+            snapshot = snapshot,
+            foregroundPackage = detector.lastPackage,
+            nowMillis = nowMillis,
+            today = today,
+            remindersEnabled = rule?.reminderFrequency?.isEnabled == true,
+            elapsedRealtime = android.os.SystemClock.elapsedRealtime(),
+            screenInteractive = screenInteractive(),
+            pauseVisible = pauseVisible,
+            intervalMinutes = rule?.reminderFrequency?.minutesOrNull(),
+            monitoringAllowed = true,
+            applyRuleInterval = rule != null,
+        )
+        if (!persistIfUnchanged(snapshot, next)) return
+        if (command is GuardCommand.ShowReminder && rule != null && !pauseVisible) {
+            showPause(rule, PauseRequest.Kind.REMINDER)
+        }
     }
 
     /**
@@ -447,6 +482,7 @@ class MonitoringService : Service() {
 
     private var shownPackage: String? = null
     private var shownKind: PauseRequest.Kind? = null
+    private var openingReshows = 0
 
     private suspend fun showPause(rule: AppRule, kind: PauseRequest.Kind) {
         if (pauseVisible && shownPackage == rule.appId && shownKind == kind) return
@@ -635,6 +671,8 @@ class MonitoringService : Service() {
             .setContentText(getString(R.string.monitor_notification_body))
             .setOngoing(true)
             .setOnlyAlertOnce(true)
+            .setSilent(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setContentIntent(openAppPendingIntent())
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)

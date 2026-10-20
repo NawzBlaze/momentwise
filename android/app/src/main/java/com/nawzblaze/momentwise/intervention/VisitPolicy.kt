@@ -14,6 +14,7 @@ object VisitPolicy {
         /** The guarded package whose visit is still open, including after a no-choice close. */
         val openPackage: String? = null,
         val pauseVisible: Boolean = false,
+        val phase: GuardSnapshot.Phase = GuardSnapshot.Phase.NONE,
     )
 
     enum class Effect {
@@ -32,17 +33,21 @@ object VisitPolicy {
         selfPackage: String,
     ): Effect = when (signal) {
         DetectorSignal.NONE -> Effect.NONE
-        DetectorSignal.LEFT -> {
-            // A visible pause can stop the covered app, bring Momentwise forward,
-            // or surface the launcher. None of those is the user leaving.
-            // A real switch is a different package resuming, which is OPENED.
-            if (latch.pauseVisible) Effect.NONE else Effect.END_VISIT
+        DetectorSignal.LEFT -> when {
+            // The card, or an opening that has not been answered, can park the
+            // launcher or Momentwise. That is not the user leaving Instagram.
+            latch.pauseVisible -> Effect.NONE
+            latch.phase == GuardSnapshot.Phase.AWAITING_OPENING -> Effect.NONE
+            else -> Effect.END_VISIT
         }
         DetectorSignal.OPENED -> {
             if (signaledPackage.isNullOrBlank() || signaledPackage == selfPackage) {
                 Effect.NONE
             } else if (signaledPackage == latch.openPackage) {
                 Effect.NONE
+            } else if (latch.pauseVisible || latch.phase == GuardSnapshot.Phase.AWAITING_OPENING) {
+                // A different app while the choice is still up is a real switch.
+                Effect.BEGIN_VISIT
             } else {
                 Effect.BEGIN_VISIT
             }

@@ -13,10 +13,10 @@ fun AppRule.reminderChipLabel(): String = when (val frequency = reminderFrequenc
 fun AppRule.appsRowStatusLabel(notGuarded: String, openingOnly: String): String = when {
     !enabled -> notGuarded
     reminderFrequency is ReminderFrequency.Never -> openingOnly
-    else -> "Rule active • ${reminderChipLabel().removeSuffix(" reminders")} reminders"
+    else -> "Guarded • ${reminderChipLabel().removeSuffix(" reminders")} of use"
 }
 
 /** "Scheduled check-in after N minutes in X" style copy; null when reminders are off. */
 fun AppRule.scheduledCheckInLabel(appNamePlaceholder: String = appName): String? =
     reminderFrequency.minutesOrNull()
-        ?.let { "Scheduled check-in after $it minutes in $appNamePlaceholder" }
+        ?.let { "Reminder after $it minutes of use in $appNamePlaceholder" }

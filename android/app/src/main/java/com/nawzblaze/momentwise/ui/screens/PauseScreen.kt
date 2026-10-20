@@ -5,15 +5,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -29,7 +26,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -62,7 +58,7 @@ fun PauseScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0x7314291E))
+            .background(Color(0x6614291E))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
@@ -79,30 +75,15 @@ fun PauseScreen(
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
-                    .widthIn(max = 400.dp)
+                    .widthIn(max = 360.dp)
                     .fillMaxWidth()
-                    .heightIn(max = 560.dp)
-                    .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(16.dp))
-                    .border(1.dp, colors.border, RoundedCornerShape(16.dp))
+                    .heightIn(max = 520.dp)
+                    .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(18.dp))
+                    .border(1.dp, colors.border, RoundedCornerShape(18.dp))
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 18.dp, vertical = 18.dp)
+                    .padding(horizontal = 20.dp, vertical = 22.dp)
                     .semantics { contentDescription = InterventionSurface.WINDOW_TITLE },
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Image(
-                        painter = painterResource(R.drawable.ic_logo),
-                        contentDescription = null,
-                        modifier = Modifier.size(28.dp),
-                    )
-                    Text(
-                        text = InterventionSurface.WORDMARK,
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(start = 8.dp),
-                    )
-                }
-                VerticalSpacer(14)
                 Text(
                     text = request.heading,
                     style = MaterialTheme.typography.titleLarge,
@@ -111,13 +92,13 @@ fun PauseScreen(
                     textAlign = TextAlign.Center,
                 )
                 if (request.notice.isNotBlank() && request.notice != request.heading) {
-                    VerticalSpacer(6)
+                    VerticalSpacer(8)
                     Text(
                         text = request.notice,
                         style = MaterialTheme.typography.bodyMedium,
                         color = colors.textSecondary,
                         textAlign = TextAlign.Center,
-                        maxLines = 2,
+                        maxLines = 3,
                     )
                 }
                 if (request.fromNotification) {
@@ -152,7 +133,7 @@ fun PauseScreen(
                         )
                     }
                     Text(
-                        text = InterventionSurface.DISMISS_HELP,
+                        text = InterventionSurface.dismissHelp(request.appName),
                         style = MaterialTheme.typography.bodySmall,
                         color = colors.textMuted,
                         textAlign = TextAlign.Center,

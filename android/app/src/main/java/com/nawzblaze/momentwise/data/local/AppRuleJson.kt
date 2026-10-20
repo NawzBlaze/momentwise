@@ -126,6 +126,8 @@ internal object AppRuleJson {
         "What do you want to do right now?",
         "Take a breath. Choose what you want to do next.",
         "Is this where you want your time to go?",
+        "Take a moment. Choose what comes next.",
+        "What did you come here for?",
     )
     private val LEGACY_CONTINUE_LABELS = setOf(
         "Continue",

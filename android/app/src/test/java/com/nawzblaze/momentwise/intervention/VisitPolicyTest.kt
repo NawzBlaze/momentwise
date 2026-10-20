@@ -11,7 +11,11 @@ class VisitPolicyTest {
 
     @Test
     fun pauseCausedStopIsNotALeave() {
-        val visible = VisitPolicy.Latch(openPackage = instagram, pauseVisible = true)
+        val visible = VisitPolicy.Latch(
+            openPackage = instagram,
+            pauseVisible = true,
+            phase = GuardSnapshot.Phase.AWAITING_OPENING,
+        )
         assertEquals(
             VisitPolicy.Effect.NONE,
             VisitPolicy.effect(visible, DetectorSignal.LEFT, instagram, self),
@@ -40,6 +44,19 @@ class VisitPolicyTest {
         assertEquals(
             VisitPolicy.Effect.NONE,
             VisitPolicy.effect(open, DetectorSignal.OPENED, instagram, self),
+        )
+    }
+
+    @Test
+    fun anUnansweredOpeningIsNotEndedByALauncherLeave() {
+        val waiting = VisitPolicy.Latch(
+            openPackage = instagram,
+            pauseVisible = false,
+            phase = GuardSnapshot.Phase.AWAITING_OPENING,
+        )
+        assertEquals(
+            VisitPolicy.Effect.NONE,
+            VisitPolicy.effect(waiting, DetectorSignal.LEFT, "com.android.launcher", self),
         )
     }
 

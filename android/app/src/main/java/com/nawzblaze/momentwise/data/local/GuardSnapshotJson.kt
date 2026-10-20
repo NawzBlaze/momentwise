@@ -1,5 +1,6 @@
 package com.nawzblaze.momentwise.data.local
 
+import com.nawzblaze.momentwise.intervention.AppUse
 import com.nawzblaze.momentwise.intervention.GuardSnapshot
 import org.json.JSONObject
 
@@ -20,7 +21,23 @@ internal object GuardSnapshotJson {
             putNullable("quitSuppressedPackage", snapshot.quitSuppressedPackage)
             put("clearedWithoutChoice", snapshot.clearedWithoutChoice)
             putNullable("reminderHoldUntilMillis", snapshot.reminderHoldUntilMillis)
+            put("useByPackage", encodeUse(snapshot.useByPackage))
         }.toString()
+    }
+
+    private fun encodeUse(use: Map<String, AppUse>): JSONObject {
+        val json = JSONObject()
+        use.forEach { (pkg, clock) ->
+            json.put(
+                pkg,
+                JSONObject()
+                    .put("accumulatedMillis", clock.accumulatedMillis)
+                    .put("budgetMillis", clock.budgetMillis)
+                    .put("phase", clock.phase.name)
+                    .put("reminderShown", clock.reminderShown),
+            )
+        }
+        return json
     }
 
     fun decode(raw: String?): GuardSnapshot {
@@ -49,6 +66,7 @@ internal object GuardSnapshotJson {
                 quitSuppressedPackage = json.optString("quitSuppressedPackage").ifBlank { null },
                 clearedWithoutChoice = json.optBoolean("clearedWithoutChoice", false),
                 reminderHoldUntilMillis = json.optNullableLong("reminderHoldUntilMillis"),
+                useByPackage = decodeUse(json.optJSONObject("useByPackage")),
             )
         } catch (_: Exception) {
             GuardSnapshot()
@@ -65,4 +83,25 @@ internal object GuardSnapshotJson {
 
     private fun JSONObject.optNullableLong(key: String): Long? =
         if (!has(key) || isNull(key)) null else optLong(key)
+
+    private fun decodeUse(json: JSONObject?): Map<String, AppUse> {
+        if (json == null) return emptyMap()
+        val use = mutableMapOf<String, AppUse>()
+        val keys = json.keys()
+        while (keys.hasNext()) {
+            val key = keys.next()
+            val item = json.optJSONObject(key) ?: continue
+            if (key.isBlank()) continue
+            val phase = runCatching { AppUse.Phase.valueOf(item.optString("phase")) }
+                .getOrDefault(AppUse.Phase.IDLE)
+            use[key] = AppUse(
+                accumulatedMillis = item.optLong("accumulatedMillis").coerceAtLeast(0),
+                budgetMillis = item.optLong("budgetMillis").coerceAtLeast(0),
+                phase = phase,
+                anchorElapsed = null,
+                reminderShown = item.optBoolean("reminderShown", false),
+            )
+        }
+        return use
+    }
 }

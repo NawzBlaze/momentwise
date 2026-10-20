@@ -8,11 +8,11 @@ import com.nawzblaze.momentwise.R
 
 object NotificationChannels {
     /**
-     * v2 replaces the low-importance channel. Android will not raise the
-     * importance of a channel the user, or an older build, already created.
-     * A hidden low-importance notification looks like monitoring stopped.
+     * v3 is a new silent channel. Android will not lower a channel that an
+     * older build already created, and it will not let a foreground service
+     * run with no notification at all.
      */
-    const val MONITORING = "momentwise_monitoring_v2"
+    const val MONITORING = "momentwise_monitoring_v3"
     const val PAUSE = "momentwise_pause"
     const val MONITORING_NOTIFICATION_ID = 41
     const val PAUSE_NOTIFICATION_ID = 42
@@ -23,7 +23,7 @@ object NotificationChannels {
         val monitoring = NotificationChannel(
             MONITORING,
             context.getString(R.string.channel_monitoring_name),
-            NotificationManager.IMPORTANCE_DEFAULT,
+            NotificationManager.IMPORTANCE_LOW,
         ).apply {
             description = context.getString(R.string.channel_monitoring_desc)
             setShowBadge(false)
