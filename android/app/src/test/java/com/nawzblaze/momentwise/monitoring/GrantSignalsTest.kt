@@ -5,6 +5,16 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+class GrantPresentationTest {
+
+    @Test
+    fun oneControlChangesLabelFromTheGrantNotFromATap() {
+        assertEquals("Allow", GrantPresentation.label(allowed = false))
+        assertEquals("Allowed ✓", GrantPresentation.label(allowed = true))
+        assertFalse(GrantPresentation.separateStatusShown())
+    }
+}
+
 class GrantSignalsTest {
 
     @Test

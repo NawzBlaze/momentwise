@@ -259,8 +259,16 @@ class SessionClockTest {
             today,
         )
         val left = SessionClock.onLeft(dismissed).first
-        val (_, command) = SessionClock.onOpened(left, instagram, ruleEnabled = true, today)
-        assertTrue(command is GuardCommand.ShowOpening)
+        val (_, sameDay) = SessionClock.onOpened(left, instagram, ruleEnabled = true, today)
+        assertEquals(GuardCommand.None, sameDay)
+        assertFalse(SessionClock.needsOpening(
+            SessionClock.clearStaleDismissals(left, today),
+            instagram,
+            true,
+        ))
+        val tomorrowSnapshot = SessionClock.clearStaleDismissals(left, tomorrow)
+        val (_, nextDay) = SessionClock.onOpened(tomorrowSnapshot, instagram, ruleEnabled = true, tomorrow)
+        assertTrue(nextDay is GuardCommand.ShowOpening)
         assertEquals(today, left.dismissals[instagram])
     }
 
@@ -506,8 +514,11 @@ class SessionClockTest {
     fun aNewOpeningSignalAfterANoChoiceClearIsNotBlocked() {
         val opened = SessionClock.onOpened(GuardSnapshot(), instagram, true, today).first
         val cleared = SessionClock.onClearedWithoutChoice(opened, nowMillis = 2_000)
-        val (_, command) = SessionClock.onOpened(cleared, instagram, true, today)
-        assertTrue(command is GuardCommand.ShowOpening)
+        val (_, sameVisit) = SessionClock.onOpened(cleared, instagram, true, today)
+        assertEquals(GuardCommand.None, sameVisit)
+        val left = SessionClock.onLeft(cleared).first
+        val (_, afterLeave) = SessionClock.onOpened(left, instagram, true, today)
+        assertTrue(afterLeave is GuardCommand.ShowOpening)
         assertTrue(
             PauseShowPolicy.shouldShowNewOpening(pauseVisible = false, alreadyContinuing = false),
         )

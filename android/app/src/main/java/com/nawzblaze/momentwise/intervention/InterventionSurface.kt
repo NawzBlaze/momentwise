@@ -7,18 +7,20 @@ package com.nawzblaze.momentwise.intervention
 object InterventionSurface {
     const val CARD_HEIGHT_FRACTION = 0.62f
     const val WINDOW_TITLE = "Momentwise intervention"
-    const val EYEBROW = "MOMENTWISE"
-    const val OPENING_HEADING = "Is this where you want your time to go?"
-    const val OPENING_SUPPORT = "Take a breath. Choose what you want to do next."
-    const val LEAVE_SUPPORT = "Step away and return to your home screen."
-    const val CONTINUE_LABEL = "I'm here with purpose"
+    const val WORDMARK = "Momentwise"
+    const val OPENING_HEADING = "What did you come here for?"
+    const val OPENING_SUPPORT = "Take a moment. Choose what comes next."
+    const val LEAVE_SUPPORT = "Return to your home screen."
+    const val CONTINUE_LABEL = "Continue intentionally"
+    const val DISMISS_FOR_TODAY = "Dismiss for today"
+    const val DISMISS_HELP = "Continue without more Momentwise prompts for this app today."
     const val REMINDER_HEADING = "Still here"
 
     /** Never, and any non-positive interval, must not promise a reminder. */
     fun continueSupport(intervalMinutes: Int?): String = when {
-        intervalMinutes == null || intervalMinutes <= 0 -> "Continue. No reminder will be scheduled."
-        intervalMinutes == 1 -> "Continue, with a reminder in 1 minute."
-        else -> "Continue, with a reminder in $intervalMinutes minutes."
+        intervalMinutes == null || intervalMinutes <= 0 -> "Continue without a reminder."
+        intervalMinutes == 1 -> "Remind me in 1 minute."
+        else -> "Remind me in $intervalMinutes minutes."
     }
 
     fun snoozeSupport(minutes: Int): String =

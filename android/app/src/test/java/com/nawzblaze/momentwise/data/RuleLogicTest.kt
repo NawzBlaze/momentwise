@@ -20,10 +20,10 @@ class RuleDefaultsTest {
     fun freshRuleUsesApprovedCopy() {
         val rule = RuleDefaults.ruleFor("example", "Example", "Test")
 
-        assertEquals("Take a breath. Choose what you want to do next.", rule.openingNotice)
+        assertEquals("Take a moment. Choose what comes next.", rule.openingNotice)
         assertEquals("Leave Example", rule.quitOption.label)
         assertEquals(RuleAction.LEAVE_APP, rule.quitOption.action)
-        assertEquals("I'm here with purpose", rule.continueOption.label)
+        assertEquals("Continue intentionally", rule.continueOption.label)
         assertEquals(RuleAction.CONTINUE_INTO_APP, rule.continueOption.action)
         assertEquals(ReminderFrequency.EveryMinutes(5), rule.reminderFrequency)
         assertEquals("You're still here?", rule.reminderNotice)
@@ -32,7 +32,7 @@ class RuleDefaultsTest {
         assertEquals("Wait", rule.reminderActions.snoozeLabel)
         assertEquals(10, rule.reminderActions.snoozeMinutes)
         assertEquals(RuleAction.SNOOZE_REMINDER, rule.reminderActions.snoozeAction)
-        assertEquals("Dismiss reminder", rule.reminderActions.dismissLabel)
+        assertEquals("Dismiss for today", rule.reminderActions.dismissLabel)
         assertEquals(RuleAction.DISMISS_FOR_TODAY, rule.reminderActions.dismissAction)
         assertFalse(rule.enabled)
         assertEquals("Leave app", RuleDefaults.leaveLabel("   "))

@@ -77,12 +77,25 @@ object SessionClock {
         if (!ruleEnabled) {
             return endSession(ready).copy(quitSuppressedPackage = null) to GuardCommand.None
         }
-        // Same visit, opening already shown, and the user has not abandoned it.
-        // A no-choice clear is not that: the next opening signal is a new visit.
+        if (ready.dismissedOn(packageName, today)) {
+            return ready.copy(
+                activePackage = packageName,
+                phase = GuardSnapshot.Phase.CONTINUING,
+                nextReminderAtMillis = null,
+                reminderPresentedFor = null,
+                openingHandledForPackage = packageName,
+                clearedWithoutChoice = false,
+                quitSuppressedPackage = null,
+            ) to GuardCommand.None
+        }
+        // Same visit. A no-choice close is not a leave, so this resume is not
+        // a new opening. A later leave clears the flag, and the next resume can show.
+        if (ready.clearedWithoutChoice && ready.activePackage == packageName) {
+            return ready to GuardCommand.None
+        }
         if (ready.activePackage == packageName &&
             ready.phase != GuardSnapshot.Phase.NONE &&
-            ready.openingHandledForPackage == packageName &&
-            !ready.clearedWithoutChoice
+            ready.openingHandledForPackage == packageName
         ) {
             return ready to GuardCommand.None
         }
@@ -103,6 +116,8 @@ object SessionClock {
     fun needsOpening(snapshot: GuardSnapshot, foregroundPackage: String?, ruleEnabled: Boolean): Boolean {
         if (foregroundPackage == null || !ruleEnabled) return false
         if (snapshot.quitSuppressedPackage == foregroundPackage) return false
+        // Stale days are removed before this is called. A remaining entry is today.
+        if (snapshot.dismissals[foregroundPackage] != null) return false
         if (snapshot.clearedWithoutChoice && snapshot.activePackage == foregroundPackage) return false
         if (snapshot.activePackage == foregroundPackage && snapshot.phase != GuardSnapshot.Phase.NONE) {
             return false
@@ -192,15 +207,21 @@ object SessionClock {
         )
     }
 
-    /** Stops reminders for this app until the next local day. The rule stays enabled. */
+    /**
+     * Continues into the app and suppresses openings and reminders for this
+     * app until the next local day. The rule stays enabled. Not Continue:
+     * no reminder is scheduled. Not Leave: the other app is not sent home.
+     */
     fun onDismissForToday(snapshot: GuardSnapshot, packageName: String, today: String): GuardSnapshot {
-        val pkg = snapshot.activePackage ?: packageName
+        val pkg = packageName.ifBlank { snapshot.activePackage } ?: return snapshot
         return snapshot.copy(
-            activePackage = snapshot.activePackage ?: packageName,
+            activePackage = pkg,
             phase = GuardSnapshot.Phase.CONTINUING,
             nextReminderAtMillis = null,
             reminderPresentedFor = null,
+            openingHandledForPackage = pkg,
             dismissals = snapshot.dismissals + (pkg to today),
+            quitSuppressedPackage = null,
             clearedWithoutChoice = false,
             reminderHoldUntilMillis = null,
         )

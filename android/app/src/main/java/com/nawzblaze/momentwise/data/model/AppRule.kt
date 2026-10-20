@@ -6,10 +6,10 @@ package com.nawzblaze.momentwise.data.model
  * Every app owns its own [AppRule]; rules never inherit from or share state
  * with each other (verified by RuleIsolationTest). A newly built rule uses:
  *
- * - Opening heading: "Is this where you want your time to go?"
- * - Opening support: "Take a breath. Choose what you want to do next."
+ * - Opening heading: "What did you come here for?"
+ * - Opening support: "Take a moment. Choose what comes next."
  * - Option 1: "Leave {app name}" — returns home. It does not force-stop.
- * - Option 2: "I'm here with purpose" — dismisses the pause and starts the reminder.
+ * - Option 2: "Continue intentionally" — dismisses the pause and starts the reminder.
  * - Reminder frequency: 5 minutes. Never is still an explicit choice.
  * - Reminder notice: "You're still here?"
  *
@@ -24,9 +24,9 @@ data class AppRule(
     val enabled: Boolean = false,
     /** True once the user has opened/saved this app's configuration at least once. */
     val configuredEver: Boolean = false,
-    val openingNotice: String = "Take a breath. Choose what you want to do next.",
+    val openingNotice: String = "Take a moment. Choose what comes next.",
     val quitOption: ResponseOption = ResponseOption("Leave", RuleAction.LEAVE_APP),
-    val continueOption: ResponseOption = ResponseOption("I'm here with purpose", RuleAction.CONTINUE_INTO_APP),
+    val continueOption: ResponseOption = ResponseOption("Continue intentionally", RuleAction.CONTINUE_INTO_APP),
     val reminderFrequency: ReminderFrequency = ReminderFrequency.EveryMinutes(5),
     val reminderNotice: String = "You're still here?",
     val reminderActions: ReminderActions = ReminderActions(),

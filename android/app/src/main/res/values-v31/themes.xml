@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      The splash icon is the mark on cream, not the adaptive icon. Using the
+      adaptive icon here masks the already-safe mark a second time.
+    -->
+    <style name="Theme.Momentwise" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/momentwise_background_light</item>
+        <item name="android:windowSplashScreenBackground">@color/momentwise_icon_background</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">@color/momentwise_icon_background</item>
+    </style>
+</resources>

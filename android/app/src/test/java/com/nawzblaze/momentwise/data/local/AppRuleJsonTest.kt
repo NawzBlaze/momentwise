@@ -98,6 +98,44 @@ class AppRuleJsonTest {
     }
 
     @Test
+    fun shippedBreathCopyAndPurposeLabelAreReplaced() {
+        val saved = JSONArray().put(
+            JSONObject()
+                .put("appId", "com.instagram.android")
+                .put("appName", "Instagram")
+                .put("openingNotice", "Take a breath. Choose what you want to do next.")
+                .put("option2Label", "I'm here with purpose")
+                .put("advDismissLabel", "Dismiss reminder")
+                .put("reminderFrequency", "minutes:12"),
+        )
+        val rule = AppRuleJson.decodeList(saved.toString())!!.single()
+
+        assertEquals("Take a moment. Choose what comes next.", rule.openingNotice)
+        assertEquals("Continue intentionally", rule.continueOption.label)
+        assertEquals("Dismiss for today", rule.reminderActions.dismissLabel)
+        assertEquals(ReminderFrequency.EveryMinutes(12), rule.reminderFrequency)
+    }
+
+    @Test
+    fun customPromptLabelAndIntervalStay() {
+        val saved = JSONArray().put(
+            JSONObject()
+                .put("appId", "com.instagram.android")
+                .put("appName", "Instagram")
+                .put("openingNotice", "What brought you here?")
+                .put("option2Label", "Stay a minute")
+                .put("advDismissLabel", "Not today, thanks")
+                .put("reminderFrequency", "minutes:7"),
+        )
+        val rule = AppRuleJson.decodeList(saved.toString())!!.single()
+
+        assertEquals("What brought you here?", rule.openingNotice)
+        assertEquals("Stay a minute", rule.continueOption.label)
+        assertEquals("Not today, thanks", rule.reminderActions.dismissLabel)
+        assertEquals(ReminderFrequency.EveryMinutes(7), rule.reminderFrequency)
+    }
+
+    @Test
     fun corruptStorageDoesNotThrow() {
         assertNull(AppRuleJson.decodeList(null))
         assertNull(AppRuleJson.decodeList(""))

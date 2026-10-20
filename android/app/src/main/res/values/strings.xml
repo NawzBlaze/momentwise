@@ -88,7 +88,6 @@
     <string name="configure_reminders_disabled_note">No reminders will be scheduled while in this app. The opening notice will still pause when launched.</string>
     <string name="configure_advanced_title">Advanced reminder options</string>
     <string name="configure_advanced_help">Personalise what happens when a reminder appears.</string>
-    <string name="configure_advanced_notice_synced">Synced with the reminder notice above.</string>
     <string name="configure_advanced_action_1">Action 1: Exit app</string>
     <string name="configure_advanced_action_2">Action 2: Snooze</string>
     <string name="configure_advanced_action_3">Action 3: Dismiss for today</string>
@@ -168,12 +167,7 @@
     <string name="settings_monitoring_off">Monitoring paused</string>
     <string name="settings_access">Access</string>
     <string name="settings_access_name">What Momentwise can see</string>
-    <string name="settings_access_desc">Read from Android, not from a button tap. Green means allowed. Opening Settings does not grant access by itself.</string>
-    <string name="grant_allowed">Allowed</string>
-    <string name="grant_not_allowed">Not allowed</string>
-    <string name="grant_required">Required</string>
-    <string name="grant_allow">Allow</string>
-    <string name="grant_review_access">Review access</string>
+    <string name="settings_access_desc">Read from Android, not from a button tap. The control says Allow until Android reports the grant, then Allowed. Opening Settings does not grant access by itself.</string>
     <string name="grant_notification_fallback">Not allowed — a notification will be used instead</string>
     <string name="disclosure_title">Before guarding</string>
     <string name="disclosure_heading">Pause %1$s only if you want Momentwise to notice it</string>
@@ -197,7 +191,7 @@
     <string name="channel_pause_desc">A notification you can open when the pause could not cover the other app. It does not block that app.</string>
     <string name="monitor_notification_title">Momentwise is on</string>
     <string name="monitor_notification_body">Watching your selected apps.</string>
-    <string name="pause_notification_title">Is this where you want your time to go?</string>
+    <string name="pause_notification_title">What did you come here for?</string>
     <string name="pause_notification_fallback">The app is not blocked. This is a notification, not a cover over %1$s. Open it to choose.</string>
     <string name="pause_from_notification">Opened from a notification. The other app was not covered until you opened this.</string>
     <string name="pause_scrim_description">Momentwise pause over %1$s. The app behind is not available until you choose.</string>
