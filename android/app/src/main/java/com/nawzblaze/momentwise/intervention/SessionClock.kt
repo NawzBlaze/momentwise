@@ -373,6 +373,18 @@ object SessionClock {
         )
 
     /**
+     * Explicit Leave has been followed by a real later entry, or another app
+     * is already in front. The overlay handback is over, so the next open is
+     * a new visit. This does not start a grace minute.
+     */
+    fun finishExplicitLeave(snapshot: GuardSnapshot): GuardSnapshot = snapshot.copy(
+        quitSuppressedPackage = null,
+        recentAwayPackage = null,
+        recentAwayAtElapsed = null,
+        backgroundedAtElapsed = null,
+    )
+
+    /**
      * Continue starts the reminder from this moment when the interval is enabled.
      * [packageName] is the pause the user answered. A lost session write must
      * not drop the interval by looking up a null active package.

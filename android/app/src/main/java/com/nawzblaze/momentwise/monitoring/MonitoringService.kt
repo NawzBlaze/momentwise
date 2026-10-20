@@ -465,6 +465,20 @@ class MonitoringService : Service() {
             dismissPause(PauseDismissReason.STOPPED)
         }
 
+        val suppressed = snapshot.quitSuppressedPackage
+        if (suppressed != null && !pauseForPolicy) {
+            val leftForSomethingElse = detector.lastPackage != null &&
+                detector.lastPackage != suppressed &&
+                detector.lastPackage != packageName
+            val laterEntry = signal == DetectorSignal.OPENED &&
+                signaledPackage == suppressed &&
+                !heldNoise
+            if (leftForSomethingElse || laterEntry) {
+                val finished = SessionClock.finishExplicitLeave(snapshot)
+                if (persistIfUnchanged(snapshot, finished)) snapshot = finished
+            }
+        }
+
         val hasRule = signaledPackage?.let { pkg -> ruleFor(pkg) != null } == true
         val step = VisitMachine.onForeground(
             snapshot = snapshot,

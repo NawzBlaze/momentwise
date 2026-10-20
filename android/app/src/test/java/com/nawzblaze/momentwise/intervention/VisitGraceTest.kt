@@ -161,6 +161,24 @@ class VisitGraceTest {
     }
 
     @Test
+    fun finishExplicitLeaveDoesNotKeepAGraceWindow() {
+        val left = SessionClock.onQuit(
+            SessionClock.onContinue(
+                SessionClock.onOpened(GuardSnapshot(), instagram, true, today).first,
+                intervalMinutes = 5,
+                nowMillis = 0,
+                today = today,
+            ),
+        ).copy(recentAwayAtElapsed = 1_000, lastGuardedPackage = instagram)
+        val finished = SessionClock.finishExplicitLeave(left)
+        assertEquals(null, finished.quitSuppressedPackage)
+        assertEquals(null, finished.recentAwayAtElapsed)
+        val (again, command) = SessionClock.onOpened(finished, instagram, true, today, 3_000)
+        assertTrue(command is GuardCommand.ShowOpening)
+        assertEquals(2L, again.visitId)
+    }
+
+    @Test
     fun aSlowPollStillCountsAndATwentySecondGapDoesNot() {
         val started = AppUse(budgetMillis = 60_000, phase = AppUse.Phase.ACCRUING, anchorElapsed = 1_000)
         val (credited, _) = ActiveUse.sample(started, elapsedRealtime = 5_000, eligible = true)

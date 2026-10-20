@@ -330,7 +330,7 @@ class CrossAppPauseTest {
             }
             .take(12)
             .joinToString(" | ")
-        return oneLine("status=[${statusFile()}] package=[$posted] notifications=[$notes]")
+        return oneLine("package=[$posted] notifications=[$notes] status=[${statusFile()}]")
     }
 
     private fun oneLine(text: String): String {
