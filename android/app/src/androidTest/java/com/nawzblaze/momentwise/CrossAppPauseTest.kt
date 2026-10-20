@@ -60,7 +60,8 @@ class CrossAppPauseTest {
         }
         val intervention = statusFile().lineSequence().filter { it.contains("intervention=") }.joinToString(" | ")
         val watched = statusFile().lineSequence().filter {
-            it.contains("seed ") || it.contains("tick ") || it.contains("screen off") ||
+            it.contains("seed ") || it.contains("tick ") || it.contains("opened ") ||
+                it.contains("showing ") || it.contains("screen off") ||
                 it.contains("session reset") || it.contains("sync finished")
         }.joinToString(" | ")
         assertTrue(

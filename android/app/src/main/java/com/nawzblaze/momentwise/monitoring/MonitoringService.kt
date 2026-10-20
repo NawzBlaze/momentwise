@@ -242,7 +242,8 @@ class MonitoringService : Service() {
 
     private suspend fun awaitRules() {
         val deadline = System.currentTimeMillis() + 3_000L
-        while (!rulesLoaded && System.currentTimeMillis() < deadline && !stopRequested) {
+        while (System.currentTimeMillis() < deadline && !stopRequested) {
+            if (rulesLoaded && enabledRules.isNotEmpty()) return
             delay(50)
         }
     }
@@ -316,11 +317,20 @@ class MonitoringService : Service() {
             DetectorSignal.OPENED -> {
                 val pkg = reduced.packageName
                 if (pkg != null) {
-                    val rule = enabled.find { it.appId == pkg }
+                    // The collector can still be on an empty emission when the
+                    // resume arrives. Read the repository before dropping it.
+                    val rule = ruleFor(pkg)
                     val (next, command) = SessionClock.onOpened(snapshot, pkg, rule != null, today)
                     val applied = persistIfUnchanged(snapshot, next)
-                    if (applied && command is GuardCommand.ShowOpening && rule != null) {
-                        showPause(rule, PauseRequest.Kind.OPENING)
+                    noteDebug(
+                        "opened pkg=$pkg rule=${rule != null} applied=$applied cmd=${command.javaClass.simpleName}",
+                    )
+                    if (command is GuardCommand.ShowOpening && rule != null) {
+                        if (!applied) {
+                            showMissedOpening(pkg, sessionCache)
+                        } else {
+                            showPause(rule, PauseRequest.Kind.OPENING)
+                        }
                     } else if (rule == null) {
                         dismissPause()
                     }
@@ -461,8 +471,18 @@ class MonitoringService : Service() {
      * @return true when an opening was shown, so the caller must not also
      * schedule a reminder on this tick.
      */
+    private suspend fun ruleFor(packageName: String): AppRule? {
+        enabledRules.find { it.appId == packageName }?.let { return it }
+        val fresh = app().container.appRuleRepository.rules.first().filter { it.enabled }
+        if (fresh.isNotEmpty()) {
+            enabledRules = fresh
+            rulesLoaded = true
+        }
+        return fresh.find { it.appId == packageName }
+    }
+
     private suspend fun showMissedOpening(foreground: String?, snapshot: GuardSnapshot): Boolean {
-        val rule = enabledRules.find { it.appId == foreground }
+        val rule = foreground?.let { ruleFor(it) }
         if (!SessionClock.needsOpening(snapshot, foreground, rule != null)) return false
         val (next, command) = SessionClock.onOpened(snapshot, foreground!!, true, LocalDate.now().toString())
         if (!persistIfUnchanged(snapshot, next)) return false
