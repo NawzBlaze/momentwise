@@ -16,14 +16,31 @@ LOG="${GITHUB_WORKSPACE:-/tmp}/emulator-test.log"
   ./gradlew :app:connectedDebugAndroidTest --no-daemon --stacktrace
 } >"$LOG" 2>&1
 code=$?
+adb logcat -d -s MomentwiseDebug:I > "${GITHUB_WORKSPACE:-/tmp}/emulator-measure.txt" || true
 if [ "$code" -ne 0 ]; then
-  {
-    echo "--- androidTest failure text ---"
-    find app/build -path '*androidTest*' -name '*.xml' -print 2>/dev/null |
-      while read -r report; do
-        grep -n -E 'failure|AssertionError|not posted|not delivered|not allowed|overlay|not blocked|USAGE_QUERY' "$report" | head -n 40
-      done
-  } >>"$LOG"
+  python3 - "$LOG" <<'PY'
+import pathlib, sys, xml.etree.ElementTree as ET
+log = pathlib.Path(sys.argv[1])
+root = pathlib.Path("app/build")
+lines = ["--- androidTest failure text ---"]
+for report in root.rglob("*.xml"):
+    if "androidTest" not in str(report) and "androidTests" not in str(report):
+        continue
+    try:
+        tree = ET.parse(report)
+    except ET.ParseError:
+        continue
+    for failure in tree.iter("failure"):
+        message = (failure.get("message") or "").replace("\n", " ")
+        lines.append(message[:1200])
+        text = (failure.text or "").replace("\n", " ")
+        if text and text[:200] not in message:
+            lines.append(text[:400])
+if len(lines) == 1:
+    lines.append("No instrumentation failure element was found.")
+with log.open("a", encoding="utf-8", errors="replace") as handle:
+    handle.write("\n".join(lines) + "\n")
+PY
 fi
-tail -n 160 "$LOG"
+tail -n 80 "$LOG"
 exit "$code"

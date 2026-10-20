@@ -33,8 +33,9 @@ class DebugRuleActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (intent.getBooleanExtra(EXTRA_MEASURE, false)) {
+        if (wantsMeasure(intent)) {
             setContentView(TextView(this).apply { text = "Measuring usage query" })
+            Log.i(TAG, "USAGE_QUERY activity-created")
             return
         }
         packageName = intent.getStringExtra(DebugRuleBridge.EXTRA_PACKAGE)
@@ -50,7 +51,7 @@ class DebugRuleActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
-        if (intent.getBooleanExtra(EXTRA_MEASURE, false)) {
+        if (wantsMeasure(intent)) {
             if (scheduled) return
             scheduled = true
             val app = application
@@ -74,6 +75,10 @@ class DebugRuleActivity : Activity() {
     companion object {
         const val TAG = "MomentwiseDebug"
         const val EXTRA_MEASURE = "measure_usage"
+
+        fun wantsMeasure(intent: android.content.Intent): Boolean =
+            intent.getBooleanExtra(EXTRA_MEASURE, false) ||
+                intent.getStringExtra(EXTRA_MEASURE) == "true"
         private val running = AtomicBoolean(false)
 
         /**

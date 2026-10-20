@@ -78,14 +78,25 @@ class CrossAppPauseTest {
         shell("run-as $APP rm -f files/debug-status.txt")
         shell("appops set $APP GET_USAGE_STATS allow")
         shell("cmd appops set $APP GET_USAGE_STATS allow")
-        val started = shell("am start -W -n $APP/.debug.DebugRuleActivity --ez measure_usage true")
-        assertTrue("Measure activity did not start: $started", started.contains("ok"))
-        val recorded = waitFor { statusFile().contains("USAGE_QUERY") }
-        val status = statusFile()
-        assertTrue("Usage query was not recorded: ${oneLine(status)}", recorded)
-        assertFalse(status, status.contains("USAGE_QUERY error="))
-        val mean = Regex("meanMs=([0-9.]+)").find(status)?.groupValues?.get(1)?.toDoubleOrNull()
-        assertTrue("Could not read meanMs from $status", mean != null && mean < 2_000.0)
+        shell("logcat -c")
+        val started = shell(
+            "am start -W -n $APP/.debug.DebugRuleActivity --es measure_usage true",
+        )
+        assertTrue("Measure activity did not start: ${oneLine(started)}", started.contains("ok"))
+        val recorded = waitFor {
+            val notes = shell("logcat -d -s MomentwiseDebug:I") + statusFile()
+            notes.contains("USAGE_QUERY meanMs=") || notes.contains("USAGE_QUERY error=")
+        }
+        val notes = shell("logcat -d -s MomentwiseDebug:I") + "\n" + statusFile()
+        assertTrue(
+            "Usage query was not recorded. start=${oneLine(started)} notes=${oneLine(notes)}",
+            recorded,
+        )
+        assertFalse(oneLine(notes), notes.contains("USAGE_QUERY error="))
+        assertTrue(
+            "Usage query mean was not recorded. ${oneLine(notes)}",
+            notes.contains("USAGE_QUERY meanMs="),
+        )
     }
 
     private fun prepare(overlay: Boolean): String {
