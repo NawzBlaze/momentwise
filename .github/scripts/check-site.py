@@ -136,7 +136,7 @@ require(download.get("releaseUrl") == expected_release, "release URL must match 
 require(download.get("packageId") == "com.nawzblaze.momentwise", "unexpected package ID in download metadata")
 require(download.get("versionName") == "1.0.0" and download.get("versionCode") == 12, "download version metadata must match the published release")
 require(isinstance(download.get("sha256"), str) and re.fullmatch(r"[a-f0-9]{64}", download["sha256"]), "download must contain a valid SHA-256")
-require(download.get("sha256") == "3a2b5829069b28787646fa6005389dd32c2e7142a1cdeb39b550db03f0c7396", "download checksum must match the published release asset digest")
+require(download.get("sha256") == "3a2b5829069b28787646fa6005389dd32c2e7142a1cdeb39b550db03f0c7396c", "download checksum must match the published release asset digest")
 url_fields = " ".join(str(download.get(key) or "") for key in ("apkUrl", "checksumUrl", "verificationReportUrl", "releaseUrl", "notes"))
 require("debug" not in url_fields.lower() and "unsigned" not in url_fields.lower(), "download.json must not name a debug APK")
 require("actions/artifacts" not in url_fields, "download.json must not point at an Actions artifact")
