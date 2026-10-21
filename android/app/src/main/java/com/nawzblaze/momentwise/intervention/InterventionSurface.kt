@@ -9,11 +9,11 @@ object InterventionSurface {
     const val WINDOW_TITLE = "Momentwise intervention"
     const val WORDMARK = "Momentwise"
     const val OPENING_HEADING = "Before you scroll"
-    const val OPENING_SUPPORT = "Take a second. What do you want from this visit?"
-    const val LEAVE_SUPPORT = "Step away for now."
-    const val CONTINUE_LABEL = "Continue intentionally"
+    const val OPENING_SUPPORT = "Take a second. What do you want from this app right now?"
+    const val LEAVE_SUPPORT = "Return to the home screen."
+    const val CONTINUE_LABEL = "Open intentionally"
     const val DISMISS_FOR_TODAY = "Dismiss for today"
-    const val REMINDER_HEADING = "Still here"
+    const val REMINDER_HEADING = "Gentle reminder"
 
     /** Never, and any non-positive interval, must not promise a reminder. */
     fun continueSupport(intervalMinutes: Int?): String = when {
