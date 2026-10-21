@@ -119,11 +119,11 @@ if (downloadConfig.available === true) {
   if (buttonState.href !== downloadConfig.apkUrl) fail('website download href does not match download.json');
   if (!buttonState.href.includes('/releases/download/v1.0.0/') || !buttonState.href.endsWith('.apk')) fail('website download is not the versioned GitHub Release APK');
   if (/debug|unsigned/i.test(buttonState.href) || buttonState.href.includes('/actions/artifacts')) fail('website download points at a debug or CI artifact');
-  const status = (await page.locator('#download-status').textContent()) || '';
-  if (!status.includes('published release file')) fail('published download status did not update');
-  if (await page.locator('.version-label').count()) fail('version label should not appear beside the download button');
-  if (!(await page.locator('#download-details').textContent())?.includes('Checksum file')) fail('published checksum details are missing');
-  if (!(await page.locator('#download-details').textContent())?.includes('Verification report')) fail('published verification report details are missing');
+  if (await page.locator('.version-label, .download-block, .download-details, .status-line').count()) fail('technical download metadata block must be absent');
+  const visibleCopy = (await page.locator('body').innerText()) || '';
+  for (const term of ['Version code', 'SHA-256', 'Checksum file', 'Verification report', 'Release notes']) {
+    if (visibleCopy.includes(term)) fail('technical download detail remains visible: ' + term);
+  }
 } else {
   if (buttonState.tag !== 'BUTTON' || !buttonState.disabled) fail('download button was enabled without a published release');
 }
