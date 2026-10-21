@@ -38,7 +38,6 @@ required = [
     "Make your next tap intentional.",
     "Download for Android",
     "View source code",
-    "A signed download is not available yet.",
     "A pause, not a lock",
     "not on the exact second",
     "does not force-stop the other app",
@@ -58,6 +57,9 @@ require('href="#main"' in html, "missing skip link")
 require("<main" in html and "<h1" in html, "missing main or h1")
 require(html.count("<h1") == 1, "expected one h1")
 require('id="download-button"' in html and "disabled" in html and 'aria-disabled="true"' in html, "download must stay disabled in HTML")
+require('class="download-block"' not in html and 'id="download-status"' not in html and 'id="download-details"' not in html, "technical download metadata must not appear on the homepage")
+require(all(term not in html for term in ("Version code", "SHA-256", "Checksum file", "Verification report", "Release notes")), "release diagnostics must stay off the homepage")
+require("fillDetails" not in script and "download-details" not in script and "download-status" not in script, "site script must not render technical download metadata")
 require("prototype" not in html.lower(), "prototype must not be linked or named")
 require("com.nawzblaze" not in html, "package id must stay off the homepage")
 require("keystore" not in html.lower(), "keystore must stay off the homepage")

@@ -319,42 +319,6 @@ h1 {
 
 .button-secondary:hover { border-color: var(--text); }
 
-.status-line {
-  margin: 0.85rem 0 0;
-  color: var(--text-soft);
-  font-size: 0.95rem;
-}
-
-.download-details {
-  margin-top: 0.85rem;
-  color: var(--text-soft);
-  font-size: 0.92rem;
-}
-
-.download-details dl {
-  display: grid;
-  gap: 0.45rem;
-  margin: 0.35rem 0 0;
-}
-
-.download-details div {
-  display: grid;
-  gap: 0.15rem;
-}
-
-.download-details dt {
-  font-size: 0.75rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.download-details dd {
-  margin: 0;
-  overflow-wrap: anywhere;
-}
-
-.download-details a { text-underline-offset: 0.18em; }
-
 .hero-mark { margin: 0; }
 
 .hero-logo {
