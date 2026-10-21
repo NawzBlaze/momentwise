@@ -79,7 +79,7 @@ jobs:
             "$RUNNER_TEMP/Momentwise.apk.sha256" \
             --repo "$GITHUB_REPOSITORY"
 
-      - name: Verify the uploaded alias, then remove confusing legacy APK names
+      - name: Verify the uploaded alias
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -91,9 +91,7 @@ jobs:
           uploaded="$(sha256sum "$verify_dir/Momentwise.apk" | awk '{print $1}')"
           expected="$(python3 -c 'import json; print(json.load(open("download.json", encoding="utf-8"))["sha256"])')"
           test "$uploaded" = "$expected"
-          gh release delete-asset v1.0.0 "momentwise-1.0.0-signed.apk" --repo "$GITHUB_REPOSITORY" --yes
-          gh release delete-asset v1.0.0 "momentwise-1.0.0-signed.apk.sha256" --repo "$GITHUB_REPOSITORY" --yes
-          echo "Verified the friendly alias against the originally published APK, then removed legacy APK asset names."
+          echo "Verified the friendly alias against the originally published APK: $uploaded"
 
       - name: Update website download metadata
         run: |
@@ -122,7 +120,33 @@ jobs:
           git commit -m "Use Momentwise.apk as the public download filename"
           git push origin HEAD:main
 
-      - name: Dispatch Pages deployment
+      - name: Dispatch and wait for Pages deployment
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh workflow run pages.yml --repo "$GITHUB_REPOSITORY" --ref main
+        run: |
+          set -euo pipefail
+          before="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow pages.yml --branch main --limit 1 --json databaseId --jq '.[0].databaseId // 0')"
+          gh workflow run pages.yml --repo "$GITHUB_REPOSITORY" --ref main
+          run_id=""
+          for attempt in $(seq 1 60); do
+            candidate="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow pages.yml --branch main --limit 1 --json databaseId --jq '.[0].databaseId // 0')"
+            if [ -n "$candidate" ] && [ "$candidate" != "$before" ] && [ "$candidate" != "0" ]; then
+              run_id="$candidate"
+              break
+            fi
+            sleep 5
+          done
+          if [ -z "$run_id" ]; then
+            echo "::error::Could not find the dispatched Pages deployment. Legacy APK assets were intentionally kept."
+            exit 1
+          fi
+          gh run watch "$run_id" --repo "$GITHUB_REPOSITORY" --exit-status
+
+      - name: Remove legacy APK asset names after website deployment succeeds
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release delete-asset v1.0.0 "momentwise-1.0.0-signed.apk" --repo "$GITHUB_REPOSITORY" --yes
+          gh release delete-asset v1.0.0 "momentwise-1.0.0-signed.apk.sha256" --repo "$GITHUB_REPOSITORY" --yes
+          echo "Removed the old APK and checksum asset names after the website began pointing at Momentwise.apk."
