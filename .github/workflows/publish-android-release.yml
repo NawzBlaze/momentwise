@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       confirmation:
-        description: 'Type publish-after-physical-approval to publish from main.'
+        description: 'Use publish-after-physical-approval only after device testing, or publish-unverified-at-owner-risk to disclose that device testing is pending.'
         required: true
         type: string
       replace_existing:
@@ -41,15 +41,18 @@ jobs:
               sys.exit("Not a manual run. No signing secret was read.")
           if os.environ.get("GITHUB_REF") != "refs/heads/main":
               sys.exit("Refusing %s. Only refs/heads/main may continue. No signing secret was read." % os.environ.get("GITHUB_REF"))
-          if os.environ.get("PUBLISH_CONFIRMATION") != "publish-after-physical-approval":
+          if os.environ.get("PUBLISH_CONFIRMATION") not in {"publish-after-physical-approval", "publish-unverified-at-owner-risk"}:
               sys.exit("Confirmation phrase did not match. No release was created and no signing secret was read.")
-          print("Approval matched on main. This job does not read signing secrets.")
+          if os.environ.get("PUBLISH_CONFIRMATION") == "publish-after-physical-approval":
+              print("Physical-device approval selected on main. This job does not read signing secrets.")
+          else:
+              print("Owner explicitly selected publication before physical-device validation. This job does not read signing secrets.")
           PY
 
   publish:
     name: Build, verify, and publish the signed release
     needs: guard
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.event.inputs.confirmation == 'publish-after-physical-approval'
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && (github.event.inputs.confirmation == 'publish-after-physical-approval' || github.event.inputs.confirmation == 'publish-unverified-at-owner-risk')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -62,9 +65,12 @@ jobs:
           import os, sys
           if os.environ.get("GITHUB_EVENT_NAME") != "workflow_dispatch" or os.environ.get("GITHUB_REF") != "refs/heads/main":
               sys.exit("Refusing before any signing secret is read.")
-          if os.environ.get("PUBLISH_CONFIRMATION") != "publish-after-physical-approval":
+          if os.environ.get("PUBLISH_CONFIRMATION") not in {"publish-after-physical-approval", "publish-unverified-at-owner-risk"}:
               sys.exit("Confirmation phrase did not match. No release was created.")
-          print("Approval matched on main. The phrase is not printed.")
+          if os.environ.get("PUBLISH_CONFIRMATION") == "publish-after-physical-approval":
+              print("Physical-device approval confirmed on main; confirmation text is not printed.")
+          else:
+              print("Untested publication expressly selected by owner; confirmation text is not printed.")
           PY
 
       - name: Checkout main
@@ -133,6 +139,8 @@ jobs:
 
       - name: Write release notes
         if: success() && github.ref == 'refs/heads/main'
+        env:
+          PUBLISH_CONFIRMATION: ${{ github.event.inputs.confirmation }}
         run: |
           cat > "$RUNNER_TEMP/release-notes.md" <<'EOF'
           Momentwise 1.0.0 (versionCode 12)
@@ -145,6 +153,14 @@ jobs:
 
           Published from a manual approval on main. The website download stays off until download.json is updated on purpose.
           EOF
+          if [ "$PUBLISH_CONFIRMATION" = "publish-unverified-at-owner-risk" ]; then
+            cat >> "$RUNNER_TEMP/release-notes.md" <<'EOF'
+
+          ## Validation status
+
+          This build is being published at the owner's explicit request before physical-device validation. Unit tests and API 34/35 fixture-emulator tests passed, but the updated opening-pause and reminder behavior has not been verified with Instagram on a physical phone. A prior candidate showed intermittent opening-pause and reminder problems. Treat this release as unverified on real devices and expect a follow-up if further issues are found.
+          EOF
+          fi
 
       - name: Create the public release
         if: success() && github.ref == 'refs/heads/main'
