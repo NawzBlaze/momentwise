@@ -17,11 +17,11 @@ import com.nawzblaze.momentwise.intervention.InterventionSurface
 object RuleDefaults {
     const val OPENING_HEADING = InterventionSurface.OPENING_HEADING
     const val OPENING_NOTICE = InterventionSurface.OPENING_SUPPORT
-    const val QUIT_OPTION_LABEL = "Leave"
+    const val QUIT_OPTION_LABEL = "Not now"
     const val CONTINUE_OPTION_LABEL = InterventionSurface.CONTINUE_LABEL
-    const val REMINDER_NOTICE = "You're still here?"
-    const val ADV_QUIT_LABEL = "Okay, I'm quitting"
-    const val ADV_SNOOZE_LABEL = "Wait"
+    const val REMINDER_NOTICE = "You've been here for a while."
+    const val ADV_QUIT_LABEL = "Take a break"
+    const val ADV_SNOOZE_LABEL = "Continue for now"
     const val ADV_DISMISS_LABEL = "Dismiss for today"
 
     /** Custom-interval field's starting value when Custom is first selected. */
