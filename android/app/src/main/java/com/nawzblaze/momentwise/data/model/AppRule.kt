@@ -13,8 +13,8 @@ package com.nawzblaze.momentwise.data.model
  * - Reminder frequency: 5 minutes. Never is still an explicit choice.
  * - Reminder notice: "You've been here for a while."
  *
- * These constructor defaults are for a new rule. Decoding a saved rule does
- * not replace a stored prompt, label, or interval with them.
+ * These constructor defaults are for a new rule. JSON decoding updates only
+ * previous shipped default copy; custom prompts, labels, and intervals stay unchanged.
  */
 data class AppRule(
     /** Stable identifier — the target app's package name once device detection is wired. */
