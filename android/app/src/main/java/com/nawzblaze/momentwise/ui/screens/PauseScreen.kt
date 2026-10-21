@@ -1,11 +1,13 @@
 package com.nawzblaze.momentwise.ui.screens
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,43 +19,65 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ArrowForward
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.RadioButtonChecked
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Spa
+import androidx.compose.material.icons.outlined.Timelapse
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.nawzblaze.momentwise.R
 import com.nawzblaze.momentwise.intervention.InterventionSurface
 import com.nawzblaze.momentwise.intervention.PauseRequest
-import com.nawzblaze.momentwise.ui.components.VerticalSpacer
-import com.nawzblaze.momentwise.ui.theme.LocalMomentwiseColors
+
+private val OverlayScrim = Color(0xE608100D)
+private val PanelTop = Color(0xFF111A15)
+private val PanelBottom = Color(0xFF070D0A)
+private val PanelBorder = Color(0xFF2B3A31)
+private val Cream = Color(0xFFF2EBDD)
+private val Ink = Color(0xFF101712)
+private val TextMain = Color(0xFFF4F5F0)
+private val TextMuted = Color(0xFFA5B0A8)
+private val SunriseGold = Color(0xFFE6B15A)
+private val RowSurface = Color(0xFF111814)
+private val RowBorder = Color(0xFF29372E)
 
 /**
- * Opening and reminder are different moments. The opening asks why this visit
- * started. The reminder asks whether to keep going. Same brand, same actions,
- * different heading treatment. No animation. The scrim does not pass touches.
- *
- * Leave is a return home, never a force-stop. Button labels come from the rule.
+ * Premium Momentwise pause surfaces. The opening is a deliberate question;
+ * the reminder is a quieter check-in. The overlay remains visibly branded and
+ * never imitates the target app's own UI.
  */
 @Composable
 fun PauseScreen(
@@ -62,13 +86,12 @@ fun PauseScreen(
     onSecondary: () -> Unit,
     onDismissReminder: () -> Unit,
 ) {
-    val colors = LocalMomentwiseColors.current
-    val scrimDescription = stringResource(R.string.pause_scrim_description, request.appName)
     val reminder = request.kind == PauseRequest.Kind.REMINDER
+    val scrimDescription = stringResource(R.string.pause_scrim_description, request.appName)
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0x6614291E))
+            .background(OverlayScrim)
             .windowInsetsPadding(WindowInsets.safeDrawing)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
@@ -76,178 +99,556 @@ fun PauseScreen(
                 onClick = {},
             )
             .semantics { contentDescription = scrimDescription },
+        contentAlignment = Alignment.Center,
     ) {
-        Box(
+        Column(
+            horizontalAlignment = Alignment.Start,
             modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 20.dp, vertical = 12.dp),
-            contentAlignment = Alignment.Center,
+                .widthIn(max = 440.dp)
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp)
+                .heightIn(max = 760.dp)
+                .clip(RoundedCornerShape(30.dp))
+                .background(
+                    Brush.verticalGradient(listOf(PanelTop, PanelBottom)),
+                )
+                .border(1.dp, PanelBorder, RoundedCornerShape(30.dp))
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 22.dp, vertical = 22.dp)
+                .semantics { contentDescription = InterventionSurface.WINDOW_TITLE },
         ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier
-                    .widthIn(max = 400.dp)
-                    .fillMaxWidth()
-                    .heightIn(max = 560.dp)
-                    .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(28.dp))
-                    .border(1.dp, colors.border, RoundedCornerShape(28.dp))
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 22.dp, vertical = 26.dp)
-                    .semantics { contentDescription = InterventionSurface.WINDOW_TITLE },
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Image(
-                        painter = painterResource(R.drawable.ic_logo),
-                        contentDescription = null,
-                        modifier = Modifier.size(28.dp),
-                    )
-                    Text(
-                        text = InterventionSurface.WORDMARK,
-                        modifier = Modifier.padding(start = 8.dp),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onBackground,
-                    )
-                }
-                VerticalSpacer(18)
-                Text(
-                    text = stringResource(
-                        if (reminder) R.string.pause_reminder_eyebrow else R.string.pause_opening_eyebrow,
-                    ),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = colors.accentText,
-                    fontWeight = FontWeight.SemiBold,
+            BrandHeader(showTagline = reminder)
+            if (reminder) {
+                ReminderContent(
+                    request = request,
+                    onQuit = onQuit,
+                    onSecondary = onSecondary,
+                    onDismissReminder = onDismissReminder,
                 )
-                VerticalSpacer(8)
-                Box(
-                    modifier = Modifier
-                        .width(36.dp)
-                        .height(2.dp)
-                        .background(colors.accent, RoundedCornerShape(2.dp)),
+            } else {
+                OpeningContent(
+                    request = request,
+                    onQuit = onQuit,
+                    onSecondary = onSecondary,
+                    onDismissReminder = onDismissReminder,
                 )
-                VerticalSpacer(14)
-                Text(
-                    text = request.heading,
-                    modifier = Modifier.semantics { heading() },
-                    style = if (reminder) {
-                        MaterialTheme.typography.headlineSmall
-                    } else {
-                        MaterialTheme.typography.headlineMedium
-                    },
-                    color = MaterialTheme.colorScheme.onBackground,
-                    textAlign = TextAlign.Center,
-                )
-                if (request.notice.isNotBlank() && request.notice != request.heading) {
-                    VerticalSpacer(8)
-                    Text(
-                        text = request.notice,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = colors.textSecondary,
-                        textAlign = TextAlign.Center,
-                    )
-                }
-                if (request.fromNotification) {
-                    VerticalSpacer(8)
-                    Text(
-                        text = stringResource(R.string.pause_from_notification),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.textMuted,
-                        textAlign = TextAlign.Center,
-                    )
-                }
-                VerticalSpacer(22)
-                PauseChoiceButton(
-                    label = request.primaryLabel,
-                    support = request.primarySupport,
-                    emphasized = true,
-                    onClick = onQuit,
-                )
-                VerticalSpacer(10)
-                PauseChoiceButton(
-                    label = request.secondaryLabel,
-                    support = request.secondarySupport,
-                    emphasized = false,
-                    onClick = onSecondary,
-                )
-                VerticalSpacer(8)
-                Text(
-                    text = stringResource(R.string.pause_quit_honesty),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colors.textMuted,
-                    textAlign = TextAlign.Center,
-                )
-                if (request.tertiaryLabel != null) {
-                    VerticalSpacer(4)
-                    TextButton(
-                        onClick = onDismissReminder,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 48.dp),
-                    ) {
-                        Text(
-                            text = request.tertiaryLabel,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = colors.textSecondary,
-                        )
-                    }
-                    Text(
-                        text = InterventionSurface.dismissHelp(request.appName),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.textMuted,
-                        textAlign = TextAlign.Center,
-                    )
-                }
             }
         }
     }
 }
 
 @Composable
-private fun PauseChoiceButton(
-    label: String,
-    support: String,
-    emphasized: Boolean,
-    onClick: () -> Unit,
-) {
-    val colors = LocalMomentwiseColors.current
-    val description = if (support.isBlank()) label else "$label. $support"
-    val content: @Composable () -> Unit = {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(label, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
-            if (support.isNotBlank()) {
+private fun BrandHeader(showTagline: Boolean) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(42.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(Cream),
+            contentAlignment = Alignment.Center,
+        ) {
+            Image(
+                painter = painterResource(R.drawable.ic_logo),
+                contentDescription = null,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(3.dp),
+            )
+        }
+        Spacer(Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = InterventionSurface.WORDMARK,
+                color = TextMain,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 16.sp,
+                letterSpacing = (-0.15).sp,
+            )
+            if (showTagline) {
                 Text(
-                    text = support,
-                    style = MaterialTheme.typography.bodySmall,
-                    textAlign = TextAlign.Center,
-                    color = if (emphasized) {
-                        MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.86f)
-                    } else {
-                        colors.textSecondary
-                    },
+                    text = "Make room for what matters.",
+                    color = TextMuted,
+                    fontSize = 12.sp,
+                    lineHeight = 16.sp,
+                )
+            }
+        }
+        if (showTagline) {
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF202922)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Spa,
+                    contentDescription = null,
+                    tint = Cream,
+                    modifier = Modifier.size(19.dp),
                 )
             }
         }
     }
-    val modifier = Modifier
-        .fillMaxWidth()
-        .heightIn(min = 48.dp)
-        .semantics { contentDescription = description }
-    if (emphasized) {
-        Button(
-            onClick = onClick,
-            modifier = modifier,
-            shape = RoundedCornerShape(16.dp),
-            content = { content() },
+}
+
+@Composable
+private fun OpeningContent(
+    request: PauseRequest,
+    onQuit: () -> Unit,
+    onSecondary: () -> Unit,
+    onDismissReminder: () -> Unit,
+) {
+    Spacer(Modifier.height(30.dp))
+    Text(
+        text = "Before you open " + request.appName,
+        color = Cream,
+        fontFamily = FontFamily.Serif,
+        fontSize = 34.sp,
+        lineHeight = 38.sp,
+        letterSpacing = (-0.85).sp,
+        fontWeight = FontWeight.Normal,
+        modifier = Modifier.semantics { heading() },
+    )
+    Spacer(Modifier.height(12.dp))
+    Text(
+        text = request.notice.ifBlank { InterventionSurface.OPENING_SUPPORT },
+        color = TextMuted,
+        fontSize = 16.sp,
+        lineHeight = 23.sp,
+    )
+    Spacer(Modifier.height(24.dp))
+    OpeningAction(
+        label = request.secondaryLabel,
+        support = "I know what I want to do.",
+        emphasized = true,
+        icon = Icons.Outlined.RadioButtonChecked,
+        onClick = onSecondary,
+    )
+    Spacer(Modifier.height(10.dp))
+    OpeningAction(
+        label = request.primaryLabel,
+        support = "Return to the home screen.",
+        emphasized = false,
+        icon = Icons.Outlined.Close,
+        onClick = onQuit,
+    )
+    if (request.tertiaryLabel != null) {
+        Spacer(Modifier.height(10.dp))
+        OpeningAction(
+            label = request.tertiaryLabel,
+            support = InterventionSurface.dismissHelp(request.appName),
+            emphasized = false,
+            icon = Icons.Outlined.Schedule,
+            onClick = onDismissReminder,
         )
-    } else {
-        OutlinedButton(
-            onClick = onClick,
-            modifier = modifier,
-            shape = RoundedCornerShape(16.dp),
-            border = BorderStroke(1.dp, colors.borderHover),
-            colors = ButtonDefaults.outlinedButtonColors(
-                contentColor = MaterialTheme.colorScheme.onSurface,
+    }
+    if (request.fromNotification) {
+        Spacer(Modifier.height(12.dp))
+        Text(
+            text = stringResource(R.string.pause_from_notification),
+            color = TextMuted,
+            fontSize = 11.sp,
+            lineHeight = 16.sp,
+        )
+    }
+}
+
+@Composable
+private fun ReminderContent(
+    request: PauseRequest,
+    onQuit: () -> Unit,
+    onSecondary: () -> Unit,
+    onDismissReminder: () -> Unit,
+) {
+    Spacer(Modifier.height(18.dp))
+    SunriseLandscape(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(148.dp)
+            .clip(RoundedCornerShape(20.dp)),
+    )
+    Spacer(Modifier.height(20.dp))
+    Text(
+        text = "G E N T L E   R E M I N D E R",
+        color = SunriseGold,
+        fontSize = 11.sp,
+        fontWeight = FontWeight.SemiBold,
+        letterSpacing = 1.3.sp,
+    )
+    Spacer(Modifier.height(10.dp))
+    Text(
+        text = request.notice.ifBlank { "You've been here for a while." },
+        color = Cream,
+        fontFamily = FontFamily.Serif,
+        fontSize = 32.sp,
+        lineHeight = 36.sp,
+        letterSpacing = (-0.7).sp,
+        fontWeight = FontWeight.Normal,
+        modifier = Modifier.semantics { heading() },
+    )
+    Spacer(Modifier.height(9.dp))
+    Text(
+        text = "A small pause can help you feel more in control of your time.",
+        color = TextMuted,
+        fontSize = 14.sp,
+        lineHeight = 21.sp,
+    )
+    Spacer(Modifier.height(20.dp))
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        ReminderStat(
+            value = (request.usedMinutes ?: request.reminderIntervalMinutes ?: 1).toString() + " min",
+            label = "Time in " + request.appName,
+            modifier = Modifier.weight(1f),
+            icon = Icons.Outlined.Timelapse,
+        )
+        ReminderStat(
+            value = (request.reminderIntervalMinutes ?: 1).toString() + " min",
+            label = "Check-in interval",
+            modifier = Modifier.weight(1f),
+            icon = Icons.Outlined.Schedule,
+        )
+    }
+    Spacer(Modifier.height(14.dp))
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(Color(0xFF101813))
+            .border(1.dp, RowBorder, RoundedCornerShape(18.dp))
+            .padding(horizontal = 16.dp, vertical = 17.dp),
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.Spa,
+            contentDescription = null,
+            tint = Cream,
+            modifier = Modifier.size(27.dp),
+        )
+        Spacer(Modifier.width(14.dp))
+        Column {
+            Text(
+                text = "Come back with a clearer mind.",
+                color = TextMain,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                lineHeight = 20.sp,
+            )
+            Spacer(Modifier.height(3.dp))
+            Text(
+                text = "You can always open it again.",
+                color = TextMuted,
+                fontSize = 12.sp,
+                lineHeight = 17.sp,
+            )
+        }
+    }
+    Spacer(Modifier.height(16.dp))
+    PrimaryOverlayAction(
+        label = request.primaryLabel,
+        support = null,
+        onClick = onQuit,
+    )
+    Spacer(Modifier.height(9.dp))
+    SecondaryOverlayAction(
+        label = request.secondaryLabel,
+        support = request.secondarySupport,
+        onClick = onSecondary,
+    )
+    if (request.tertiaryLabel != null) {
+        Spacer(Modifier.height(6.dp))
+        TextButton(
+            onClick = onDismissReminder,
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 46.dp),
+        ) {
+            Text(
+                text = request.tertiaryLabel,
+                color = TextMuted,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+            )
+        }
+    }
+    if (request.fromNotification) {
+        Text(
+            text = stringResource(R.string.pause_from_notification),
+            color = TextMuted,
+            fontSize = 11.sp,
+            lineHeight = 16.sp,
+        )
+    }
+}
+
+@Composable
+private fun OpeningAction(
+    label: String,
+    support: String,
+    emphasized: Boolean,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    onClick: () -> Unit,
+) {
+    val background = if (emphasized) Cream else RowSurface
+    val foreground = if (emphasized) Ink else TextMain
+    val secondary = if (emphasized) Color(0xFF4F5A50) else TextMuted
+    val border = if (emphasized) Cream else RowBorder
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(21.dp))
+            .background(background)
+            .border(1.dp, border, RoundedCornerShape(21.dp))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick,
+            )
+            .heightIn(min = 82.dp)
+            .padding(horizontal = 13.dp, vertical = 13.dp)
+            .semantics {
+                contentDescription = if (support.isBlank()) label else label + ". " + support
+            },
+    ) {
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(CircleShape)
+                .background(if (emphasized) Ink else Color(0xFF242D27)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = if (emphasized) Cream else TextMain,
+                modifier = Modifier.size(23.dp),
+            )
+        }
+        Spacer(Modifier.width(13.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = label,
+                color = foreground,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 15.sp,
+                lineHeight = 20.sp,
+            )
+            Spacer(Modifier.height(3.dp))
+            Text(
+                text = support,
+                color = secondary,
+                fontSize = 12.sp,
+                lineHeight = 16.sp,
+            )
+        }
+        Spacer(Modifier.width(8.dp))
+        Icon(
+            imageVector = Icons.Outlined.ArrowForward,
+            contentDescription = null,
+            tint = secondary,
+            modifier = Modifier.size(19.dp),
+        )
+    }
+}
+
+@Composable
+private fun ReminderStat(
+    value: String,
+    label: String,
+    modifier: Modifier,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+            .clip(RoundedCornerShape(17.dp))
+            .background(Color(0xFF101813))
+            .border(1.dp, RowBorder, RoundedCornerShape(17.dp))
+            .padding(horizontal = 11.dp, vertical = 15.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(38.dp)
+                .clip(CircleShape)
+                .background(Color(0xFF202A23)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(imageVector = icon, contentDescription = null, tint = Cream, modifier = Modifier.size(20.dp))
+        }
+        Spacer(Modifier.width(9.dp))
+        Column {
+            Text(
+                text = value,
+                color = TextMain,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 15.sp,
+                lineHeight = 18.sp,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = label,
+                color = TextMuted,
+                fontSize = 11.sp,
+                lineHeight = 14.sp,
+            )
+        }
+    }
+}
+
+@Composable
+private fun PrimaryOverlayAction(
+    label: String,
+    support: String?,
+    onClick: () -> Unit,
+) {
+    val description = if (support.isNullOrBlank()) label else label + ". " + support
+    Column(
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 62.dp)
+            .clip(RoundedCornerShape(17.dp))
+            .background(Cream)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick,
+            )
+            .padding(horizontal = 18.dp, vertical = 15.dp)
+            .semantics { contentDescription = description },
+    ) {
+        Text(label, color = Ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+        if (!support.isNullOrBlank()) {
+            Spacer(Modifier.height(3.dp))
+            Text(support, color = Color(0xFF4F5A50), fontSize = 12.sp, textAlign = TextAlign.Center)
+        }
+    }
+}
+
+@Composable
+private fun SecondaryOverlayAction(
+    label: String,
+    support: String?,
+    onClick: () -> Unit,
+) {
+    val description = if (support.isNullOrBlank()) label else label + ". " + support
+    Column(
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 58.dp)
+            .clip(RoundedCornerShape(17.dp))
+            .background(Color(0xFF0B120E))
+            .border(1.dp, Color(0xFF354238), RoundedCornerShape(17.dp))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick,
+            )
+            .padding(horizontal = 18.dp, vertical = 13.dp)
+            .semantics { contentDescription = description },
+    ) {
+        Text(label, color = TextMain, fontSize = 15.sp, fontWeight = FontWeight.Medium, textAlign = TextAlign.Center)
+        if (!support.isNullOrBlank()) {
+            Spacer(Modifier.height(2.dp))
+            Text(support, color = TextMuted, fontSize = 11.sp, lineHeight = 14.sp, textAlign = TextAlign.Center)
+        }
+    }
+}
+
+@Composable
+private fun SunriseLandscape(modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier) {
+        val w = size.width
+        val h = size.height
+        drawRect(
+            brush = Brush.verticalGradient(
+                colors = listOf(Color(0xFF263326), Color(0xFF101A14), Color(0xFF080F0B)),
+                startY = 0f,
+                endY = h,
             ),
-            content = { content() },
+        )
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(Color(0x66F4BF6C), Color(0x1AF4BF6C), Color.Transparent),
+                center = Offset(w * 0.73f, h * 0.40f),
+                radius = h * 0.52f,
+            ),
+            radius = h * 0.52f,
+            center = Offset(w * 0.73f, h * 0.40f),
+        )
+        drawCircle(
+            brush = Brush.verticalGradient(
+                colors = listOf(Color(0xFFFFD98A), Color(0xFFF0A94A)),
+                startY = h * 0.14f,
+                endY = h * 0.72f,
+            ),
+            radius = h * 0.29f,
+            center = Offset(w * 0.72f, h * 0.46f),
+        )
+        val farHill = Path().apply {
+            moveTo(0f, h * 0.62f)
+            lineTo(w * 0.10f, h * 0.52f)
+            lineTo(w * 0.28f, h * 0.57f)
+            lineTo(w * 0.43f, h * 0.37f)
+            lineTo(w * 0.58f, h * 0.58f)
+            lineTo(w * 0.76f, h * 0.44f)
+            lineTo(w, h * 0.54f)
+            lineTo(w, h)
+            lineTo(0f, h)
+            close()
+        }
+        drawPath(farHill, Color(0xFF152219))
+        val nearHill = Path().apply {
+            moveTo(0f, h * 0.74f)
+            lineTo(w * 0.20f, h * 0.61f)
+            lineTo(w * 0.41f, h * 0.79f)
+            lineTo(w * 0.65f, h * 0.59f)
+            lineTo(w * 0.84f, h * 0.69f)
+            lineTo(w, h * 0.60f)
+            lineTo(w, h)
+            lineTo(0f, h)
+            close()
+        }
+        drawPath(nearHill, Color(0xFF0D1711))
+        val frontHill = Path().apply {
+            moveTo(0f, h * 0.88f)
+            lineTo(w * 0.18f, h * 0.79f)
+            lineTo(w * 0.37f, h * 0.88f)
+            lineTo(w * 0.61f, h * 0.75f)
+            lineTo(w * 0.79f, h * 0.84f)
+            lineTo(w, h * 0.72f)
+            lineTo(w, h)
+            lineTo(0f, h)
+            close()
+        }
+        drawPath(frontHill, Color(0xFF070D09))
+        val ridge = Path().apply {
+            moveTo(0f, h * 0.74f)
+            lineTo(w * 0.20f, h * 0.61f)
+            lineTo(w * 0.41f, h * 0.79f)
+            lineTo(w * 0.65f, h * 0.59f)
+            lineTo(w * 0.84f, h * 0.69f)
+            lineTo(w, h * 0.60f)
+        }
+        drawPath(ridge, SunriseGold.copy(alpha = 0.62f), style = Stroke(width = 1.dp.toPx()))
+        drawRect(
+            brush = Brush.verticalGradient(
+                colors = listOf(Color.Transparent, Color(0x66070D09)),
+                startY = h * 0.42f,
+                endY = h,
+            ),
+            topLeft = Offset.Zero,
+            size = size,
         )
     }
 }
