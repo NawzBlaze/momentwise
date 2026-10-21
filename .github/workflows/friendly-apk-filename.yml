@@ -1,0 +1,128 @@
+name: Add branded filename to published Android APK
+
+# This workflow reuses the already-published, checksum-verified APK bytes.
+# It does not build, sign, or replace the application binary.
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: 'Type add-friendly-apk-filename to add Momentwise.apk to the existing release.'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: momentwise-friendly-apk-filename
+  cancel-in-progress: false
+
+jobs:
+  add-friendly-name:
+    name: Verify existing release and set friendly download name
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: refs/heads/main
+
+      - name: Require main and explicit confirmation
+        env:
+          CONFIRMATION: ${{ github.event.inputs.confirmation }}
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_EVENT_NAME" != "workflow_dispatch" ] || [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::error::Only manual dispatch on main is allowed."
+            exit 1
+          fi
+          if [ "$CONFIRMATION" != "add-friendly-apk-filename" ]; then
+            echo "::error::Confirmation phrase did not match."
+            exit 1
+          fi
+          echo "Guard passed. No signing secrets are used."
+
+      - name: Download and verify the already-published APK
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          source_dir="$RUNNER_TEMP/momentwise-source"
+          mkdir -p "$source_dir"
+          gh release download v1.0.0 --repo "$GITHUB_REPOSITORY" \
+            --pattern "momentwise-1.0.0-signed.apk" --dir "$source_dir"
+          source_apk="$source_dir/momentwise-1.0.0-signed.apk"
+          test -s "$source_apk"
+          expected="$(python3 -c 'import json; print(json.load(open("download.json", encoding="utf-8"))["sha256"])')"
+          actual="$(sha256sum "$source_apk" | awk '{print $1}')"
+          if [ "$actual" != "$expected" ]; then
+            echo "::error::Original release APK SHA-256 did not match download.json. No alias was uploaded."
+            exit 1
+          fi
+          echo "Original APK hash verified: $actual"
+          if gh release view v1.0.0 --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name' | grep -Fxq "Momentwise.apk"; then
+            echo "::error::Momentwise.apk already exists. Refusing to overwrite a release asset."
+            exit 1
+          fi
+          cp "$source_apk" "$RUNNER_TEMP/Momentwise.apk"
+          sha256sum "$RUNNER_TEMP/Momentwise.apk" | awk '{print $1 "  Momentwise.apk"}' > "$RUNNER_TEMP/Momentwise.apk.sha256"
+          test "$(awk '{print $1}' "$RUNNER_TEMP/Momentwise.apk.sha256")" = "$actual"
+
+      - name: Upload branded APK and matching checksum
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release upload v1.0.0 \
+            "$RUNNER_TEMP/Momentwise.apk" \
+            "$RUNNER_TEMP/Momentwise.apk.sha256" \
+            --repo "$GITHUB_REPOSITORY"
+
+      - name: Verify the uploaded alias, then remove confusing legacy APK names
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          verify_dir="$RUNNER_TEMP/momentwise-verify"
+          mkdir -p "$verify_dir"
+          gh release download v1.0.0 --repo "$GITHUB_REPOSITORY" \
+            --pattern "Momentwise.apk" --dir "$verify_dir"
+          uploaded="$(sha256sum "$verify_dir/Momentwise.apk" | awk '{print $1}')"
+          expected="$(python3 -c 'import json; print(json.load(open("download.json", encoding="utf-8"))["sha256"])')"
+          test "$uploaded" = "$expected"
+          gh release delete-asset v1.0.0 "momentwise-1.0.0-signed.apk" --repo "$GITHUB_REPOSITORY" --yes
+          gh release delete-asset v1.0.0 "momentwise-1.0.0-signed.apk.sha256" --repo "$GITHUB_REPOSITORY" --yes
+          echo "Verified the friendly alias against the originally published APK, then removed legacy APK asset names."
+
+      - name: Update website download metadata
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path("download.json")
+          data = json.loads(path.read_text(encoding="utf-8"))
+          if data.get("apkUrl") != "https://github.com/NawzBlaze/momentwise/releases/download/v1.0.0/momentwise-1.0.0-signed.apk":
+              raise SystemExit("download.json is not pointing at the expected legacy release asset; refusing to overwrite it.")
+          data["apkUrl"] = "https://github.com/NawzBlaze/momentwise/releases/download/v1.0.0/Momentwise.apk"
+          data["checksumUrl"] = "https://github.com/NawzBlaze/momentwise/releases/download/v1.0.0/Momentwise.apk.sha256"
+          data["gate"] = "Enabled for the published signed GitHub Release v1.0.0 with a branded Momentwise.apk filename. Physical-device validation is still pending; read the release notes before installing."
+          path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+          PY
+          python3 .github/scripts/check-site.py
+
+      - name: Commit website URL update
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add download.json
+          git commit -m "Use Momentwise.apk as the public download filename"
+          git push origin HEAD:main
+
+      - name: Dispatch Pages deployment
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run pages.yml --repo "$GITHUB_REPOSITORY" --ref main
