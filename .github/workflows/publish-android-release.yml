@@ -120,10 +120,13 @@ jobs:
 
       - name: Prepare website metadata for the verified 1.0.1 release
         if: success() && github.ref == 'refs/heads/main'
+        env:
+          PUBLISH_CONFIRMATION: ${{ github.event.inputs.confirmation }}
         run: |
           set -euo pipefail
           python3 - <<'PY'
           import json
+          import os
           import re
           from pathlib import Path
 
@@ -131,11 +134,17 @@ jobs:
           digest = checksum_file.read_text(encoding="utf-8").split()[0]
           if not re.fullmatch(r"[a-f0-9]{64}", digest):
               raise SystemExit("The verified APK checksum is not a SHA-256 digest.")
+          unverified = os.environ.get("PUBLISH_CONFIRMATION") == "publish-unverified-at-owner-risk"
+          validation = (
+              "Physical-device testing with Instagram is still pending."
+              if unverified
+              else "Published after the owner-selected physical-device approval path."
+          )
           path = Path("download.json")
           data = json.loads(path.read_text(encoding="utf-8"))
           data.update({
               "available": True,
-              "gate": "Enabled for the published signed GitHub Release v1.0.1. Automated unit, lint and API 34/35 emulator checks passed; physical-device testing with Instagram is still pending.",
+              "gate": "Enabled for the published signed GitHub Release v1.0.1. Automated unit, lint and API 34/35 emulator checks passed. " + validation,
               "unavailableMessage": "A signed download is available below.",
               "versionName": "1.0.1",
               "versionCode": 13,
@@ -145,7 +154,7 @@ jobs:
               "checksumUrl": "https://github.com/NawzBlaze/momentwise/releases/download/v1.0.1/Momentwise.apk.sha256",
               "verificationReportUrl": "https://github.com/NawzBlaze/momentwise/releases/download/v1.0.1/signing-verification.txt",
               "releaseUrl": "https://github.com/NawzBlaze/momentwise/releases/tag/v1.0.1",
-              "notes": "Momentwise 1.0.1 (versionCode 13). Automated unit, lint and API 34/35 fixture-emulator checks passed. Physical-device testing with Instagram is still pending; review the release notes before installing."
+              "notes": "Momentwise 1.0.1 (versionCode 13). Automated unit, lint and API 34/35 fixture-emulator checks passed. " + validation + " Review the release notes before installing."
           })
           path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
           PY
@@ -180,7 +189,7 @@ jobs:
 
           Limits: Momentwise does not force-stop other apps, does not block taps, and does not promise an exact clock time for reminders. Reminder checks can arrive about 15 seconds after the interval while monitoring is on. The pause overlay needs display-over-other-apps permission. A foreground notification stays visible while monitoring is on.
 
-          Automated Android unit tests, lint and API 34/35 fixture-emulator checks passed. Physical-device testing with Instagram is still pending.
+          Automated Android unit tests, lint and API 34/35 fixture-emulator checks passed. Physical-device validation status is recorded below.
           EOF
           if [ "$PUBLISH_CONFIRMATION" = "publish-unverified-at-owner-risk" ]; then
             cat >> "$RUNNER_TEMP/release-notes.md" <<'EOF'
@@ -188,6 +197,13 @@ jobs:
           ## Validation status
 
           This build is being published at the owner's explicit request before physical-device validation. Unit tests and API 34/35 fixture-emulator tests passed, but the updated opening-pause and reminder behavior has not been verified with Instagram on a physical phone. A prior candidate showed intermittent opening-pause and reminder problems. Treat this release as unverified on real devices and expect a follow-up if further issues are found.
+          EOF
+          elif [ "$PUBLISH_CONFIRMATION" = "publish-after-physical-approval" ]; then
+            cat >> "$RUNNER_TEMP/release-notes.md" <<'EOF'
+
+          ## Validation status
+
+          Published after the owner selected the physical-device approval path. Automated tests also passed for Android unit tests and API 34/35 fixture-emulator behavior.
           EOF
           fi
 
@@ -208,13 +224,20 @@ jobs:
           if gh release view "$tag" >/dev/null 2>&1; then
             existing_dir="$RUNNER_TEMP/existing-momentwise-release"
             mkdir -p "$existing_dir"
-            gh release download "$tag" --repo "$GITHUB_REPOSITORY" --pattern "Momentwise.apk" --dir "$existing_dir"
+            gh release download "$tag" --repo "$GITHUB_REPOSITORY" \
+              --pattern "Momentwise.apk" \
+              --pattern "Momentwise.apk.sha256" \
+              --pattern "signing-verification.txt" \
+              --dir "$existing_dir"
+            test -s "$existing_dir/Momentwise.apk.sha256"
+            test -s "$existing_dir/signing-verification.txt"
             existing="$(sha256sum "$existing_dir/Momentwise.apk" | awk '{print $1}')"
-            if [ "$existing" != "$expected" ]; then
-              echo "::error::Release $tag already exists with a different APK. Refusing to replace it."
+            existing_checksum="$(awk '{print $1}' "$existing_dir/Momentwise.apk.sha256")"
+            if [ "$existing" != "$expected" ] || [ "$existing_checksum" != "$expected" ]; then
+              echo "::error::Release $tag has mismatched APK/checksum bytes. Refusing to change the existing release."
               exit 1
             fi
-            echo "Release $tag already contains the exact verified APK bytes; reusing it without overwriting assets."
+            echo "Release $tag contains the exact verified APK and matching checksum; reusing it without overwriting assets."
           else
             gh release create "$tag" \
               "$apk" \
