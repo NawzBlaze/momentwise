@@ -429,7 +429,10 @@ class MonitoringService : Service() {
             events = events,
             selfPackage = packageName,
             ignoredPackages = ignoredPackages(now),
-            ignoreSelf = pauseVisible,
+            // The Compose overlay is not an Activity: if the user opens Momentwise
+            // or another app, Usage Access must still identify that new foreground.
+            ignoreSelf = pauseVisible && PausePresenter.surface != PauseSurface.OVERLAY &&
+                PausePresenter.surface != PauseSurface.SUSPENDED,
             pauseClassName = PauseActivity::class.java.name,
             // Both the overlay and the pause activity can stop the app underneath.
             // Hold that stop while the pause is visible so it is not a leave.
