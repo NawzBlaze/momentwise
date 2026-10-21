@@ -75,6 +75,35 @@ class CrossAppPauseTest {
         )
     }
 
+    @Test
+    fun openingMomentwiseHomeHidesPendingPauseAndTargetReturnRestoresIt() {
+        val target = prepare(overlay = true)
+        openFixture(target)
+        assertTrue(
+            "Opening was not visible over the selected app. ${diagnostics()}",
+            waitFor { overlayWindowVisible() },
+        )
+        val openingDecisions = statusFile().lineSequence().count { it.contains("showing OPENING for") }
+
+        val openedHome = shell("am start -W -n $APP/.MainActivity")
+        assertTrue("Could not open Momentwise home: ${oneLine(openedHome)}", openedHome.contains("ok"))
+        assertTrue(
+            "The pause stayed over Momentwise home instead of hiding. ${diagnostics()}",
+            waitFor { !overlayWindowVisible() },
+        )
+
+        openFixture(target)
+        assertTrue(
+            "The unanswered pause did not resume over its original target. ${diagnostics()}",
+            waitFor { overlayWindowVisible() && statusFile().contains("overlay reattached") },
+        )
+        assertEquals(
+            "A return within the grace minute must restore, not recreate, the opening.",
+            openingDecisions,
+            statusFile().lineSequence().count { it.contains("showing OPENING for") },
+        )
+    }
+
     /**
      * Home while the card is up is the launcher, not a leave. Leave ends the
      * visit. Opening the fixture again shows once. Emulator fixture, not a phone.
