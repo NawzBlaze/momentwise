@@ -2,6 +2,8 @@ name: Android release
 
 # Manual signing only. Do not add a pull-request trigger or a tag trigger.
 # This file must not create a GitHub Release or generate a keystore.
+# A signed artifact from this workflow is not the website download.
+# Publication is publish-android-release.yml, and only after the approval phrase.
 on:
   workflow_dispatch:
 

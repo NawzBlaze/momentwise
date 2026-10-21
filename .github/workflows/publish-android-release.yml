@@ -1,0 +1,181 @@
+name: Publish signed Android release
+
+# Manual dispatch only. Never add a pull request or tag trigger.
+# This is the only workflow that may create a GitHub Release.
+# It does not update download.json. The website stays gated until that file
+# is changed on purpose after a verified public release exists.
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: 'Type publish-after-physical-approval to publish from main.'
+        required: true
+        type: string
+      replace_existing:
+        description: 'Type replace-existing-release only to replace the existing v1.0.0 assets.'
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-android-release
+  cancel-in-progress: false
+
+jobs:
+  guard:
+    name: Require main and the approval phrase
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Fail before secrets unless this is an approved main dispatch
+        env:
+          PUBLISH_CONFIRMATION: ${{ github.event.inputs.confirmation }}
+        run: |
+          python3 - <<'PY'
+          import os, sys
+          if os.environ.get("GITHUB_EVENT_NAME") != "workflow_dispatch":
+              sys.exit("Not a manual run. No signing secret was read.")
+          if os.environ.get("GITHUB_REF") != "refs/heads/main":
+              sys.exit("Refusing %s. Only refs/heads/main may continue. No signing secret was read." % os.environ.get("GITHUB_REF"))
+          if os.environ.get("PUBLISH_CONFIRMATION") != "publish-after-physical-approval":
+              sys.exit("Confirmation phrase did not match. No release was created and no signing secret was read.")
+          print("Approval matched on main. This job does not read signing secrets.")
+          PY
+
+  publish:
+    name: Build, verify, and publish the signed release
+    needs: guard
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.event.inputs.confirmation == 'publish-after-physical-approval'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Confirm the approval phrase before secrets
+        env:
+          PUBLISH_CONFIRMATION: ${{ github.event.inputs.confirmation }}
+        run: |
+          python3 - <<'PY'
+          import os, sys
+          if os.environ.get("GITHUB_EVENT_NAME") != "workflow_dispatch" or os.environ.get("GITHUB_REF") != "refs/heads/main":
+              sys.exit("Refusing before any signing secret is read.")
+          if os.environ.get("PUBLISH_CONFIRMATION") != "publish-after-physical-approval":
+              sys.exit("Confirmation phrase did not match. No release was created.")
+          print("Approval matched on main. The phrase is not printed.")
+          PY
+
+      - name: Checkout main
+        if: success() && github.ref == 'refs/heads/main'
+        uses: actions/checkout@v4
+        with:
+          ref: refs/heads/main
+          persist-credentials: false
+
+      - name: Require signing secrets
+        if: success() && github.ref == 'refs/heads/main'
+        env:
+          MOMENTWISE_KEYSTORE_BASE64: ${{ secrets.MOMENTWISE_KEYSTORE_BASE64 }}
+          MOMENTWISE_KEYSTORE_PASSWORD: ${{ secrets.MOMENTWISE_KEYSTORE_PASSWORD }}
+          MOMENTWISE_KEY_ALIAS: ${{ secrets.MOMENTWISE_KEY_ALIAS }}
+          MOMENTWISE_KEY_PASSWORD: ${{ secrets.MOMENTWISE_KEY_PASSWORD }}
+        run: bash .github/scripts/require-signing-secrets.sh
+
+      - name: Set up JDK 17
+        if: success() && github.ref == 'refs/heads/main'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Android SDK
+        if: success() && github.ref == 'refs/heads/main'
+        uses: android-actions/setup-android@v3
+        with:
+          packages: platforms;android-35 build-tools;35.0.0
+
+      - name: Decode existing keystore
+        if: success() && github.ref == 'refs/heads/main'
+        env:
+          MOMENTWISE_KEYSTORE_BASE64: ${{ secrets.MOMENTWISE_KEYSTORE_BASE64 }}
+        run: bash .github/scripts/decode-keystore.sh
+
+      - name: Assemble signed release
+        if: success() && github.ref == 'refs/heads/main'
+        working-directory: android
+        env:
+          MOMENTWISE_KEYSTORE_PATH: ${{ runner.temp }}/signing/momentwise-release.jks
+          MOMENTWISE_KEYSTORE_PASSWORD: ${{ secrets.MOMENTWISE_KEYSTORE_PASSWORD }}
+          MOMENTWISE_KEY_ALIAS: ${{ secrets.MOMENTWISE_KEY_ALIAS }}
+          MOMENTWISE_KEY_PASSWORD: ${{ secrets.MOMENTWISE_KEY_PASSWORD }}
+        run: ./gradlew :app:assembleRelease --no-daemon --stacktrace
+
+      - name: Verify signature, package, and version
+        if: success() && github.ref == 'refs/heads/main'
+        run: bash .github/scripts/verify-signed-apk.sh
+
+      - name: Remove keystore
+        if: always() && github.ref == 'refs/heads/main'
+        run: rm -f "$RUNNER_TEMP/signing/momentwise-release.jks"
+
+      - name: Upload verified files for this run
+        if: success() && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: momentwise-signed-apk-not-the-website-download
+          path: |
+            signed-artifact/momentwise-1.0.0-signed.apk
+            signed-artifact/momentwise-1.0.0-signed.apk.sha256
+            signed-artifact/signing-verification.txt
+          if-no-files-found: error
+
+      - name: Write release notes
+        if: success() && github.ref == 'refs/heads/main'
+        run: |
+          cat > "$RUNNER_TEMP/release-notes.md" <<'EOF'
+          Momentwise 1.0.0 (versionCode 12)
+
+          Signed Android build of the app. This is not a Google Play listing.
+
+          The APK was checked with apksigner before this release was created. The SHA-256 of the file and the certificate fingerprint are in the attached verification report.
+
+          Limits: Momentwise does not force-stop other apps, does not block taps, and does not promise an exact clock time for reminders. Reminder checks can arrive about 15 seconds after the interval while monitoring is on. The pause overlay needs display-over-other-apps permission. A foreground notification stays visible while monitoring is on.
+
+          Published from a manual approval on main. The website download stays off until download.json is updated on purpose.
+          EOF
+
+      - name: Create the public release
+        if: success() && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPLACE_EXISTING: ${{ github.event.inputs.replace_existing }}
+        run: |
+          set -euo pipefail
+          tag="v1.0.0"
+          test -f signed-artifact/momentwise-1.0.0-signed.apk
+          test -f signed-artifact/momentwise-1.0.0-signed.apk.sha256
+          test -f signed-artifact/signing-verification.txt
+          if gh release view "$tag" >/dev/null 2>&1; then
+            if [ "$REPLACE_EXISTING" != "replace-existing-release" ]; then
+              echo "Release $tag already exists. Refusing to replace it."
+              exit 1
+            fi
+            gh release delete "$tag" --yes --cleanup-tag
+          fi
+          gh release create "$tag" \
+            signed-artifact/momentwise-1.0.0-signed.apk \
+            signed-artifact/momentwise-1.0.0-signed.apk.sha256 \
+            signed-artifact/signing-verification.txt \
+            --title "Momentwise 1.0.0" \
+            --notes-file "$RUNNER_TEMP/release-notes.md"
+          {
+            echo "## Published release"
+            echo
+            echo "This run created the GitHub Release. It did not change download.json, so the website button stays off until that file is updated in a reviewed change."
+            echo
+            echo '```json'
+            gh release view "$tag" --json url,tagName,assets
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

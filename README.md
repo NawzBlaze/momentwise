@@ -8,7 +8,11 @@ Momentwise is an intentional phone-use companion being designed to help people i
 
 ## Current Status: native app coded, signed APK not published
 
-The public site describes the Android app. It does not offer an APK download, because no signed release file has been published. The browser design reference in `prototype/` is source only. It is not published, and it is not the product.
+The public site describes the Android app. It does not offer an APK download, because no signed release file has been published. [`download.json`](download.json) is the only download source of truth. `available` stays false until a verified public GitHub Release exists and that file is updated on purpose. The page will not link a debug APK, an Actions artifact, or a guessed URL.
+
+Signing and publication are separate. [`.github/workflows/android-release.yml`](.github/workflows/android-release.yml) can build a signed artifact from a manual `main` run. It does not create a Release. [`.github/workflows/publish-android-release.yml`](.github/workflows/publish-android-release.yml) creates the Release only after a manual `main` dispatch with the approval phrase. Pull requests cannot run it. This repository does not currently publish that release.
+
+The browser design reference in `prototype/` is source only. It is not published, and it is not the product.
 
 The native project in [`android/`](android/) lists launchable apps, explains Usage Access, display-over-other-apps, and notifications before a rule is enabled, and can run a foreground monitor plus a pause. Settings can pause monitoring without deleting rules. Quit returns to the home screen. It does not force-stop other apps. That pause path has not been proven on an API 34 or API 35 device here. Constraints are in [`ANDROID_IMPLEMENTATION_PLAN.md`](ANDROID_IMPLEMENTATION_PLAN.md).
 
@@ -75,6 +79,7 @@ momentwise/
 ├── android/                    # Native Android foundation (Compose). See android/README.md
 ├── ANDROID_IMPLEMENTATION_PLAN.md
 ├── .gitignore                  # Standard ignore rules
+├── download.json               # Download source of truth. Stays unavailable until a verified release.
 ├── index.html                  # Accessible, semantic static landing page with theme selector
 ├── README.md                   # Project documentation & brand system
 ├── robots.txt                  # Search engine crawl directives

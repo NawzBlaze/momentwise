@@ -2,6 +2,8 @@ name: Android
 
 on:
   pull_request:
+    paths-ignore:
+      - visual-review/**
   push:
     branches: [main]
 

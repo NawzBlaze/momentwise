@@ -1,0 +1,61 @@
+name: Site visual check
+
+on:
+  pull_request:
+    paths-ignore:
+      - visual-review/**
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: site-visual-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  visual:
+    name: Browser screenshots and overflow
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Playwright and Lighthouse
+        run: npm install --prefix "$RUNNER_TEMP/visual" playwright lighthouse
+
+      - name: Install Chromium
+        run: npx --prefix "$RUNNER_TEMP/visual" playwright install --with-deps chromium
+
+      - name: Render, screenshot, and measure
+        env:
+          PLAYWRIGHT_MODULE: ${{ runner.temp }}/visual/node_modules/playwright/index.js
+          LIGHTHOUSE_BIN: ${{ runner.temp }}/visual/node_modules/.bin/lighthouse
+        run: |
+          set +e
+          node .github/scripts/capture-site.mjs > site-screenshots-log.txt 2>&1
+          code=$?
+          mkdir -p site-screenshots
+          cp site-screenshots-log.txt site-screenshots/console.txt
+          {
+            echo "## Visual log"
+            echo
+            echo '```'
+            tail -n 120 site-screenshots-log.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "$code"
+
+      - name: Upload screenshots and reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: site-screenshots
+          path: site-screenshots
+          if-no-files-found: warn

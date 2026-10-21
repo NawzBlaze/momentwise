@@ -36,16 +36,17 @@ jobs:
       - name: Stage site files
         # The native project is not part of the public site. prototype/ stays in
         # git as a design reference and is not published. After this deploys,
-        # /prototype/ 404s. Do not delete that source.
+        # /prototype/ 404s. Do not delete that source. assets/logo.png is the
+        # hero image and must be published with the page.
         run: |
           mkdir -p _site
           rsync -a \
             --exclude android \
             --exclude prototype \
+            --exclude visual-review \
             --exclude _site \
             --exclude .git \
             --exclude .github \
-            --exclude assets/logo.png \
             ./ _site/
 
       - name: Upload artifact

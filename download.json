@@ -1,0 +1,14 @@
+{
+  "available": false,
+  "gate": "Leave available false until a verified public GitHub Release exists and this file is updated on purpose. Do not point apkUrl at a debug APK, an Actions artifact, or a guessed filename.",
+  "unavailableMessage": "A signed download is not available yet.",
+  "versionName": null,
+  "versionCode": null,
+  "packageId": "com.nawzblaze.momentwise",
+  "apkUrl": null,
+  "sha256": null,
+  "checksumUrl": null,
+  "verificationReportUrl": null,
+  "releaseUrl": null,
+  "notes": null
+}
