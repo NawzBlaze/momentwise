@@ -14,6 +14,10 @@ data class PauseRequest(
     val secondarySupport: String = "",
     val snoozeMinutes: Int = 10,
     val fromNotification: Boolean = false,
+    /** Foreground-use credit for the current reminder interval, not total daily use. */
+    val usedMinutes: Int? = null,
+    /** The configured in-app-use interval for this reminder, if enabled. */
+    val reminderIntervalMinutes: Int? = null,
 ) {
     enum class Kind { OPENING, REMINDER }
 }
