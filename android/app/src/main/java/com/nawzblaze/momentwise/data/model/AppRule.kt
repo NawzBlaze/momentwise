@@ -7,11 +7,11 @@ package com.nawzblaze.momentwise.data.model
  * with each other (verified by RuleIsolationTest). A newly built rule uses:
  *
  * - Opening heading: "Before you scroll"
- * - Opening support: "Take a second. What do you want from this visit?"
- * - Option 1: "Leave {app name}" — returns home. It does not force-stop.
- * - Option 2: "Continue intentionally" — dismisses the pause and starts the reminder.
+ * - Opening support: "Take a second. What do you want from this app right now?"
+ * - Option 1: "Not now" — returns home. It does not force-stop.
+ * - Option 2: "Open intentionally" — dismisses the pause and starts the reminder.
  * - Reminder frequency: 5 minutes. Never is still an explicit choice.
- * - Reminder notice: "You're still here?"
+ * - Reminder notice: "You've been here for a while."
  *
  * These constructor defaults are for a new rule. Decoding a saved rule does
  * not replace a stored prompt, label, or interval with them.
@@ -24,11 +24,11 @@ data class AppRule(
     val enabled: Boolean = false,
     /** True once the user has opened/saved this app's configuration at least once. */
     val configuredEver: Boolean = false,
-    val openingNotice: String = "Take a second. What do you want from this visit?",
-    val quitOption: ResponseOption = ResponseOption("Leave", RuleAction.LEAVE_APP),
-    val continueOption: ResponseOption = ResponseOption("Continue intentionally", RuleAction.CONTINUE_INTO_APP),
+    val openingNotice: String = "Take a second. What do you want from this app right now?",
+    val quitOption: ResponseOption = ResponseOption("Not now", RuleAction.LEAVE_APP),
+    val continueOption: ResponseOption = ResponseOption("Open intentionally", RuleAction.CONTINUE_INTO_APP),
     val reminderFrequency: ReminderFrequency = ReminderFrequency.EveryMinutes(5),
-    val reminderNotice: String = "You're still here?",
+    val reminderNotice: String = "You've been here for a while.",
     val reminderActions: ReminderActions = ReminderActions(),
     /**
      * True while the native app still ships the seeded sample catalog instead of
