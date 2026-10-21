@@ -23,6 +23,7 @@ import com.nawzblaze.momentwise.R
 import com.nawzblaze.momentwise.data.model.AppRule
 import com.nawzblaze.momentwise.intervention.DetectorSignal
 import com.nawzblaze.momentwise.intervention.EventWindow
+import com.nawzblaze.momentwise.intervention.ForegroundEvent
 import com.nawzblaze.momentwise.intervention.DetectorState
 import com.nawzblaze.momentwise.intervention.GuardCommand
 import com.nawzblaze.momentwise.intervention.GuardSnapshot
@@ -706,6 +707,7 @@ class MonitoringService : Service() {
     private var shownRequest: PauseRequest? = null
     private var shownThemeModeName: String? = null
     private var pauseSuspendedAtElapsed: Long? = null
+    private var lastSuspendedForegroundProbeElapsed = Long.MIN_VALUE
 
     /**
      * Detach the visible overlay when the user leaves its target. Keep the same
@@ -717,10 +719,11 @@ class MonitoringService : Service() {
         val surface = PausePresenter.surface
         if (surface != PauseSurface.OVERLAY && surface != PauseSurface.SUSPENDED) return
 
-        val foreground = detector.lastPackage
+        var foreground = detector.lastPackage
         if (surface == PauseSurface.OVERLAY) {
             if (!PauseAttachmentPolicy.belongsOver(target, foreground)) {
                 pauseSuspendedAtElapsed = nowElapsed
+                lastSuspendedForegroundProbeElapsed = Long.MIN_VALUE
                 withContext(Dispatchers.Main) {
                     PausePresenter.suspendForTargetAway(this@MonitoringService)
                 }
@@ -732,6 +735,33 @@ class MonitoringService : Service() {
         val suspendedAt = pauseSuspendedAtElapsed ?: nowElapsed.also {
             pauseSuspendedAtElapsed = it
         }
+
+        // UsageStats can publish a resumed event late or after a poll cursor moved.
+        // While suspended, re-read a bounded recent window every few seconds and
+        // restore only when the most recent resumed package is this exact target.
+        if (foreground != target &&
+            (lastSuspendedForegroundProbeElapsed == Long.MIN_VALUE ||
+                nowElapsed - lastSuspendedForegroundProbeElapsed >= SUSPENDED_FOREGROUND_PROBE_INTERVAL_MILLIS)
+        ) {
+            lastSuspendedForegroundProbeElapsed = nowElapsed
+            val wallNow = System.currentTimeMillis()
+            val recent = readEvents(EventWindow.seedStart(wallNow), wallNow)
+            val latestResume = recent
+                .asSequence()
+                .filter { it.kind == ForegroundEvent.Kind.RESUMED }
+                .maxByOrNull { it.timeMillis }
+            if (latestResume?.packageName == target) {
+                foreground = target
+                detector = detector.copy(
+                    lastPackage = target,
+                    lastEventTimeMillis = maxOf(detector.lastEventTimeMillis, latestResume.timeMillis),
+                    stoppedPackage = null,
+                    stoppedAtMillis = Long.MIN_VALUE,
+                )
+                noteDebug("suspended foreground recovered target=" + target + " eventAt=" + latestResume.timeMillis)
+            }
+        }
+
         if (PauseAttachmentPolicy.shouldResume(target, foreground, suspendedAt, nowElapsed)) {
             val request = shownRequest ?: return
             val theme = shownThemeModeName ?: app().container.appSettingsRepository.themeMode.first().name
@@ -766,6 +796,7 @@ class MonitoringService : Service() {
 
         pauseVisible = false
         pauseSuspendedAtElapsed = null
+        lastSuspendedForegroundProbeElapsed = Long.MIN_VALUE
         shownPackage = null
         shownKind = null
         shownRequest = null
@@ -854,6 +885,7 @@ class MonitoringService : Service() {
         if (!pauseVisible) return
         pauseVisible = false
         pauseSuspendedAtElapsed = null
+        lastSuspendedForegroundProbeElapsed = Long.MIN_VALUE
         shownPackage = null
         shownKind = null
         shownRequest = null
