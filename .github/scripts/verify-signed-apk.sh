@@ -55,7 +55,8 @@ PY
 
 install -d signed-artifact
 cp "$apk" signed-artifact/Momentwise.apk
-sha256sum signed-artifact/Momentwise.apk | tee signed-artifact/Momentwise.apk.sha256
+(cd signed-artifact && sha256sum Momentwise.apk > Momentwise.apk.sha256)
+cat signed-artifact/Momentwise.apk.sha256
 digest="$(printf '%s\n' "$verify" | awk -F': ' '/Signer #1 certificate SHA-256 digest:/{print $2; exit}')"
 expected="b550cab577b31a5cec5a543cc6e3a8c2b68684798ba10efcae43be43c385b8e8"
 normalized="$(printf '%s' "$digest" | tr -d '[:space:]' | tr -d ':' | tr '[:upper:]' '[:lower:]')"
