@@ -122,76 +122,8 @@
     return githubReleaseUrl(value, /\.apk$/i);
   }
 
-  function isReleaseAsset(value) {
-    return githubReleaseUrl(value, /\.(sha256|txt)$/i);
-  }
-
-  function isReleasePage(value) {
-    let url;
-    try { url = new URL(value); } catch (e) { return false; }
-    if (url.protocol !== 'https:' || url.hostname !== 'github.com') return false;
-    if (url.search || url.hash) return false;
-    return url.pathname.startsWith(RELEASE_PAGE_PREFIX) && !url.pathname.includes('..');
-  }
-
-  function isVersionName(value) {
-    return typeof value === 'string' && /^[0-9]+\.[0-9]+\.[0-9]+$/.test(value);
-  }
-
-  function isPackageId(value) {
-    return typeof value === 'string' && /^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z][a-zA-Z0-9_]*)+$/.test(value);
-  }
-
-  function fillDetails(details, config) {
-    if (!details) return;
-    const rows = [];
-    if (isVersionName(config.versionName)) rows.push(['Version', config.versionName]);
-    if (Number.isInteger(config.versionCode) && config.versionCode > 0) rows.push(['Version code', String(config.versionCode)]);
-    if (isPackageId(config.packageId)) rows.push(['Package', config.packageId]);
-    if (typeof config.sha256 === 'string' && /^[a-f0-9]{64}$/i.test(config.sha256)) rows.push(['SHA-256', config.sha256.toLowerCase()]);
-    const list = document.createElement('dl');
-    rows.forEach(([term, value]) => {
-      const row = document.createElement('div');
-      const dt = document.createElement('dt');
-      const dd = document.createElement('dd');
-      dt.textContent = term;
-      dd.textContent = value;
-      row.append(dt, dd);
-      list.append(row);
-    });
-    const links = document.createElement('p');
-    if (isReleaseAsset(config.checksumUrl)) {
-      const link = document.createElement('a');
-      link.href = config.checksumUrl;
-      link.rel = 'noopener noreferrer';
-      link.textContent = 'Checksum file';
-      links.append(link);
-    }
-    if (isReleaseAsset(config.verificationReportUrl)) {
-      const link = document.createElement('a');
-      link.href = config.verificationReportUrl;
-      link.rel = 'noopener noreferrer';
-      link.textContent = 'Verification report';
-      links.append(link);
-    }
-    if (isReleasePage(config.releaseUrl)) {
-      const link = document.createElement('a');
-      link.href = config.releaseUrl;
-      link.rel = 'noopener noreferrer';
-      link.textContent = 'Release notes';
-      links.append(link);
-    }
-    if (!list.childNodes.length && !links.childNodes.length) return;
-    details.replaceChildren();
-    if (list.childNodes.length) details.append(list);
-    if (links.childNodes.length) details.append(links);
-    details.hidden = false;
-  }
-
   async function configureDownload() {
     const button = document.getElementById('download-button');
-    const status = document.getElementById('download-status');
-    const details = document.getElementById('download-details');
     if (!button || button.tagName !== 'BUTTON') return;
     let config;
     try {
@@ -209,10 +141,8 @@
     link.rel = 'noopener noreferrer';
     link.textContent = 'Download for Android';
     button.replaceWith(link);
-    if (status) status.textContent = 'This downloads the published release file.';
     const footerNote = document.getElementById('footer-download-note');
     if (footerNote) footerNote.textContent = 'Not on Google Play. The button downloads the published signed release.';
-    fillDetails(details, config);
   }
 
   configureDownload();
