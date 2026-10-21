@@ -113,6 +113,9 @@ class AppRuleJsonTest {
         assertEquals("Take a second. What do you want from this app right now?", rule.openingNotice)
         assertEquals("Open intentionally", rule.continueOption.label)
         assertEquals("Dismiss for today", rule.reminderActions.dismissLabel)
+        assertEquals("Take a break", rule.reminderActions.quitLabel)
+        assertEquals("Continue for now", rule.reminderActions.snoozeLabel)
+        assertEquals("You've been here for a while.", rule.reminderNotice)
         assertEquals(ReminderFrequency.EveryMinutes(12), rule.reminderFrequency)
     }
 
