@@ -53,7 +53,7 @@ class AppRuleJsonTest {
         val rule = AppRuleJson.decodeList(sparse.toString())!!.single()
 
         assertEquals(RuleDefaults.OPENING_NOTICE, rule.openingNotice)
-        assertEquals(RuleDefaults.leaveLabel("Example"), rule.quitOption.label)
+        assertEquals(RuleDefaults.QUIT_OPTION_LABEL, rule.quitOption.label)
         assertEquals(RuleAction.LEAVE_APP, rule.quitOption.action)
         assertEquals(RuleAction.CONTINUE_INTO_APP, rule.continueOption.action)
         assertEquals(ReminderFrequency.Never, rule.reminderFrequency)
@@ -110,8 +110,8 @@ class AppRuleJsonTest {
         )
         val rule = AppRuleJson.decodeList(saved.toString())!!.single()
 
-        assertEquals("Take a second. What do you want from this visit?", rule.openingNotice)
-        assertEquals("Continue intentionally", rule.continueOption.label)
+        assertEquals("Take a second. What do you want from this app right now?", rule.openingNotice)
+        assertEquals("Open intentionally", rule.continueOption.label)
         assertEquals("Dismiss for today", rule.reminderActions.dismissLabel)
         assertEquals(ReminderFrequency.EveryMinutes(12), rule.reminderFrequency)
     }
