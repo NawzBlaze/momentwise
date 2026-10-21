@@ -2,8 +2,8 @@ name: Publish signed Android release
 
 # Manual dispatch only. Never add a pull request or tag trigger.
 # This is the only workflow that may create a GitHub Release.
-# It does not update download.json. The website stays gated until that file
-# is changed on purpose after a verified public release exists.
+# It updates website metadata only after the signed APK is verified and a
+# matching public release exists, then waits for the Pages deployment.
 on:
   workflow_dispatch:
     inputs:
@@ -11,11 +11,6 @@ on:
         description: 'Use publish-after-physical-approval only after device testing, or publish-unverified-at-owner-risk to disclose that device testing is pending.'
         required: true
         type: string
-      replace_existing:
-        description: 'Type replace-existing-release only to replace the existing v1.0.0 assets.'
-        required: false
-        type: string
-        default: ''
 
 permissions:
   contents: read
@@ -56,6 +51,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      actions: write
     steps:
       - name: Confirm the approval phrase before secrets
         env:
@@ -122,6 +118,39 @@ jobs:
         if: success() && github.ref == 'refs/heads/main'
         run: bash .github/scripts/verify-signed-apk.sh
 
+      - name: Prepare website metadata for the verified 1.0.1 release
+        if: success() && github.ref == 'refs/heads/main'
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          import re
+          from pathlib import Path
+
+          checksum_file = Path("signed-artifact/Momentwise.apk.sha256")
+          digest = checksum_file.read_text(encoding="utf-8").split()[0]
+          if not re.fullmatch(r"[a-f0-9]{64}", digest):
+              raise SystemExit("The verified APK checksum is not a SHA-256 digest.")
+          path = Path("download.json")
+          data = json.loads(path.read_text(encoding="utf-8"))
+          data.update({
+              "available": True,
+              "gate": "Enabled for the published signed GitHub Release v1.0.1. Automated unit, lint and API 34/35 emulator checks passed; physical-device testing with Instagram is still pending.",
+              "unavailableMessage": "A signed download is available below.",
+              "versionName": "1.0.1",
+              "versionCode": 13,
+              "packageId": "com.nawzblaze.momentwise",
+              "apkUrl": "https://github.com/NawzBlaze/momentwise/releases/download/v1.0.1/Momentwise.apk",
+              "sha256": digest,
+              "checksumUrl": "https://github.com/NawzBlaze/momentwise/releases/download/v1.0.1/Momentwise.apk.sha256",
+              "verificationReportUrl": "https://github.com/NawzBlaze/momentwise/releases/download/v1.0.1/signing-verification.txt",
+              "releaseUrl": "https://github.com/NawzBlaze/momentwise/releases/tag/v1.0.1",
+              "notes": "Momentwise 1.0.1 (versionCode 13). Automated unit, lint and API 34/35 fixture-emulator checks passed. Physical-device testing with Instagram is still pending; review the release notes before installing."
+          })
+          path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\\n", encoding="utf-8")
+          PY
+          python3 .github/scripts/check-site.py
+
       - name: Remove keystore
         if: always() && github.ref == 'refs/heads/main'
         run: rm -f "$RUNNER_TEMP/signing/momentwise-release.jks"
@@ -132,8 +161,8 @@ jobs:
         with:
           name: momentwise-signed-apk-not-the-website-download
           path: |
-            signed-artifact/momentwise-1.0.0-signed.apk
-            signed-artifact/momentwise-1.0.0-signed.apk.sha256
+            signed-artifact/Momentwise.apk
+            signed-artifact/Momentwise.apk.sha256
             signed-artifact/signing-verification.txt
           if-no-files-found: error
 
@@ -143,15 +172,15 @@ jobs:
           PUBLISH_CONFIRMATION: ${{ github.event.inputs.confirmation }}
         run: |
           cat > "$RUNNER_TEMP/release-notes.md" <<'EOF'
-          Momentwise 1.0.0 (versionCode 12)
+          Momentwise 1.0.1 (versionCode 13)
 
-          Signed Android build of the app. This is not a Google Play listing.
+          Signed Android build of Momentwise with the redesigned opening-pause and reminder surfaces, plus target-app-only overlay attachment and quick-return recovery for an unanswered opening pause. The pause is branded Momentwise; it does not impersonate an official Instagram screen.
 
-          The APK was checked with apksigner before this release was created. The SHA-256 of the file and the certificate fingerprint are in the attached verification report.
+          The APK was checked with apksigner before publication. The SHA-256 and release certificate fingerprint are in the attached verification report.
 
           Limits: Momentwise does not force-stop other apps, does not block taps, and does not promise an exact clock time for reminders. Reminder checks can arrive about 15 seconds after the interval while monitoring is on. The pause overlay needs display-over-other-apps permission. A foreground notification stays visible while monitoring is on.
 
-          Published from a manual approval on main. The website download stays off until download.json is updated on purpose.
+          Automated Android unit tests, lint and API 34/35 fixture-emulator checks passed. Physical-device testing with Instagram is still pending.
           EOF
           if [ "$PUBLISH_CONFIRMATION" = "publish-unverified-at-owner-risk" ]; then
             cat >> "$RUNNER_TEMP/release-notes.md" <<'EOF'
@@ -162,36 +191,88 @@ jobs:
           EOF
           fi
 
-      - name: Create the public release
+      - name: Create the new public release without overwriting an existing build
         if: success() && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPLACE_EXISTING: ${{ github.event.inputs.replace_existing }}
         run: |
           set -euo pipefail
-          tag="v1.0.0"
-          test -f signed-artifact/momentwise-1.0.0-signed.apk
-          test -f signed-artifact/momentwise-1.0.0-signed.apk.sha256
-          test -f signed-artifact/signing-verification.txt
+          tag="v1.0.1"
+          apk="signed-artifact/Momentwise.apk"
+          checksum="signed-artifact/Momentwise.apk.sha256"
+          report="signed-artifact/signing-verification.txt"
+          test -s "$apk"
+          test -s "$checksum"
+          test -s "$report"
+          expected="$(awk '{print $1}' "$checksum")"
           if gh release view "$tag" >/dev/null 2>&1; then
-            if [ "$REPLACE_EXISTING" != "replace-existing-release" ]; then
-              echo "Release $tag already exists. Refusing to replace it."
+            existing_dir="$RUNNER_TEMP/existing-momentwise-release"
+            mkdir -p "$existing_dir"
+            gh release download "$tag" --repo "$GITHUB_REPOSITORY" --pattern "Momentwise.apk" --dir "$existing_dir"
+            existing="$(sha256sum "$existing_dir/Momentwise.apk" | awk '{print $1}')"
+            if [ "$existing" != "$expected" ]; then
+              echo "::error::Release $tag already exists with a different APK. Refusing to replace it."
               exit 1
             fi
-            gh release delete "$tag" --yes --cleanup-tag
+            echo "Release $tag already contains the exact verified APK bytes; reusing it without overwriting assets."
+          else
+            gh release create "$tag" \
+              "$apk" \
+              "$checksum" \
+              "$report" \
+              --title "Momentwise 1.0.1" \
+              --notes-file "$RUNNER_TEMP/release-notes.md"
           fi
-          gh release create "$tag" \
-            signed-artifact/momentwise-1.0.0-signed.apk \
-            signed-artifact/momentwise-1.0.0-signed.apk.sha256 \
-            signed-artifact/signing-verification.txt \
-            --title "Momentwise 1.0.0" \
-            --notes-file "$RUNNER_TEMP/release-notes.md"
+
+      - name: Commit the verified download metadata to main
+        if: success() && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          gh auth setup-git
+          git add download.json
+          if git diff --cached --quiet; then
+            echo "download.json already matches the verified v1.0.1 release."
+          else
+            git commit -m "Publish Momentwise 1.0.1 download metadata"
+            git push origin HEAD:main
+          fi
+
+      - name: Deploy and wait for the updated download page
+        if: success() && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          before="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow pages.yml --branch main --limit 1 --json databaseId --jq '.[0].databaseId // 0')"
+          gh workflow run pages.yml --repo "$GITHUB_REPOSITORY" --ref main
+          run_id=""
+          for attempt in $(seq 1 60); do
+            candidate="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow pages.yml --branch main --limit 1 --json databaseId --jq '.[0].databaseId // 0')"
+            if [ -n "$candidate" ] && [ "$candidate" != "$before" ] && [ "$candidate" != "0" ]; then
+              run_id="$candidate"
+              break
+            fi
+            sleep 5
+          done
+          if [ -z "$run_id" ]; then
+            echo "::error::Could not find the Pages deployment dispatched after publishing v1.0.1."
+            exit 1
+          fi
+          gh run watch "$run_id" --repo "$GITHUB_REPOSITORY" --exit-status
+
+      - name: Record published release details
+        if: success() && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
           {
             echo "## Published release"
             echo
-            echo "This run created the GitHub Release. It did not change download.json, so the website button stays off until that file is updated in a reviewed change."
+            echo "The signed v1.0.1 APK was verified, published without overwriting v1.0.0, and download.json was updated from its actual SHA-256. Pages deployment completed before this run succeeds."
             echo
-            echo '```json'
-            gh release view "$tag" --json url,tagName,assets
-            echo '```'
+            gh release view v1.0.1 --repo "$GITHUB_REPOSITORY" --json url,tagName,assets
           } >> "$GITHUB_STEP_SUMMARY"
