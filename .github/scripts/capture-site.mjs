@@ -99,6 +99,8 @@ const tagValue = tagCount === 1
 if (tagCount !== 1 || tagValue !== verification) fail(`verification tag in head: count=${tagCount} value=${tagValue}`);
 if (await page.locator('body meta[name="google-site-verification"]').count()) fail('verification tag duplicated in body');
 if (await page.locator('.pause-card, .pause-pair').count()) fail('fake pause cards are still rendered');
+const headerDownload = page.locator('.header-download');
+if (await headerDownload.count() !== 1 || await headerDownload.getAttribute('href') !== '#download-button') fail('desktop header download CTA missing or incorrectly linked');
 
 const downloadConfig = JSON.parse(fs.readFileSync(path.join(root, 'download.json'), 'utf8'));
 const button = page.locator('#download-button');
@@ -119,7 +121,7 @@ if (downloadConfig.available === true) {
   if (/debug|unsigned/i.test(buttonState.href) || buttonState.href.includes('/actions/artifacts')) fail('website download points at a debug or CI artifact');
   const status = (await page.locator('#download-status').textContent()) || '';
   if (!status.includes('published release file')) fail('published download status did not update');
-  if (!(await page.locator('.version-label').textContent())?.includes('1.0.0')) fail('published download version label missing');
+  if (await page.locator('.version-label').count()) fail('version label should not appear beside the download button');
   if (!(await page.locator('#download-details').textContent())?.includes('Checksum file')) fail('published checksum details are missing');
   if (!(await page.locator('#download-details').textContent())?.includes('Verification report')) fail('published verification report details are missing');
 } else {
