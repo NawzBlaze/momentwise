@@ -26,7 +26,7 @@ import com.nawzblaze.momentwise.intervention.PauseRequest
  * If overlay is not granted, only the notification is shown. A notification
  * is not described as a cover.
  */
-enum class PauseSurface { NONE, OVERLAY, ACTIVITY, NOTIFICATION }
+enum class PauseSurface { NONE, OVERLAY, ACTIVITY, NOTIFICATION, SUSPENDED }
 
 enum class PauseDismissReason {
     /** Leave, Continue, snooze, or dismiss-for-today. */
@@ -98,6 +98,44 @@ object PausePresenter {
         }
         surface = PauseSurface.NOTIFICATION
         showNotification(context, request)
+    }
+
+    /**
+     * Temporarily detaches the overlay when its guarded app is no longer the
+     * foreground. This is not a user dismissal: preserve the unanswered request
+     * and do not invoke [onDismissed].
+     */
+    fun suspendForTargetAway(context: Context) {
+        if (android.os.Looper.myLooper() != android.os.Looper.getMainLooper()) {
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                suspendForTargetAway(context)
+            }
+            return
+        }
+        if (surface != PauseSurface.OVERLAY) return
+        PauseOverlay.dismiss(context)
+        cancelNotification(context)
+        surface = PauseSurface.SUSPENDED
+        DebugNotes.append(context, "intervention=overlay suspended outside target foreground")
+    }
+
+    /**
+     * Expires a pause that remained unanswered while its target app was away
+     * for the full grace window. It must not be treated as Android removing a
+     * visible window, or the normal system-removal recovery would reshow it.
+     */
+    fun clearSuspended(context: Context) {
+        if (android.os.Looper.myLooper() != android.os.Looper.getMainLooper()) {
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                clearSuspended(context)
+            }
+            return
+        }
+        if (surface != PauseSurface.SUSPENDED) return
+        PauseOverlay.dismiss(context)
+        cancelNotification(context)
+        surface = PauseSurface.NONE
+        DebugNotes.append(context, "intervention=suspended pause expired without a choice")
     }
 
     fun dismiss(context: Context, reason: PauseDismissReason = PauseDismissReason.WITHOUT_CHOICE) {
