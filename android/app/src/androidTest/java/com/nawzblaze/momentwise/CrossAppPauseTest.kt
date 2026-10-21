@@ -109,7 +109,7 @@ class CrossAppPauseTest {
         openFixture(target)
         val shownAgain = waitFor {
             overlayWindowVisible() &&
-                statusFile().lineSequence().count { it.contains("intervention=overlay shown") } >= 2
+                statusFile().lineSequence().count { it.contains("showing OPENING for") } >= 2
         }
         assertTrue(
             "Second visit did not show the opening. ${diagnostics()}",
