@@ -28,6 +28,7 @@ import com.nawzblaze.momentwise.intervention.GuardCommand
 import com.nawzblaze.momentwise.intervention.GuardSnapshot
 import com.nawzblaze.momentwise.intervention.InterventionSurface
 import com.nawzblaze.momentwise.intervention.PauseActivity
+import com.nawzblaze.momentwise.intervention.PauseAttachmentPolicy
 import com.nawzblaze.momentwise.intervention.PauseRequest
 import com.nawzblaze.momentwise.intervention.PauseShowPolicy
 import com.nawzblaze.momentwise.intervention.SessionClock
@@ -140,6 +141,7 @@ class MonitoringService : Service() {
         MonitorPresence.markStartAttempt(this, System.currentTimeMillis())
         PausePresenter.onDismissed = { reason, visitId ->
             pauseVisible = false
+            pauseSuspendedAtElapsed = null
             val now = System.currentTimeMillis()
             when (reason) {
                 PauseDismissReason.CHOICE -> {
@@ -198,6 +200,10 @@ class MonitoringService : Service() {
                     }
                 }
             }
+            shownPackage = null
+            shownKind = null
+            shownRequest = null
+            shownThemeModeName = null
         }
         PausePresenter.onShown = { pauseVisible = true }
         startCollectors()
@@ -432,6 +438,8 @@ class MonitoringService : Service() {
         val signal = reduced.signal
         val signaledPackage = reduced.packageName
         detector = reduced.state
+        // The request remains pending, but its window follows only the selected app.
+        syncPauseAttachment(elapsed)
         // A pause flag with no open visit is stale. It must not swallow a new opening.
         val pauseForPolicy = pauseVisible &&
             (sessionCache.phase != GuardSnapshot.Phase.NONE || sessionCache.activePackage != null)
@@ -692,6 +700,83 @@ class MonitoringService : Service() {
 
     private var shownPackage: String? = null
     private var shownKind: PauseRequest.Kind? = null
+    private var shownRequest: PauseRequest? = null
+    private var shownThemeModeName: String? = null
+    private var pauseSuspendedAtElapsed: Long? = null
+
+    /**
+     * Detach the visible overlay when the user leaves its target. Keep the same
+     * request pending for up to one minute so a fast return sees the same choice.
+     */
+    private suspend fun syncPauseAttachment(nowElapsed: Long) {
+        if (!pauseVisible) return
+        val target = shownPackage ?: return
+        val surface = PausePresenter.surface
+        if (surface != PauseSurface.OVERLAY && surface != PauseSurface.SUSPENDED) return
+
+        val foreground = detector.lastPackage
+        if (surface == PauseSurface.OVERLAY) {
+            if (!PauseAttachmentPolicy.belongsOver(target, foreground)) {
+                pauseSuspendedAtElapsed = nowElapsed
+                withContext(Dispatchers.Main) {
+                    PausePresenter.suspendForTargetAway(this@MonitoringService)
+                }
+                noteDebug("overlay detached target=$target foreground=$foreground visit=" + sessionCache.visitId)
+            }
+            return
+        }
+
+        val suspendedAt = pauseSuspendedAtElapsed ?: nowElapsed.also {
+            pauseSuspendedAtElapsed = it
+        }
+        if (PauseAttachmentPolicy.shouldResume(target, foreground, suspendedAt, nowElapsed)) {
+            val request = shownRequest ?: return
+            val theme = shownThemeModeName ?: app().container.appSettingsRepository.themeMode.first().name
+            pauseSuspendedAtElapsed = null
+            withContext(Dispatchers.Main) {
+                PausePresenter.show(this@MonitoringService, request, theme, sessionCache.visitId)
+            }
+            noteDebug("overlay reattached target=$target visit=" + sessionCache.visitId)
+            return
+        }
+
+        val expired = PauseAttachmentPolicy.graceExpired(suspendedAt, nowElapsed)
+        val openedAnotherGuardedApp = foreground != null &&
+            enabledRules.any { rule -> rule.appId == foreground && foreground != target }
+        if (expired || openedAnotherGuardedApp) {
+            expireSuspendedPause(suspendedAt, nowElapsed)
+        }
+    }
+
+    /** Expire a pending, unanswered pause without mistaking its detach for a user choice. */
+    private suspend fun expireSuspendedPause(suspendedAt: Long, nowElapsed: Long) {
+        val expiredPackage = shownPackage
+        val expiredKind = shownKind
+        val before = SessionClock.adoptStored(sessions().current(), sessionCache)
+        val away = SessionClock.onTemporarilyAway(before, suspendedAt)
+        val next = SessionClock.expireGrace(away, nowElapsed)
+        if (!persistIfUnchanged(before, next) && next != before) {
+            sessionCache = SessionClock.adoptStored(sessions().current(), before)
+        } else {
+            sessionCache = SessionClock.adoptStored(sessions().current(), next)
+        }
+
+        pauseVisible = false
+        pauseSuspendedAtElapsed = null
+        shownPackage = null
+        shownKind = null
+        shownRequest = null
+        shownThemeModeName = null
+        pauseClearedByUser = false
+        openingHeldPackage = null
+        machineLatch = VisitMachine.Latch()
+        detector = UsageEventReducer.clearPendingStop(detector)
+        withContext(Dispatchers.Main) {
+            PausePresenter.clearSuspended(this@MonitoringService)
+        }
+        noteDebug("suspended pause expired package=$expiredPackage kind=$expiredKind awayMs=" +
+            (nowElapsed - suspendedAt).coerceAtLeast(0L))
+    }
 
     private suspend fun showPause(rule: AppRule, kind: PauseRequest.Kind) {
         // The visit reducer decides whether this is a new opening. A process-local
@@ -727,12 +812,18 @@ class MonitoringService : Service() {
                 primarySupport = InterventionSurface.LEAVE_SUPPORT,
                 secondarySupport = InterventionSurface.snoozeSupport(rule.reminderActions.snoozeMinutes),
                 snoozeMinutes = rule.reminderActions.snoozeMinutes,
+                usedMinutes = ((sessionCache.useByPackage[rule.appId]?.accumulatedMillis ?: 0L) / 60_000L)
+                    .toInt().coerceAtLeast(1),
+                reminderIntervalMinutes = rule.reminderFrequency.minutesOrNull(),
             )
         }
         val theme = app().container.appSettingsRepository.themeMode.first().name
         pauseVisible = true
+        pauseSuspendedAtElapsed = null
         shownPackage = rule.appId
         shownKind = kind
+        shownRequest = request
+        shownThemeModeName = theme
         if (kind == PauseRequest.Kind.OPENING && LeaveSignal.packageName == rule.appId) {
             LeaveSignal.packageName = null
         }
@@ -750,14 +841,20 @@ class MonitoringService : Service() {
             pauseVisible = false
             shownPackage = null
             shownKind = null
+            shownRequest = null
+            shownThemeModeName = null
+            pauseSuspendedAtElapsed = null
         }
     }
 
     private suspend fun dismissPause(reason: PauseDismissReason) {
         if (!pauseVisible) return
         pauseVisible = false
+        pauseSuspendedAtElapsed = null
         shownPackage = null
         shownKind = null
+        shownRequest = null
+        shownThemeModeName = null
         withContext(Dispatchers.Main) { PausePresenter.dismiss(this@MonitoringService, reason) }
     }
 
