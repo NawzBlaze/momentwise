@@ -1106,6 +1106,7 @@ class MonitoringService : Service() {
 
     companion object {
         private const val TAG = "Momentwise"
+        private const val SUSPENDED_FOREGROUND_PROBE_INTERVAL_MILLIS = 3_000L
         private const val LAUNCHER_CACHE_MILLIS = 30_000L
         private const val BEAT_EVERY_TICKS = 5
 
