@@ -10,9 +10,8 @@ import com.nawzblaze.momentwise.intervention.InterventionSurface
  * Defaults for a newly configured rule.
  *
  * A stored custom notice, button label, or interval stays as the user saved
- * it. Decoding replaces only the previous shipped generic prompt and the
- * previous shipped Continue label. The browser prototype is a separate
- * design reference and still has the older wording.
+ * it. Decoding updates only text values that match the previous shipped
+ * defaults. User-written prompts and renamed actions remain unchanged.
  */
 object RuleDefaults {
     const val OPENING_HEADING = InterventionSurface.OPENING_HEADING
