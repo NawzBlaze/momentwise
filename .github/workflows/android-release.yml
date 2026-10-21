@@ -99,8 +99,8 @@ jobs:
         with:
           name: momentwise-signed-apk
           path: |
-            signed-artifact/momentwise-1.0.0-signed.apk
-            signed-artifact/momentwise-1.0.0-signed.apk.sha256
+            signed-artifact/Momentwise.apk
+            signed-artifact/Momentwise.apk.sha256
             signed-artifact/signing-verification.txt
           if-no-files-found: error
 

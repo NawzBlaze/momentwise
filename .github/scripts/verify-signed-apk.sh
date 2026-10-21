@@ -47,15 +47,16 @@ print(f"versionCode={version_code}")
 print(f"versionName={version_name}")
 if package != "com.nawzblaze.momentwise":
     sys.exit(f"Unexpected package id: {package}")
-if version_name != "1.0.0":
+if version_name != "1.0.1":
     sys.exit(f"Unexpected versionName: {version_name}")
-if version_code != "12":
+if version_code != "13":
     sys.exit(f"Unexpected versionCode: {version_code}")
 PY
 
 install -d signed-artifact
-cp "$apk" signed-artifact/momentwise-1.0.0-signed.apk
-sha256sum signed-artifact/momentwise-1.0.0-signed.apk | tee signed-artifact/momentwise-1.0.0-signed.apk.sha256
+cp "$apk" signed-artifact/Momentwise.apk
+(cd signed-artifact && sha256sum Momentwise.apk > Momentwise.apk.sha256)
+cat signed-artifact/Momentwise.apk.sha256
 digest="$(printf '%s\n' "$verify" | awk -F': ' '/Signer #1 certificate SHA-256 digest:/{print $2; exit}')"
 expected="b550cab577b31a5cec5a543cc6e3a8c2b68684798ba10efcae43be43c385b8e8"
 normalized="$(printf '%s' "$digest" | tr -d '[:space:]' | tr -d ':' | tr '[:upper:]' '[:lower:]')"
@@ -66,12 +67,12 @@ if [ "$normalized" != "$expected" ]; then
 fi
 cat > signed-artifact/signing-verification.txt <<EOF
 package=com.nawzblaze.momentwise
-versionName=1.0.0
-versionCode=12
+versionName=1.0.1
+versionCode=13
 apksigner=verified
 certificate_sha256=$normalized
 expected_certificate_sha256=$expected
-$(cat signed-artifact/momentwise-1.0.0-signed.apk.sha256)
+$(cat signed-artifact/Momentwise.apk.sha256)
 EOF
 
 {
@@ -98,7 +99,7 @@ payload = {
     "status": "completed",
     "conclusion": "success",
     "output": {
-        "title": "apksigner verified com.nawzblaze.momentwise 1.0.0",
+        "title": "apksigner verified com.nawzblaze.momentwise 1.0.1",
         "summary": text + "\n\nCI artifact only. Not a GitHub Release and not the website download.",
     },
 }

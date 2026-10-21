@@ -117,7 +117,7 @@ const buttonState = await button.evaluate((el) => ({
 if (downloadConfig.available === true) {
   if (buttonState.tag !== 'A' || buttonState.disabled) fail('published download did not become an active link');
   if (buttonState.href !== downloadConfig.apkUrl) fail('website download href does not match download.json');
-  if (!buttonState.href.includes('/releases/download/v1.0.0/') || !buttonState.href.endsWith('.apk')) fail('website download is not the versioned GitHub Release APK');
+  if (!/\/releases\/download\/v\d+\.\d+\.\d+\//.test(buttonState.href) || !buttonState.href.endsWith('.apk')) fail('website download is not a versioned GitHub Release APK');
   if (/debug|unsigned/i.test(buttonState.href) || buttonState.href.includes('/actions/artifacts')) fail('website download points at a debug or CI artifact');
   if (await page.locator('.version-label, .download-block, .download-details, .status-line').count()) fail('technical download metadata block must be absent');
   const visibleCopy = (await page.locator('body').innerText()) || '';

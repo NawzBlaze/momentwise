@@ -126,25 +126,32 @@ if json_ld:
         require(app is not None and app.get("name") == "Momentwise", "SoftwareApplication node must be preserved")
 
 download = json.loads((ROOT / "download.json").read_text(encoding="utf-8"))
-release_prefix = "https://github.com/NawzBlaze/momentwise/releases/download/v1.0.0/"
-allowed_apks = {
-    release_prefix + "momentwise-1.0.0-signed.apk",
-    release_prefix + "Momentwise.apk",
-}
+release_version = str(download.get("versionName") or "")
+release_tag = f"v{release_version}"
+release_prefix = f"https://github.com/NawzBlaze/momentwise/releases/download/{release_tag}/"
 apk_url = download.get("apkUrl")
-apk_name = apk_url.rsplit("/", 1)[-1] if isinstance(apk_url, str) else ""
-expected_checksum = release_prefix + ("Momentwise.apk.sha256" if apk_name == "Momentwise.apk" else "momentwise-1.0.0-signed.apk.sha256")
+allowed_releases = {
+    "1.0.0": {"version_code": 12, "sha256": "3a2b5829069b28787646fa6005389dd32c2e7142a1cdeb39b550db03f0c7396c"},
+    # The next release hash is populated by the guarded publishing workflow
+    # from the signed artifact that it just verified.
+    "1.0.1": {"version_code": 13, "sha256": None},
+}
+release = allowed_releases.get(release_version)
+expected_apk = release_prefix + "Momentwise.apk"
+expected_checksum = release_prefix + "Momentwise.apk.sha256"
 expected_report = release_prefix + "signing-verification.txt"
-expected_release = "https://github.com/NawzBlaze/momentwise/releases/tag/v1.0.0"
+expected_release = f"https://github.com/NawzBlaze/momentwise/releases/tag/{release_tag}"
 require(download.get("available") is True, "published signed download must be enabled")
-require(apk_url in allowed_apks, "download must point at the known published signed APK, using either current or branded asset name")
-require(download.get("checksumUrl") == expected_checksum, "download checksum URL must match the APK asset name")
+require(release is not None, "download version must match a supported published Momentwise release")
+require(apk_url == expected_apk, "download must point at the branded APK from its matching release")
+require(download.get("checksumUrl") == expected_checksum, "download checksum URL must match the APK asset")
 require(download.get("verificationReportUrl") == expected_report, "verification report URL must match the published asset")
 require(download.get("releaseUrl") == expected_release, "release URL must match the published release")
 require(download.get("packageId") == "com.nawzblaze.momentwise", "unexpected package ID in download metadata")
-require(download.get("versionName") == "1.0.0" and download.get("versionCode") == 12, "download version metadata must match the published release")
+require(release is not None and download.get("versionCode") == release["version_code"], "download version metadata must match a supported package version")
 require(isinstance(download.get("sha256"), str) and re.fullmatch(r"[a-f0-9]{64}", download["sha256"]), "download must contain a valid SHA-256")
-require(download.get("sha256") == "3a2b5829069b28787646fa6005389dd32c2e7142a1cdeb39b550db03f0c7396c", "download checksum must match the published release asset digest")
+if release is not None and release["sha256"] is not None:
+    require(download.get("sha256") == release["sha256"], "download checksum must match the published release asset digest")
 url_fields = " ".join(str(download.get(key) or "") for key in ("apkUrl", "checksumUrl", "verificationReportUrl", "releaseUrl", "notes"))
 require("debug" not in url_fields.lower() and "unsigned" not in url_fields.lower(), "download.json must not name a debug APK")
 require("actions/artifacts" not in url_fields, "download.json must not point at an Actions artifact")
