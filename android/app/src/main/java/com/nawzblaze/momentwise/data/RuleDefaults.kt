@@ -64,7 +64,7 @@ object RuleDefaults {
         enabled = enabled,
         configuredEver = enabled,
         openingNotice = OPENING_NOTICE,
-        quitOption = ResponseOption(leaveLabel(appName), RuleAction.LEAVE_APP),
+        quitOption = ResponseOption(QUIT_OPTION_LABEL, RuleAction.LEAVE_APP),
         continueOption = ResponseOption(CONTINUE_OPTION_LABEL, RuleAction.CONTINUE_INTO_APP),
         reminderFrequency = reminderFrequency,
         isSample = isSample,
