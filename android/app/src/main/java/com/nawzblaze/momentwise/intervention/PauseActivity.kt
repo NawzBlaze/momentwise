@@ -121,6 +121,8 @@ class PauseActivity : ComponentActivity() {
         private const val EXTRA_PRIMARY_SUPPORT = "pause_primary_support"
         private const val EXTRA_SECONDARY_SUPPORT = "pause_secondary_support"
         private const val EXTRA_FROM_NOTIFICATION = "pause_from_notification"
+        private const val EXTRA_USED_MINUTES = "pause_used_minutes"
+        private const val EXTRA_REMINDER_INTERVAL_MINUTES = "pause_reminder_interval_minutes"
 
         fun intent(context: Context, request: PauseRequest): Intent =
             Intent(context, PauseActivity::class.java).apply {
@@ -137,6 +139,8 @@ class PauseActivity : ComponentActivity() {
                 putExtra(EXTRA_SECONDARY_SUPPORT, request.secondarySupport)
                 putExtra(EXTRA_SNOOZE, request.snoozeMinutes)
                 putExtra(EXTRA_FROM_NOTIFICATION, request.fromNotification)
+                request.usedMinutes?.let { putExtra(EXTRA_USED_MINUTES, it) }
+                request.reminderIntervalMinutes?.let { putExtra(EXTRA_REMINDER_INTERVAL_MINUTES, it) }
             }
 
         fun fromIntent(intent: Intent?): PauseRequest? {
@@ -164,6 +168,16 @@ class PauseActivity : ComponentActivity() {
                     },
                 snoozeMinutes = intent.getIntExtra(EXTRA_SNOOZE, 10),
                 fromNotification = intent.getBooleanExtra(EXTRA_FROM_NOTIFICATION, false),
+                usedMinutes = if (intent.hasExtra(EXTRA_USED_MINUTES)) {
+                    intent.getIntExtra(EXTRA_USED_MINUTES, 0)
+                } else {
+                    null
+                },
+                reminderIntervalMinutes = if (intent.hasExtra(EXTRA_REMINDER_INTERVAL_MINUTES)) {
+                    intent.getIntExtra(EXTRA_REMINDER_INTERVAL_MINUTES, 0)
+                } else {
+                    null
+                },
             )
         }
     }
