@@ -103,7 +103,7 @@ for match in re.finditer(r"(?<!@media \()min-width:\s*(\d+)px", css):
     width = int(match.group(1))
     require(width < 320, f"css min-width {width}px may overflow a 320px screen")
 
-json_ld = re.search(r'<script type="application/ld\\+json">\\s*(.*?)\\s*</script>', html, re.S)
+json_ld = re.search(r'<script type="application/ld\+json">\s*(.*?)\s*</script>', html, re.S)
 require(json_ld is not None, "JSON-LD block missing")
 if json_ld:
     try:
