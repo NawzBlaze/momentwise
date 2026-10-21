@@ -120,6 +120,57 @@ class AppRuleJsonTest {
     }
 
     @Test
+    fun shippedInterventionDefaultsAreMigratedButCustomCopyStays() {
+        val shipped = JSONArray().put(
+            JSONObject()
+                .put("appId", "com.instagram.android")
+                .put("appName", "Instagram")
+                .put("openingNotice", "Take a second. What do you want from this visit?")
+                .put("option1Label", "Leave Instagram")
+                .put("option2Label", "Continue intentionally")
+                .put("reminderNotice", "You're still here?")
+                .put("advQuitLabel", "Okay, I'm quitting")
+                .put("advSnoozeLabel", "Wait")
+                .put("advDismissLabel", "Dismiss reminder")
+                .put("reminderFrequency", "minutes:5"),
+        )
+        val migrated = AppRuleJson.decodeList(shipped.toString())!!.single()
+
+        assertEquals(RuleDefaults.OPENING_NOTICE, migrated.openingNotice)
+        assertEquals(RuleDefaults.QUIT_OPTION_LABEL, migrated.quitOption.label)
+        assertEquals(RuleDefaults.CONTINUE_OPTION_LABEL, migrated.continueOption.label)
+        assertEquals(RuleDefaults.REMINDER_NOTICE, migrated.reminderNotice)
+        assertEquals(RuleDefaults.ADV_QUIT_LABEL, migrated.reminderActions.quitLabel)
+        assertEquals(RuleDefaults.ADV_SNOOZE_LABEL, migrated.reminderActions.snoozeLabel)
+        assertEquals(RuleDefaults.ADV_DISMISS_LABEL, migrated.reminderActions.dismissLabel)
+        assertEquals(ReminderFrequency.EveryMinutes(5), migrated.reminderFrequency)
+
+        val custom = JSONArray().put(
+            JSONObject()
+                .put("appId", "com.reddit.frontpage")
+                .put("appName", "Reddit")
+                .put("openingNotice", "My own opening question")
+                .put("option1Label", "Exit this time")
+                .put("option2Label", "Keep browsing")
+                .put("reminderNotice", "Pause and decide")
+                .put("advQuitLabel", "I'm done")
+                .put("advSnoozeLabel", "Give me a bit")
+                .put("advDismissLabel", "No more today")
+                .put("reminderFrequency", "minutes:7"),
+        )
+        val preserved = AppRuleJson.decodeList(custom.toString())!!.single()
+
+        assertEquals("My own opening question", preserved.openingNotice)
+        assertEquals("Exit this time", preserved.quitOption.label)
+        assertEquals("Keep browsing", preserved.continueOption.label)
+        assertEquals("Pause and decide", preserved.reminderNotice)
+        assertEquals("I'm done", preserved.reminderActions.quitLabel)
+        assertEquals("Give me a bit", preserved.reminderActions.snoozeLabel)
+        assertEquals("No more today", preserved.reminderActions.dismissLabel)
+        assertEquals(ReminderFrequency.EveryMinutes(7), preserved.reminderFrequency)
+    }
+
+    @Test
     fun customPromptLabelAndIntervalStay() {
         val saved = JSONArray().put(
             JSONObject()
