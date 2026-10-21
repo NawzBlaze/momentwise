@@ -100,10 +100,31 @@ if (tagCount !== 1 || tagValue !== verification) fail(`verification tag in head:
 if (await page.locator('body meta[name="google-site-verification"]').count()) fail('verification tag duplicated in body');
 if (await page.locator('.pause-card, .pause-pair').count()) fail('fake pause cards are still rendered');
 
+const downloadConfig = JSON.parse(fs.readFileSync(path.join(root, 'download.json'), 'utf8'));
 const button = page.locator('#download-button');
-const buttonState = await button.evaluate((el) => ({ tag: el.tagName, disabled: el.disabled === true }));
-if (buttonState.tag !== 'BUTTON' || !buttonState.disabled) fail('download button was enabled without a published release');
-
+await page.waitForFunction((available) => {
+  const el = document.getElementById('download-button');
+  return available ? el?.tagName === 'A' : el?.tagName === 'BUTTON';
+}, downloadConfig.available === true);
+const buttonState = await button.evaluate((el) => ({
+  tag: el.tagName,
+  disabled: el.disabled === true,
+  href: el.href || '',
+  text: el.textContent.trim(),
+}));
+if (downloadConfig.available === true) {
+  if (buttonState.tag !== 'A' || buttonState.disabled) fail('published download did not become an active link');
+  if (buttonState.href !== downloadConfig.apkUrl) fail('website download href does not match download.json');
+  if (!buttonState.href.includes('/releases/download/v1.0.0/') || !buttonState.href.endsWith('.apk')) fail('website download is not the versioned GitHub Release APK');
+  if (/debug|unsigned/i.test(buttonState.href) || buttonState.href.includes('/actions/artifacts')) fail('website download points at a debug or CI artifact');
+  const status = (await page.locator('#download-status').textContent()) || '';
+  if (!status.includes('published release file')) fail('published download status did not update');
+  if (!(await page.locator('.version-label').textContent())?.includes('1.0.0')) fail('published download version label missing');
+  if (!(await page.locator('#download-details').textContent())?.includes('Checksum file')) fail('published checksum details are missing');
+  if (!(await page.locator('#download-details').textContent())?.includes('Verification report')) fail('published verification report details are missing');
+} else {
+  if (buttonState.tag !== 'BUTTON' || !buttonState.disabled) fail('download button was enabled without a published release');
+}
 const logo = page.locator('.hero-logo');
 const logoInfo = await logo.evaluate((img) => {
   const style = getComputedStyle(img);

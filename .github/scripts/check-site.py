@@ -103,7 +103,7 @@ for match in re.finditer(r"(?<!@media \()min-width:\s*(\d+)px", css):
     width = int(match.group(1))
     require(width < 320, f"css min-width {width}px may overflow a 320px screen")
 
-json_ld = re.search(r'<script type="application/ld\+json">\s*(\{.*?\})\s*</script>', html, re.S)
+json_ld = re.search(r'<script type="application/ld\+json">\s*(.*?)\s*</script>', html, re.S)
 require(json_ld is not None, "JSON-LD block missing")
 if json_ld:
     try:
@@ -114,17 +114,33 @@ if json_ld:
         blob = json.dumps(data)
         require("aggregateRating" not in blob and "review" not in blob, "JSON-LD must not invent ratings")
         require("downloadUrl" not in blob, "JSON-LD must not invent a download")
-        require(data.get("name") == "Momentwise", "JSON-LD name changed")
+        graph = data.get("@graph", []) if isinstance(data, dict) else []
+        website = next((node for node in graph if isinstance(node, dict) and node.get("@type") == "WebSite"), None)
+        app = next((node for node in graph if isinstance(node, dict) and node.get("@type") == "SoftwareApplication"), None)
+        require(website is not None, "JSON-LD must include WebSite")
+        if website:
+            require(website.get("name") == "Momentwise", "WebSite name must be Momentwise")
+            require(website.get("url") == "https://nawzblaze.github.io/momentwise/", "WebSite URL must match canonical")
+        require(app is not None and app.get("name") == "Momentwise", "SoftwareApplication node must be preserved")
 
 download = json.loads((ROOT / "download.json").read_text(encoding="utf-8"))
-require(download.get("available") is False, "download.json must stay unavailable")
-require(download.get("apkUrl") is None, "download.json must not guess an APK URL")
-require(download.get("versionName") is None and download.get("versionCode") is None, "version label must stay empty until publish")
-require(download.get("sha256") is None, "checksum must stay empty until publish")
+expected_apk = "https://github.com/NawzBlaze/momentwise/releases/download/v1.0.0/momentwise-1.0.0-signed.apk"
+expected_checksum = "https://github.com/NawzBlaze/momentwise/releases/download/v1.0.0/momentwise-1.0.0-signed.apk.sha256"
+expected_report = "https://github.com/NawzBlaze/momentwise/releases/download/v1.0.0/signing-verification.txt"
+expected_release = "https://github.com/NawzBlaze/momentwise/releases/tag/v1.0.0"
+require(download.get("available") is True, "published signed download must be enabled")
+require(download.get("apkUrl") == expected_apk, "download must point at the published signed APK")
+require(download.get("checksumUrl") == expected_checksum, "download checksum URL must match the published asset")
+require(download.get("verificationReportUrl") == expected_report, "verification report URL must match the published asset")
+require(download.get("releaseUrl") == expected_release, "release URL must match the published release")
+require(download.get("packageId") == "com.nawzblaze.momentwise", "unexpected package ID in download metadata")
+require(download.get("versionName") == "1.0.0" and download.get("versionCode") == 12, "download version metadata must match the published release")
+require(isinstance(download.get("sha256"), str) and re.fullmatch(r"[a-f0-9]{64}", download["sha256"]), "download must contain a valid SHA-256")
+require(download.get("sha256") == "3a2b5829069b28787646fa6005389dd32c2e7142a1cdeb39b550db03f0c7396c", "download checksum must match the published release asset digest")
 url_fields = " ".join(str(download.get(key) or "") for key in ("apkUrl", "checksumUrl", "verificationReportUrl", "releaseUrl", "notes"))
 require("debug" not in url_fields.lower() and "unsigned" not in url_fields.lower(), "download.json must not name a debug APK")
 require("actions/artifacts" not in url_fields, "download.json must not point at an Actions artifact")
-require(RELEASE_PREFIX_OK := "releases/download/" in script, "script must know the release prefix")
+require("releases/download/" in script, "script must know the release prefix")
 require("config.available !== true" in script, "script must fail closed unless available is true")
 require("debug" in script and "unsigned" in script, "script must reject debug and unsigned names")
 require("download.json" in script, "script must read download.json")

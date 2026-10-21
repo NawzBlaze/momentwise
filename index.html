@@ -25,13 +25,25 @@
   <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      "name": "Momentwise",
-      "operatingSystem": "Android",
-      "applicationCategory": "LifestyleApplication",
-      "url": "https://nawzblaze.github.io/momentwise/",
-      "image": "https://nawzblaze.github.io/momentwise/assets/og.jpg",
-      "description": "Momentwise helps you pause before opening distracting apps and check in during actual app use. Set your own prompts and reminders on your Android phone."
+      "@graph": [
+        {
+          "@type": "WebSite",
+          "@id": "https://nawzblaze.github.io/momentwise/#website",
+          "name": "Momentwise",
+          "url": "https://nawzblaze.github.io/momentwise/",
+          "inLanguage": "en"
+        },
+        {
+          "@type": "SoftwareApplication",
+          "@id": "https://nawzblaze.github.io/momentwise/#app",
+          "name": "Momentwise",
+          "operatingSystem": "Android",
+          "applicationCategory": "LifestyleApplication",
+          "url": "https://nawzblaze.github.io/momentwise/",
+          "image": "https://nawzblaze.github.io/momentwise/assets/og.jpg",
+          "description": "Momentwise helps you pause before opening distracting apps and check in during actual app use. Set your own prompts and reminders on your Android phone."
+        }
+      ]
     }
   </script>
   <link rel="icon" type="image/png" sizes="32x32" href="./assets/favicon-32.png">
