@@ -75,6 +75,35 @@ class CrossAppPauseTest {
         )
     }
 
+    @Test
+    fun openingMomentwiseHomeHidesPendingPauseAndTargetReturnRestoresIt() {
+        val target = prepare(overlay = true)
+        openFixture(target)
+        assertTrue(
+            "Opening was not visible over the selected app. ${diagnostics()}",
+            waitFor { overlayWindowVisible() },
+        )
+        val openingDecisions = statusFile().lineSequence().count { it.contains("showing OPENING for") }
+
+        val openedHome = shell("am start -W -n $APP/.MainActivity")
+        assertTrue("Could not open Momentwise home: ${oneLine(openedHome)}", openedHome.contains("ok"))
+        assertTrue(
+            "The pause stayed over Momentwise home instead of hiding. ${diagnostics()}",
+            waitFor { !overlayWindowVisible() },
+        )
+
+        openFixture(target)
+        assertTrue(
+            "The unanswered pause did not resume over its original target. ${diagnostics()}",
+            waitFor { overlayWindowVisible() && statusFile().contains("overlay reattached") },
+        )
+        assertEquals(
+            "A return within the grace minute must restore, not recreate, the opening.",
+            openingDecisions,
+            statusFile().lineSequence().count { it.contains("showing OPENING for") },
+        )
+    }
+
     /**
      * Home while the card is up is the launcher, not a leave. Leave ends the
      * visit. Opening the fixture again shows once. Emulator fixture, not a phone.
@@ -88,10 +117,14 @@ class CrossAppPauseTest {
             waitFor { statusFile().contains("intervention=overlay shown") && overlayWindowVisible() },
         )
         shell("input keyevent KEYCODE_HOME")
-        Thread.sleep(2_500)
         assertTrue(
-            "Home dismissed the opening. Launcher in front is not a leave. ${diagnostics()}",
-            overlayWindowVisible(),
+            "The unanswered pause should detach from the launcher. ${diagnostics()}",
+            waitFor { !overlayWindowVisible() },
+        )
+        openFixture(target)
+        assertTrue(
+            "The same unanswered pause did not return over its target within the grace window. ${diagnostics()}",
+            waitFor { overlayWindowVisible() && statusFile().contains("overlay reattached") },
         )
         shell(
             "am broadcast -p $APP -a com.nawzblaze.momentwise.DEBUG_ENABLE_RULE " +
@@ -105,7 +138,7 @@ class CrossAppPauseTest {
         openFixture(target)
         val shownAgain = waitFor {
             overlayWindowVisible() &&
-                statusFile().lineSequence().count { it.contains("intervention=overlay shown") } >= 2
+                statusFile().lineSequence().count { it.contains("showing OPENING for") } >= 2
         }
         assertTrue(
             "Second visit did not show the opening. ${diagnostics()}",
@@ -130,13 +163,22 @@ class CrossAppPauseTest {
             "Overlay disappeared within 4 seconds. ${diagnostics()}",
             overlayWindowVisible(),
         )
+        val openingDecisions = statusFile().lineSequence().count { it.contains("showing OPENING for") }
         shell("input keyevent KEYCODE_HOME")
-        Thread.sleep(2_500)
         assertTrue(
-            "Home dismissed the opening. Launcher in front is not a leave. ${diagnostics()}",
-            overlayWindowVisible(),
+            "The pause was visible over Home instead of detaching. ${diagnostics()}",
+            waitFor { !overlayWindowVisible() },
         )
-        val shows = statusFile().lineSequence().count { it.contains("intervention=overlay shown") }
+        openFixture(target)
+        assertTrue(
+            "The unanswered pause did not resume on the selected app. ${diagnostics()}",
+            waitFor { overlayWindowVisible() && statusFile().contains("overlay reattached") },
+        )
+        assertEquals(
+            "Returning within the grace window must reuse the same opening decision.",
+            openingDecisions,
+            statusFile().lineSequence().count { it.contains("showing OPENING for") },
+        )
         shell(
             "am broadcast -p $APP -a com.nawzblaze.momentwise.DEBUG_ENABLE_RULE " +
                 "--es target_package $target --ez inject_continue true",
@@ -152,8 +194,8 @@ class CrossAppPauseTest {
         )
         assertEquals(
             "Continue started another opening. ${diagnostics()}",
-            shows,
-            statusFile().lineSequence().count { it.contains("intervention=overlay shown") },
+            openingDecisions,
+            statusFile().lineSequence().count { it.contains("showing OPENING for") },
         )
     }
 

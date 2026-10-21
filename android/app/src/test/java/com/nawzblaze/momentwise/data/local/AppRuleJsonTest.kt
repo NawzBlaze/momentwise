@@ -53,7 +53,7 @@ class AppRuleJsonTest {
         val rule = AppRuleJson.decodeList(sparse.toString())!!.single()
 
         assertEquals(RuleDefaults.OPENING_NOTICE, rule.openingNotice)
-        assertEquals(RuleDefaults.leaveLabel("Example"), rule.quitOption.label)
+        assertEquals(RuleDefaults.QUIT_OPTION_LABEL, rule.quitOption.label)
         assertEquals(RuleAction.LEAVE_APP, rule.quitOption.action)
         assertEquals(RuleAction.CONTINUE_INTO_APP, rule.continueOption.action)
         assertEquals(ReminderFrequency.Never, rule.reminderFrequency)
@@ -110,10 +110,64 @@ class AppRuleJsonTest {
         )
         val rule = AppRuleJson.decodeList(saved.toString())!!.single()
 
-        assertEquals("Take a second. What do you want from this visit?", rule.openingNotice)
-        assertEquals("Continue intentionally", rule.continueOption.label)
+        assertEquals("Take a second. What do you want from this app right now?", rule.openingNotice)
+        assertEquals("Open intentionally", rule.continueOption.label)
         assertEquals("Dismiss for today", rule.reminderActions.dismissLabel)
+        assertEquals("Take a break", rule.reminderActions.quitLabel)
+        assertEquals("Continue for now", rule.reminderActions.snoozeLabel)
+        assertEquals("You've been here for a while.", rule.reminderNotice)
         assertEquals(ReminderFrequency.EveryMinutes(12), rule.reminderFrequency)
+    }
+
+    @Test
+    fun shippedInterventionDefaultsAreMigratedButCustomCopyStays() {
+        val shipped = JSONArray().put(
+            JSONObject()
+                .put("appId", "com.instagram.android")
+                .put("appName", "Instagram")
+                .put("openingNotice", "Take a second. What do you want from this visit?")
+                .put("option1Label", "Leave Instagram")
+                .put("option2Label", "Continue intentionally")
+                .put("reminderNotice", "You're still here?")
+                .put("advQuitLabel", "Okay, I'm quitting")
+                .put("advSnoozeLabel", "Wait")
+                .put("advDismissLabel", "Dismiss reminder")
+                .put("reminderFrequency", "minutes:5"),
+        )
+        val migrated = AppRuleJson.decodeList(shipped.toString())!!.single()
+
+        assertEquals(RuleDefaults.OPENING_NOTICE, migrated.openingNotice)
+        assertEquals(RuleDefaults.QUIT_OPTION_LABEL, migrated.quitOption.label)
+        assertEquals(RuleDefaults.CONTINUE_OPTION_LABEL, migrated.continueOption.label)
+        assertEquals(RuleDefaults.REMINDER_NOTICE, migrated.reminderNotice)
+        assertEquals(RuleDefaults.ADV_QUIT_LABEL, migrated.reminderActions.quitLabel)
+        assertEquals(RuleDefaults.ADV_SNOOZE_LABEL, migrated.reminderActions.snoozeLabel)
+        assertEquals(RuleDefaults.ADV_DISMISS_LABEL, migrated.reminderActions.dismissLabel)
+        assertEquals(ReminderFrequency.EveryMinutes(5), migrated.reminderFrequency)
+
+        val custom = JSONArray().put(
+            JSONObject()
+                .put("appId", "com.reddit.frontpage")
+                .put("appName", "Reddit")
+                .put("openingNotice", "My own opening question")
+                .put("option1Label", "Exit this time")
+                .put("option2Label", "Keep browsing")
+                .put("reminderNotice", "Pause and decide")
+                .put("advQuitLabel", "I'm done")
+                .put("advSnoozeLabel", "Give me a bit")
+                .put("advDismissLabel", "No more today")
+                .put("reminderFrequency", "minutes:7"),
+        )
+        val preserved = AppRuleJson.decodeList(custom.toString())!!.single()
+
+        assertEquals("My own opening question", preserved.openingNotice)
+        assertEquals("Exit this time", preserved.quitOption.label)
+        assertEquals("Keep browsing", preserved.continueOption.label)
+        assertEquals("Pause and decide", preserved.reminderNotice)
+        assertEquals("I'm done", preserved.reminderActions.quitLabel)
+        assertEquals("Give me a bit", preserved.reminderActions.snoozeLabel)
+        assertEquals("No more today", preserved.reminderActions.dismissLabel)
+        assertEquals(ReminderFrequency.EveryMinutes(7), preserved.reminderFrequency)
     }
 
     @Test

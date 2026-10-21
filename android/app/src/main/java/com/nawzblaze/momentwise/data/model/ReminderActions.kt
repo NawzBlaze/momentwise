@@ -4,14 +4,14 @@ package com.nawzblaze.momentwise.data.model
  * The three advanced reminder actions, each with a user-customisable label.
  *
  * Defaults follow the approved product specification:
- * - Quit: "Okay, I'm quitting" — leaves the distracting app (return to home screen).
- * - Snooze: "Wait" — postpones the next check-in, 10 minutes by default.
+ * - Quit: "Take a break" — leaves the distracting app (return to home screen).
+ * - Snooze: "Continue for now" — postpones the next check-in, 10 minutes by default.
  * - Dismiss: "Dismiss for today" — stops prompts for this app for the rest of the local day.
  */
 data class ReminderActions(
-    val quitLabel: String = "Okay, I'm quitting",
+    val quitLabel: String = "Take a break",
     val quitAction: RuleAction = RuleAction.LEAVE_APP,
-    val snoozeLabel: String = "Wait",
+    val snoozeLabel: String = "Continue for now",
     val snoozeAction: RuleAction = RuleAction.SNOOZE_REMINDER,
     val snoozeMinutes: Int = DEFAULT_SNOOZE_MINUTES,
     val dismissLabel: String = "Dismiss for today",

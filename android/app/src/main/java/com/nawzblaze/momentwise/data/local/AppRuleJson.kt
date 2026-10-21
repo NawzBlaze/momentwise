@@ -69,7 +69,7 @@ internal object AppRuleJson {
             configuredEver = json.optBoolean("configuredEver", false),
             openingNotice = migrateOpeningNotice(json.optString("openingNotice")),
             quitOption = ResponseOption(
-                label = json.optString("option1Label").ifBlank { RuleDefaults.leaveLabel(appName) },
+                label = migrateQuitLabel(json.optString("option1Label"), appName),
                 action = RuleAction.LEAVE_APP,
             ),
             continueOption = ResponseOption(
@@ -77,11 +77,10 @@ internal object AppRuleJson {
                 action = RuleAction.CONTINUE_INTO_APP,
             ),
             reminderFrequency = ReminderFrequencyCodec.decode(json.optString("reminderFrequency")),
-            reminderNotice = json.optString("reminderNotice")
-                .ifBlank { RuleDefaults.REMINDER_NOTICE },
+            reminderNotice = migrateReminderNotice(json.optString("reminderNotice")),
             reminderActions = ReminderActions(
-                quitLabel = json.optString("advQuitLabel").ifBlank { RuleDefaults.ADV_QUIT_LABEL },
-                snoozeLabel = json.optString("advSnoozeLabel").ifBlank { RuleDefaults.ADV_SNOOZE_LABEL },
+                quitLabel = migrateReminderQuitLabel(json.optString("advQuitLabel")),
+                snoozeLabel = migrateReminderSnoozeLabel(json.optString("advSnoozeLabel")),
                 snoozeMinutes = snooze,
                 dismissLabel = migrateDismissLabel(json.optString("advDismissLabel")),
             ),
@@ -111,6 +110,50 @@ internal object AppRuleJson {
         }
     }
 
+    /** Only replace the shipped app-specific Leave default; user copy stays untouched. */
+    private fun migrateQuitLabel(raw: String, appName: String): String {
+        val trimmed = raw.trim()
+        return if (
+            trimmed.isEmpty() ||
+            trimmed.equals("Leave", ignoreCase = true) ||
+            trimmed.equals(RuleDefaults.leaveLabel(appName), ignoreCase = true)
+        ) {
+            RuleDefaults.QUIT_OPTION_LABEL
+        } else {
+            trimmed
+        }
+    }
+
+    private fun migrateReminderNotice(raw: String): String {
+        val trimmed = raw.trim()
+        return if (
+            trimmed.isEmpty() ||
+            LEGACY_REMINDER_NOTICES.any { it.equals(trimmed, ignoreCase = true) }
+        ) {
+            RuleDefaults.REMINDER_NOTICE
+        } else {
+            trimmed
+        }
+    }
+
+    private fun migrateReminderQuitLabel(raw: String): String {
+        val trimmed = raw.trim()
+        return if (trimmed.isEmpty() || trimmed.equals(LEGACY_REMINDER_QUIT_LABEL, ignoreCase = true)) {
+            RuleDefaults.ADV_QUIT_LABEL
+        } else {
+            trimmed
+        }
+    }
+
+    private fun migrateReminderSnoozeLabel(raw: String): String {
+        val trimmed = raw.trim()
+        return if (trimmed.isEmpty() || trimmed.equals(LEGACY_REMINDER_SNOOZE_LABEL, ignoreCase = true)) {
+            RuleDefaults.ADV_SNOOZE_LABEL
+        } else {
+            trimmed
+        }
+    }
+
     /** The previous shipped reminder action only. A renamed button stays. */
     private fun migrateDismissLabel(raw: String): String {
         val trimmed = raw.trim()
@@ -128,10 +171,15 @@ internal object AppRuleJson {
         "Is this where you want your time to go?",
         "Take a moment. Choose what comes next.",
         "What did you come here for?",
+        "Take a second. What do you want from this visit?",
     )
     private val LEGACY_CONTINUE_LABELS = setOf(
         "Continue",
         "I'm here with purpose",
+        "Continue intentionally",
     )
+    private val LEGACY_REMINDER_NOTICES = setOf("You're still here?")
+    private const val LEGACY_REMINDER_QUIT_LABEL = "Okay, I'm quitting"
+    private const val LEGACY_REMINDER_SNOOZE_LABEL = "Wait"
     private const val LEGACY_DISMISS_LABEL = "Dismiss reminder"
 }
