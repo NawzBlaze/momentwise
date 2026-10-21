@@ -4,7 +4,6 @@
   const THEME_COLOR_LIGHT = '#FAF7F2';
   const THEME_COLOR_DARK = '#0F1412';
   const RELEASE_PREFIX = '/NawzBlaze/momentwise/releases/download/';
-  const RELEASE_PAGE_PREFIX = '/NawzBlaze/momentwise/releases/';
   const systemDarkQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
   function getSavedThemePreference() {
