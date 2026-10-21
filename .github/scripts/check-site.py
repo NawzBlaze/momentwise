@@ -124,13 +124,19 @@ if json_ld:
         require(app is not None and app.get("name") == "Momentwise", "SoftwareApplication node must be preserved")
 
 download = json.loads((ROOT / "download.json").read_text(encoding="utf-8"))
-expected_apk = "https://github.com/NawzBlaze/momentwise/releases/download/v1.0.0/momentwise-1.0.0-signed.apk"
-expected_checksum = "https://github.com/NawzBlaze/momentwise/releases/download/v1.0.0/momentwise-1.0.0-signed.apk.sha256"
-expected_report = "https://github.com/NawzBlaze/momentwise/releases/download/v1.0.0/signing-verification.txt"
+release_prefix = "https://github.com/NawzBlaze/momentwise/releases/download/v1.0.0/"
+allowed_apks = {
+    release_prefix + "momentwise-1.0.0-signed.apk",
+    release_prefix + "Momentwise.apk",
+}
+apk_url = download.get("apkUrl")
+apk_name = apk_url.rsplit("/", 1)[-1] if isinstance(apk_url, str) else ""
+expected_checksum = release_prefix + ("Momentwise.apk.sha256" if apk_name == "Momentwise.apk" else "momentwise-1.0.0-signed.apk.sha256")
+expected_report = release_prefix + "signing-verification.txt"
 expected_release = "https://github.com/NawzBlaze/momentwise/releases/tag/v1.0.0"
 require(download.get("available") is True, "published signed download must be enabled")
-require(download.get("apkUrl") == expected_apk, "download must point at the published signed APK")
-require(download.get("checksumUrl") == expected_checksum, "download checksum URL must match the published asset")
+require(apk_url in allowed_apks, "download must point at the known published signed APK, using either current or branded asset name")
+require(download.get("checksumUrl") == expected_checksum, "download checksum URL must match the APK asset name")
 require(download.get("verificationReportUrl") == expected_report, "verification report URL must match the published asset")
 require(download.get("releaseUrl") == expected_release, "release URL must match the published release")
 require(download.get("packageId") == "com.nawzblaze.momentwise", "unexpected package ID in download metadata")
@@ -160,6 +166,14 @@ pages = (ROOT / ".github/workflows/pages.yml").read_text(encoding="utf-8")
 require("--exclude assets/logo.png" not in pages, "pages.yml must publish the hero logo")
 require("--exclude prototype" in pages, "pages.yml must keep the prototype out of the artifact")
 require("--exclude android" in pages, "pages.yml must keep the Android project out of the site")
+
+friendly_name = (ROOT / ".github/workflows/friendly-apk-filename.yml").read_text(encoding="utf-8")
+require("workflow_dispatch:" in friendly_name, "friendly APK alias workflow must be manually dispatched")
+require("add-friendly-apk-filename" in friendly_name, "friendly APK alias workflow needs an explicit confirmation phrase")
+require("refs/heads/main" in friendly_name, "friendly APK alias workflow must require main")
+require("Momentwise.apk" in friendly_name and "Momentwise.apk.sha256" in friendly_name, "friendly APK alias names missing")
+require("gh release download" in friendly_name and "gh release upload" in friendly_name, "friendly APK alias must use the published release bytes")
+require("sha256sum" in friendly_name and "expected" in friendly_name, "friendly APK alias must verify the original APK checksum")
 
 publish = (ROOT / ".github/workflows/publish-android-release.yml").read_text(encoding="utf-8")
 require("workflow_dispatch:" in publish, "publish workflow must be manual")

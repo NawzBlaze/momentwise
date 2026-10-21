@@ -208,12 +208,6 @@
     link.href = config.apkUrl;
     link.rel = 'noopener noreferrer';
     link.textContent = 'Download for Android';
-    if (isVersionName(config.versionName)) {
-      const label = document.createElement('span');
-      label.className = 'version-label';
-      label.textContent = 'Version ' + config.versionName;
-      button.insertAdjacentElement('afterend', label);
-    }
     button.replaceWith(link);
     if (status) status.textContent = 'This downloads the published release file.';
     const footerNote = document.getElementById('footer-download-note');
