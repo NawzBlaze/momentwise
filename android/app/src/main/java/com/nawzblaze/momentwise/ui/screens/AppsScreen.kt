@@ -2,6 +2,7 @@ package com.nawzblaze.momentwise.ui.screens
 
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.util.LruCache
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -32,11 +33,13 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
@@ -52,6 +55,8 @@ import com.nawzblaze.momentwise.ui.components.MomentwiseTopBar
 import com.nawzblaze.momentwise.ui.components.RuleSwitch
 import com.nawzblaze.momentwise.ui.components.VerticalSpacer
 import com.nawzblaze.momentwise.ui.theme.LocalMomentwiseColors
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Apps the user can actually open. Enabling a rule goes through disclosure
@@ -279,20 +284,42 @@ private fun AppRow(
     }
 }
 
+/**
+ * Recent app icons are cached to avoid repeatedly asking PackageManager for
+ * the same drawable as LazyColumn items leave and re-enter the viewport.
+ * Bitmap allocation and Drawable rendering happen off the Compose main thread.
+ */
+private object AppIconBitmapCache {
+    private val cache = LruCache<String, ImageBitmap>(48)
+
+    fun get(key: String): ImageBitmap? = cache.get(key)
+
+    suspend fun load(context: android.content.Context, packageName: String, key: String): ImageBitmap? {
+        cache.get(key)?.let { return it }
+        val loaded = withContext(Dispatchers.IO) {
+            runCatching {
+                val drawable = context.packageManager.getApplicationIcon(packageName)
+                val size = (42 * context.resources.displayMetrics.density).toInt().coerceAtLeast(1)
+                val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+                val canvas = Canvas(bitmap)
+                drawable.setBounds(0, 0, size, size)
+                drawable.draw(canvas)
+                bitmap.asImageBitmap()
+            }.getOrNull()
+        }
+        if (loaded != null) cache.put(key, loaded)
+        return loaded
+    }
+}
+
 @Composable
 private fun AppIcon(packageName: String, label: String, enabled: Boolean) {
     val context = LocalContext.current
     val colors = LocalMomentwiseColors.current
-    val bitmap = remember(packageName) {
-        runCatching {
-            val drawable = context.packageManager.getApplicationIcon(packageName)
-            val size = (42 * context.resources.displayMetrics.density).toInt().coerceAtLeast(1)
-            val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-            val canvas = Canvas(bitmap)
-            drawable.setBounds(0, 0, size, size)
-            drawable.draw(canvas)
-            bitmap.asImageBitmap()
-        }.getOrNull()
+    val densityDpi = context.resources.displayMetrics.densityDpi
+    val cacheKey = "$packageName@$densityDpi"
+    val bitmap by produceState<ImageBitmap?>(AppIconBitmapCache.get(cacheKey), cacheKey) {
+        if (value == null) value = AppIconBitmapCache.load(context, packageName, cacheKey)
     }
     Box(
         contentAlignment = Alignment.Center,
