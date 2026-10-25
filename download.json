@@ -1,14 +1,14 @@
 {
   "available": true,
-  "gate": "Enabled for the published signed GitHub Release v1.0.1. Automated unit, lint and API 34/35 emulator checks passed. Physical-device testing with Instagram is still pending.",
+  "gate": "Enabled for the published signed GitHub Release v1.0.2. Automated unit, lint and API 34/35 emulator checks passed. Physical-device testing with Instagram is still pending.",
   "unavailableMessage": "A signed download is available below.",
-  "versionName": "1.0.1",
-  "versionCode": 13,
+  "versionName": "1.0.2",
+  "versionCode": 14,
   "packageId": "com.nawzblaze.momentwise",
-  "apkUrl": "https://github.com/NawzBlaze/momentwise/releases/download/v1.0.1/Momentwise.apk",
-  "sha256": "73f8a3de05ee31b44a363e902ec289bb4546ac404d1daba77991bb0570fd219b",
-  "checksumUrl": "https://github.com/NawzBlaze/momentwise/releases/download/v1.0.1/Momentwise.apk.sha256",
-  "verificationReportUrl": "https://github.com/NawzBlaze/momentwise/releases/download/v1.0.1/signing-verification.txt",
-  "releaseUrl": "https://github.com/NawzBlaze/momentwise/releases/tag/v1.0.1",
-  "notes": "Momentwise 1.0.1 (versionCode 13). Automated unit, lint and API 34/35 fixture-emulator checks passed. Physical-device testing with Instagram is still pending. Review the release notes before installing."
+  "apkUrl": "https://github.com/NawzBlaze/momentwise/releases/download/v1.0.2/Momentwise.apk",
+  "sha256": "2ab21b98109bfd68b58e8e8e4bdc8af36b4eb8ad39d89f62ce4972a48c820b91",
+  "checksumUrl": "https://github.com/NawzBlaze/momentwise/releases/download/v1.0.2/Momentwise.apk.sha256",
+  "verificationReportUrl": "https://github.com/NawzBlaze/momentwise/releases/download/v1.0.2/signing-verification.txt",
+  "releaseUrl": "https://github.com/NawzBlaze/momentwise/releases/tag/v1.0.2",
+  "notes": "Momentwise 1.0.2 (versionCode 14). Automated unit, lint and API 34/35 fixture-emulator checks passed. Physical-device testing with Instagram is still pending. Review the release notes before installing."
 }
