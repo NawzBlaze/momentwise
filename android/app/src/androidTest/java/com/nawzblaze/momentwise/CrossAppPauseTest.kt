@@ -389,6 +389,6 @@ class CrossAppPauseTest {
 
     companion object {
         private const val APP = "com.nawzblaze.momentwise"
-        private const val PROMPT = "Before you scroll"
+        private const val PROMPT = "Before You Dive In"
     }
 }
