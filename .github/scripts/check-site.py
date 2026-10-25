@@ -135,6 +135,9 @@ allowed_releases = {
     # The next release hash is populated by the guarded publishing workflow
     # from the signed artifact that it just verified.
     "1.0.1": {"version_code": 13, "sha256": None},
+    # Reserved for the next signed release; its checksum is verified from the
+    # release artifact before the publishing workflow updates download.json.
+    "1.0.2": {"version_code": 14, "sha256": None},
 }
 release = allowed_releases.get(release_version)
 expected_apk = release_prefix + "Momentwise.apk"
