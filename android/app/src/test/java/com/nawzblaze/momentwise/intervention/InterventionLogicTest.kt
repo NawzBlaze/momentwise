@@ -313,6 +313,37 @@ class SessionClockTest {
     }
 
     @Test
+    fun openIntentionallyDismissesOnlyThisVisitAndPromptsAfterALaterReturn() {
+        val opening = SessionClock.onOpened(GuardSnapshot(), instagram, true, today).first
+        val continued = SessionClock.onContinue(
+            opening,
+            intervalMinutes = 5,
+            nowMillis = 1_000,
+            today = today,
+        )
+        assertTrue(continued.dismissals.isEmpty())
+
+        val left = SessionClock.onLeft(continued, elapsedRealtime = 2_000).first
+        val quickReturn = SessionClock.onOpened(
+            left,
+            instagram,
+            ruleEnabled = true,
+            today = today,
+            elapsedRealtime = 2_000 + VisitLifecycle.GRACE_MILLIS / 2,
+        ).second
+        assertEquals(GuardCommand.None, quickReturn)
+
+        val laterReturn = SessionClock.onOpened(
+            left,
+            instagram,
+            ruleEnabled = true,
+            today = today,
+            elapsedRealtime = 2_000 + VisitLifecycle.GRACE_MILLIS + 1,
+        ).second
+        assertTrue(laterReturn is GuardCommand.ShowOpening)
+    }
+
+    @Test
     fun continueAfterDismissDoesNotScheduleAReminder() {
         val opened = SessionClock.onOpened(GuardSnapshot(), instagram, true, today).first
         val dismissed = SessionClock.onDismissForToday(opened, instagram, today)
