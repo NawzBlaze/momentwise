@@ -199,8 +199,8 @@
     <string name="pause_quit_honesty">Leave returns you to the home screen. It does not force-stop the other app, stop its audio, or clear its back stack.</string>
     <string name="pause_opening_eyebrow">A new visit</string>
     <string name="pause_reminder_eyebrow">GENTLE CHECK-IN</string>
-    <string name="pause_opening_continue_support">Dismiss for this time</string>
+    <string name="pause_opening_continue_support">Dismiss for this session</string>
     <string name="pause_opening_snooze_support">Snooze this prompt and check again later.</string>
-    <string name="pause_reminder_notice_fallback">You&#39;ve been here for a while.</string>
+    <string name="pause_reminder_notice_fallback">You\'ve been here for a while.</string>
     <string name="pause_reminder_support">A small pause can help you feel more in control of your time.</string>
 </resources>
