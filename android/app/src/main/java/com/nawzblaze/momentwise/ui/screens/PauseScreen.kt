@@ -236,7 +236,7 @@ private fun OpeningContent(
 ) {
     Spacer(Modifier.height(30.dp))
     Text(
-        text = "Before you open " + request.appName,
+        text = "Before You Dive In",
         color = Cream,
         fontFamily = FontFamily.Serif,
         fontSize = 34.sp,
@@ -254,8 +254,8 @@ private fun OpeningContent(
     )
     Spacer(Modifier.height(24.dp))
     OpeningAction(
-        label = request.secondaryLabel,
-        support = "I know what I want to do.",
+        label = "Open Intentionally",
+        support = "Dismiss for this session",
         emphasized = true,
         icon = Icons.Outlined.RadioButtonChecked,
         onClick = onSecondary,
@@ -273,8 +273,8 @@ private fun OpeningContent(
     }
     Spacer(Modifier.height(10.dp))
     OpeningAction(
-        label = request.primaryLabel,
-        support = "Close this app and return home.",
+        label = "Leave App",
+        support = "Return to your home screen.",
         emphasized = false,
         icon = Icons.Outlined.Close,
         onClick = onQuit,
