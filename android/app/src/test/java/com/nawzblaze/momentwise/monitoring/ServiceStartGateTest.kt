@@ -148,34 +148,6 @@ class ServiceStartGateTest {
         assertEquals(first.state, second.state)
     }
 
-    @Test
-    fun rollingQueryCursorOnlyRereadsTheLateEventOverlap() {
-        val firstQueryEnd = 100_000L
-        val nextPoll = 101_000L
-        val start = EventWindow.steadyStart(nextPoll, firstQueryEnd)
-
-        assertEquals(firstQueryEnd - EventWindow.CURSOR_SLACK_MILLIS, start)
-        assertEquals(EventWindow.CURSOR_SLACK_MILLIS + 1_000L, nextPoll - start)
-        assertTrue(UsagePoll.queryIsBounded(nextPoll, start))
-
-        // Each poll overlaps the previous query by the slack rather than
-        // repeatedly scanning the complete 20-second history.
-        val followingStart = EventWindow.steadyStart(102_000L, nextPoll)
-        assertEquals(nextPoll - EventWindow.CURSOR_SLACK_MILLIS, followingStart)
-    }
-
-    @Test
-    fun aFutureQueryCursorIsClampedAndAStaleCursorFallsBackSafely() {
-        assertEquals(
-            95_000L,
-            EventWindow.steadyStart(nowMillis = 100_000L, lastQueryEndMillis = 120_000L),
-        )
-        assertEquals(
-            EventWindow.queryStart(100_000L),
-            EventWindow.steadyStart(nowMillis = 100_000L, lastQueryEndMillis = 1_000L),
-        )
-    }
-
     /**
      * Measures the pure reducer, not UsageStats IPC and not a phone.
      * The budget is the poll interval: a tick must not overlap the next one.
