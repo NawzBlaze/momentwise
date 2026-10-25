@@ -126,7 +126,7 @@ object PauseOverlay {
                                 }
                             }
                         },
-                        onDismissReminder = { perform(appContext) { it.dismissForToday(request) } },
+                        onDismissReminder = { perform(appContext) { controller -> if (request.kind == PauseRequest.Kind.OPENING) controller.snooze(request) else controller.dismissForToday(request) } },
                     )
                 }
             }
