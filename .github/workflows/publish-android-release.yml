@@ -154,7 +154,7 @@ jobs:
               "checksumUrl": "https://github.com/NawzBlaze/momentwise/releases/download/v1.0.2/Momentwise.apk.sha256",
               "verificationReportUrl": "https://github.com/NawzBlaze/momentwise/releases/download/v1.0.2/signing-verification.txt",
               "releaseUrl": "https://github.com/NawzBlaze/momentwise/releases/tag/v1.0.2",
-              "notes": "Momentwise 1.0.2 (versionCode 13). Automated unit, lint and API 34/35 fixture-emulator checks passed. " + validation + " Review the release notes before installing."
+              "notes": "Momentwise 1.0.2 (versionCode 14). Automated unit, lint and API 34/35 fixture-emulator checks passed. " + validation + " Review the release notes before installing."
           })
           path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
           PY
@@ -181,7 +181,7 @@ jobs:
           PUBLISH_CONFIRMATION: ${{ github.event.inputs.confirmation }}
         run: |
           cat > "$RUNNER_TEMP/release-notes.md" <<'EOF'
-          Momentwise 1.0.2 (versionCode 13)
+          Momentwise 1.0.2 (versionCode 14)
 
           Signed Android build of Momentwise with the redesigned opening-pause and reminder surfaces, plus target-app-only overlay attachment and quick-return recovery for an unanswered opening pause. The pause is branded Momentwise; it does not impersonate an official Instagram screen.
 
