@@ -327,7 +327,7 @@ private fun AppIcon(packageName: String, label: String, enabled: Boolean) {
     val densityDpi = context.resources.displayMetrics.densityDpi
     val cacheKey = "$packageName@$densityDpi"
     val bitmap by produceState<ImageBitmap?>(AppIconBitmapCache.get(cacheKey), cacheKey) {
-        if (value == null) value = AppIconBitmapCache.load(context, packageName, cacheKey)
+        value = AppIconBitmapCache.load(context, packageName, cacheKey)
     }
     Box(
         contentAlignment = Alignment.Center,
