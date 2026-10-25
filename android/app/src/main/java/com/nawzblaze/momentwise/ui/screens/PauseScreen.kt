@@ -255,7 +255,7 @@ private fun OpeningContent(
     Spacer(Modifier.height(24.dp))
     OpeningAction(
         label = request.secondaryLabel,
-        support = "Dismiss for this time",
+        support = stringResource(R.string.pause_opening_continue_support),
         emphasized = true,
         icon = Icons.Outlined.RadioButtonChecked,
         onClick = onSecondary,
@@ -265,7 +265,7 @@ private fun OpeningContent(
         Spacer(Modifier.height(10.dp))
         OpeningAction(
             label = request.tertiaryLabel,
-            support = "Snooze this prompt and check again later.",
+            support = stringResource(R.string.pause_opening_snooze_support),
             emphasized = false,
             icon = Icons.Outlined.Schedule,
             onClick = onDismissReminder,
@@ -274,7 +274,7 @@ private fun OpeningContent(
     Spacer(Modifier.height(10.dp))
     OpeningAction(
         label = request.primaryLabel,
-        support = "Return to your home screen.",
+        support = InterventionSurface.LEAVE_SUPPORT,
         emphasized = false,
         icon = Icons.Outlined.Close,
         onClick = onQuit,
@@ -328,7 +328,7 @@ private fun ReminderContent(
     ) {
     Spacer(Modifier.height(18.dp))
     Text(
-        text = "GENTLE CHECK-IN",
+        text = stringResource(R.string.pause_reminder_eyebrow),
         color = SunriseGold,
         fontSize = 12.sp,
         fontWeight = FontWeight.SemiBold,
@@ -347,14 +347,14 @@ private fun ReminderContent(
     )
     Spacer(Modifier.height(9.dp))
     Text(
-        text = request.notice.ifBlank { "You've been here for a while." },
+        text = request.notice.ifBlank { stringResource(R.string.pause_reminder_notice_fallback) },
         color = TextMuted,
         fontSize = 15.sp,
         lineHeight = 22.sp,
     )
     Spacer(Modifier.height(6.dp))
     Text(
-        text = "A small pause can help you feel more in control of your time.",
+        text = stringResource(R.string.pause_reminder_support),
         color = TextMuted,
         fontSize = 13.sp,
         lineHeight = 19.sp,
