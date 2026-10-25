@@ -118,7 +118,7 @@ jobs:
         if: success() && github.ref == 'refs/heads/main'
         run: bash .github/scripts/verify-signed-apk.sh
 
-      - name: Prepare website metadata for the verified 1.0.1 release
+      - name: Prepare website metadata for the verified 1.0.2 release
         if: success() && github.ref == 'refs/heads/main'
         env:
           PUBLISH_CONFIRMATION: ${{ github.event.inputs.confirmation }}
@@ -144,17 +144,17 @@ jobs:
           data = json.loads(path.read_text(encoding="utf-8"))
           data.update({
               "available": True,
-              "gate": "Enabled for the published signed GitHub Release v1.0.1. Automated unit, lint and API 34/35 emulator checks passed. " + validation,
+              "gate": "Enabled for the published signed GitHub Release v1.0.2. Automated unit, lint and API 34/35 emulator checks passed. " + validation,
               "unavailableMessage": "A signed download is available below.",
-              "versionName": "1.0.1",
-              "versionCode": 13,
+              "versionName": "1.0.2",
+              "versionCode": 14,
               "packageId": "com.nawzblaze.momentwise",
-              "apkUrl": "https://github.com/NawzBlaze/momentwise/releases/download/v1.0.1/Momentwise.apk",
+              "apkUrl": "https://github.com/NawzBlaze/momentwise/releases/download/v1.0.2/Momentwise.apk",
               "sha256": digest,
-              "checksumUrl": "https://github.com/NawzBlaze/momentwise/releases/download/v1.0.1/Momentwise.apk.sha256",
-              "verificationReportUrl": "https://github.com/NawzBlaze/momentwise/releases/download/v1.0.1/signing-verification.txt",
-              "releaseUrl": "https://github.com/NawzBlaze/momentwise/releases/tag/v1.0.1",
-              "notes": "Momentwise 1.0.1 (versionCode 13). Automated unit, lint and API 34/35 fixture-emulator checks passed. " + validation + " Review the release notes before installing."
+              "checksumUrl": "https://github.com/NawzBlaze/momentwise/releases/download/v1.0.2/Momentwise.apk.sha256",
+              "verificationReportUrl": "https://github.com/NawzBlaze/momentwise/releases/download/v1.0.2/signing-verification.txt",
+              "releaseUrl": "https://github.com/NawzBlaze/momentwise/releases/tag/v1.0.2",
+              "notes": "Momentwise 1.0.2 (versionCode 13). Automated unit, lint and API 34/35 fixture-emulator checks passed. " + validation + " Review the release notes before installing."
           })
           path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
           PY
@@ -181,7 +181,7 @@ jobs:
           PUBLISH_CONFIRMATION: ${{ github.event.inputs.confirmation }}
         run: |
           cat > "$RUNNER_TEMP/release-notes.md" <<'EOF'
-          Momentwise 1.0.1 (versionCode 13)
+          Momentwise 1.0.2 (versionCode 13)
 
           Signed Android build of Momentwise with the redesigned opening-pause and reminder surfaces, plus target-app-only overlay attachment and quick-return recovery for an unanswered opening pause. The pause is branded Momentwise; it does not impersonate an official Instagram screen.
 
@@ -213,7 +213,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          tag="v1.0.1"
+          tag="v1.0.2"
           apk="signed-artifact/Momentwise.apk"
           checksum="signed-artifact/Momentwise.apk.sha256"
           report="signed-artifact/signing-verification.txt"
@@ -243,7 +243,7 @@ jobs:
               "$apk" \
               "$checksum" \
               "$report" \
-              --title "Momentwise 1.0.1" \
+              --title "Momentwise 1.0.2" \
               --notes-file "$RUNNER_TEMP/release-notes.md"
           fi
 
@@ -258,9 +258,9 @@ jobs:
           gh auth setup-git
           git add download.json
           if git diff --cached --quiet; then
-            echo "download.json already matches the verified v1.0.1 release."
+            echo "download.json already matches the verified v1.0.2 release."
           else
-            git commit -m "Publish Momentwise 1.0.1 download metadata"
+            git commit -m "Publish Momentwise 1.0.2 download metadata"
             git push origin HEAD:main
           fi
 
@@ -282,7 +282,7 @@ jobs:
             sleep 5
           done
           if [ -z "$run_id" ]; then
-            echo "::error::Could not find the Pages deployment dispatched after publishing v1.0.1."
+            echo "::error::Could not find the Pages deployment dispatched after publishing v1.0.2."
             exit 1
           fi
           gh run watch "$run_id" --repo "$GITHUB_REPOSITORY" --exit-status
@@ -295,7 +295,7 @@ jobs:
           {
             echo "## Published release"
             echo
-            echo "The signed v1.0.1 APK was verified, published without overwriting v1.0.0, and download.json was updated from its actual SHA-256. Pages deployment completed before this run succeeds."
+            echo "The signed v1.0.2 APK was verified, published without overwriting v1.0.1 or v1.0.0, and download.json was updated from its actual SHA-256. Pages deployment completed before this run succeeds."
             echo
-            gh release view v1.0.1 --repo "$GITHUB_REPOSITORY" --json url,tagName,assets
+            gh release view v1.0.2 --repo "$GITHUB_REPOSITORY" --json url,tagName,assets
           } >> "$GITHUB_STEP_SUMMARY"
