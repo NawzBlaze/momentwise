@@ -381,6 +381,24 @@ class SessionClockTest {
     }
 
     @Test
+    fun snoozeRecoversTheAnsweredPackageWhenTheOpeningWriteWasLost() {
+        val snoozed = SessionClock.onSnooze(
+            GuardSnapshot(),
+            snoozeMinutes = 10,
+            nowMillis = 2_000,
+            packageName = instagram,
+        )
+
+        assertEquals(instagram, snoozed.activePackage)
+        assertEquals(instagram, snoozed.lastGuardedPackage)
+        assertEquals(GuardSnapshot.Phase.CONTINUING, snoozed.phase)
+        assertTrue(snoozed.continuedVisit)
+        assertFalse(snoozed.explicitLeavePending)
+        assertEquals(10 * 60_000L, snoozed.useByPackage[instagram]?.budgetMillis)
+        assertEquals(AppUse.Phase.SNOOZE, snoozed.useByPackage[instagram]?.phase)
+    }
+
+    @Test
     fun leavingEndsTheSession() {
         val active = GuardSnapshot(activePackage = instagram, phase = GuardSnapshot.Phase.CONTINUING, nextReminderAtMillis = 9)
         val left = SessionClock.onLeft(active).first
