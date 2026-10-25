@@ -85,6 +85,15 @@ object PauseOverlay {
             ).apply {
                 gravity = Gravity.CENTER
                 setTitle(WINDOW_TITLE)
+                // Match the reference opening sheet's soft-focus background on
+                // Android 12+. Keep a dim scrim as the fallback for devices that
+                // disable cross-window blur or run an older platform.
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                    request.kind == PauseRequest.Kind.OPENING
+                ) {
+                    flags = flags or WindowManager.LayoutParams.FLAG_BLUR_BEHIND
+                    setBlurBehindRadius(36)
+                }
                 if (Build.VERSION.SDK_INT >= 28) {
                     layoutInDisplayCutoutMode =
                         WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
