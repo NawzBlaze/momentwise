@@ -827,8 +827,9 @@ class MonitoringService : Service() {
                 heading = InterventionSurface.OPENING_HEADING,
                 primaryLabel = rule.quitOption.label,
                 secondaryLabel = rule.continueOption.label,
-                tertiaryLabel = InterventionSurface.DISMISS_FOR_TODAY,
+                tertiaryLabel = InterventionSurface.REMIND_ME_LATER,
                 primarySupport = InterventionSurface.LEAVE_SUPPORT,
+                snoozeMinutes = rule.reminderActions.snoozeMinutes,
                 secondarySupport = InterventionSurface.continueSupport(
                     rule.reminderFrequency.minutesOrNull(),
                 ),
