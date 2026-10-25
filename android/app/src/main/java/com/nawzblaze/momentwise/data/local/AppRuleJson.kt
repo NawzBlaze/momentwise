@@ -115,7 +115,9 @@ internal object AppRuleJson {
         val trimmed = raw.trim()
         return if (
             trimmed.isEmpty() ||
+            trimmed.equals("Not now", ignoreCase = true) ||
             trimmed.equals("Leave", ignoreCase = true) ||
+            trimmed.equals(RuleDefaults.QUIT_OPTION_LABEL, ignoreCase = true) ||
             trimmed.equals(RuleDefaults.leaveLabel(appName), ignoreCase = true)
         ) {
             RuleDefaults.QUIT_OPTION_LABEL
@@ -177,6 +179,7 @@ internal object AppRuleJson {
         "Continue",
         "I'm here with purpose",
         "Continue intentionally",
+        "Open intentionally",
     )
     private val LEGACY_REMINDER_NOTICES = setOf("You're still here?")
     private const val LEGACY_REMINDER_QUIT_LABEL = "Okay, I'm quitting"
