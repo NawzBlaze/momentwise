@@ -255,7 +255,7 @@ private fun OpeningContent(
     Spacer(Modifier.height(24.dp))
     OpeningAction(
         label = request.secondaryLabel,
-        support = "Dismiss for this session",
+        support = "Dismiss for this time",
         emphasized = true,
         icon = Icons.Outlined.RadioButtonChecked,
         onClick = onSecondary,
