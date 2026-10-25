@@ -105,8 +105,6 @@ class MonitoringService : Service() {
     private var grantsReadAtMillis = 0L
     private var usageQueryCount = 0
     private var usageQueryNanos = 0L
-    /** End time of the last successful query; independent of activity event time. */
-    private var lastUsageQueryEndMillis = 0L
     private val screenOn = Channel<Unit>(Channel.CONFLATED)
     private var screenReceiverRegistered = false
 
@@ -426,7 +424,7 @@ class MonitoringService : Service() {
         if (VisitMachine.shouldDropLatch(sessionCache, pauseVisible)) {
             machineLatch = VisitMachine.Latch()
         }
-        val events = readEvents(EventWindow.steadyStart(now, lastUsageQueryEndMillis), now)
+        val events = readEvents(EventWindow.steadyStart(now, detector.lastEventTimeMillis), now)
         val reduced = UsageEventReducer.reduce(
             state = detector,
             events = events,
@@ -911,14 +909,10 @@ class MonitoringService : Service() {
         if (!grantsNow(to).usageAccess) return emptyList()
         val usage = getSystemService(UsageStatsManager::class.java) ?: return emptyList()
         val started = System.nanoTime()
-        var querySucceeded = false
         val events = try {
-            UsageEventReader.read(usage, from, to).also { querySucceeded = true }
+            UsageEventReader.read(usage, from, to)
         } catch (_: SecurityException) {
             emptyList()
-        }
-        if (querySucceeded) {
-            lastUsageQueryEndMillis = maxOf(lastUsageQueryEndMillis, to)
         }
         usageQueryCount += 1
         usageQueryNanos += System.nanoTime() - started
