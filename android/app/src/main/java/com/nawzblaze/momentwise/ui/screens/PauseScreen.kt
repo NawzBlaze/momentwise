@@ -264,8 +264,8 @@ private fun OpeningContent(
     if (request.tertiaryLabel != null) {
         Spacer(Modifier.height(10.dp))
         OpeningAction(
-            label = request.tertiaryLabel,
-            support = InterventionSurface.dismissHelp(request.appName),
+            label = "Remind Me Later",
+            support = "Snooze the reminder",
             emphasized = false,
             icon = Icons.Outlined.Schedule,
             onClick = onDismissReminder,
