@@ -349,7 +349,6 @@ private fun ReminderContent(
         ReminderStat(
             value = request.usedMinutes?.let { "$it min" } ?: "—",
             label = "Time this visit",
-
             modifier = Modifier.weight(1f),
             icon = Icons.Outlined.Timelapse,
         )
@@ -554,9 +553,9 @@ private fun PrimaryOverlayAction(
     onClick: () -> Unit,
 ) {
     val description = if (support.isNullOrBlank()) label else label + ". " + support
-    Column(
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 62.dp)
@@ -567,14 +566,18 @@ private fun PrimaryOverlayAction(
                 indication = null,
                 onClick = onClick,
             )
-            .padding(horizontal = 18.dp, vertical = 15.dp)
+            .padding(horizontal = 22.dp, vertical = 15.dp)
             .semantics { contentDescription = description },
     ) {
+        Spacer(Modifier.weight(1f))
         Text(label, color = Ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
-        if (!support.isNullOrBlank()) {
-            Spacer(Modifier.height(3.dp))
-            Text(support, color = Color(0xFF4F5A50), fontSize = 12.sp, textAlign = TextAlign.Center)
-        }
+        Spacer(Modifier.weight(1f))
+        Icon(
+            imageVector = Icons.Outlined.ArrowForward,
+            contentDescription = null,
+            tint = Ink,
+            modifier = Modifier.size(22.dp),
+        )
     }
 }
 
@@ -686,6 +689,36 @@ private fun SunriseLandscape(modifier: Modifier = Modifier) {
             lineTo(w, h * 0.60f)
         }
         drawPath(ridge, SunriseGold.copy(alpha = 0.62f), style = Stroke(width = 1.dp.toPx()))
+
+        // A quiet foreground branch anchors the scene, echoing the botanical
+        // detail in the approved artwork without adding a raster dependency.
+        val branch = Path().apply {
+            moveTo(w * 0.91f, h * 1.04f)
+            cubicTo(w * 0.88f, h * 0.83f, w * 0.91f, h * 0.63f, w * 0.98f, h * 0.34f)
+        }
+        drawPath(branch, Color(0xFF08100B), style = Stroke(width = 3.2.dp.toPx()))
+        val leaves = listOf(
+            Path().apply {
+                moveTo(w * 0.91f, h * 0.80f)
+                cubicTo(w * 0.76f, h * 0.74f, w * 0.75f, h * 0.62f, w * 0.80f, h * 0.59f)
+                cubicTo(w * 0.88f, h * 0.63f, w * 0.91f, h * 0.71f, w * 0.91f, h * 0.80f)
+                close()
+            },
+            Path().apply {
+                moveTo(w * 0.93f, h * 0.68f)
+                cubicTo(w * 0.90f, h * 0.53f, w * 0.96f, h * 0.47f, w * 0.99f, h * 0.45f)
+                cubicTo(w * 1.02f, h * 0.56f, w * 0.98f, h * 0.64f, w * 0.93f, h * 0.68f)
+                close()
+            },
+            Path().apply {
+                moveTo(w * 0.90f, h * 0.90f)
+                cubicTo(w * 0.78f, h * 0.88f, w * 0.73f, h * 0.80f, w * 0.74f, h * 0.76f)
+                cubicTo(w * 0.84f, h * 0.77f, w * 0.89f, h * 0.83f, w * 0.90f, h * 0.90f)
+                close()
+            },
+        )
+        leaves.forEach { drawPath(it, Color(0xFF0A120D)) }
+
         drawRect(
             brush = Brush.verticalGradient(
                 colors = listOf(Color.Transparent, Color(0x66070D09)),
