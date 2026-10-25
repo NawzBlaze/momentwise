@@ -15,22 +15,23 @@ object EventWindow {
     const val SEED_MILLIS = 60_000L
 
     /**
-     * Steady polls already applied events up to the cursor. Re-reading the
-     * whole trailing window every second allocates events the reducer drops.
-     * Two seconds of slack still covers a late write whose timestamp is just
-     * behind the cursor. An old cursor keeps the full trailing bound.
+     * Steady polls advance a query cursor, not the timestamp of the most recent
+     * activity event. The cursor overlaps the last query by a few seconds so
+     * UsageStats events that arrive a little late can still be seen. If the
+     * cursor is missing or stale, fall back to a bounded trailing window.
      */
-    const val CURSOR_SLACK_MILLIS = 2_000L
+    const val CURSOR_SLACK_MILLIS = 5_000L
 
     fun queryStart(nowMillis: Long, trailingMillis: Long = TRAILING_MILLIS): Long =
         (nowMillis - trailingMillis).coerceAtLeast(0L)
 
     fun seedStart(nowMillis: Long): Long = queryStart(nowMillis, SEED_MILLIS)
 
-    fun steadyStart(nowMillis: Long, lastEventTimeMillis: Long): Long {
+    fun steadyStart(nowMillis: Long, lastQueryEndMillis: Long): Long {
         val bounded = queryStart(nowMillis)
-        if (lastEventTimeMillis <= 0L) return bounded
-        val fromCursor = (lastEventTimeMillis - CURSOR_SLACK_MILLIS).coerceAtLeast(0L)
+        if (lastQueryEndMillis <= 0L) return bounded
+        val safeCursor = lastQueryEndMillis.coerceAtMost(nowMillis)
+        val fromCursor = (safeCursor - CURSOR_SLACK_MILLIS).coerceAtLeast(0L)
         return maxOf(bounded, fromCursor).coerceAtMost(nowMillis)
     }
 }
