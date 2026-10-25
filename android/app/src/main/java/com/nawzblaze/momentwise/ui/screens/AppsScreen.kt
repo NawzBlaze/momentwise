@@ -336,8 +336,9 @@ private fun AppIcon(packageName: String, label: String, enabled: Boolean) {
             .clip(RoundedCornerShape(11.dp))
             .background(if (enabled) colors.accentSubtle else colors.surfaceSubtle),
     ) {
-        if (bitmap != null) {
-            Image(bitmap, contentDescription = null, modifier = Modifier.size(42.dp).clip(RoundedCornerShape(11.dp)))
+        val currentBitmap = bitmap
+        if (currentBitmap != null) {
+            Image(bitmap = currentBitmap, contentDescription = null, modifier = Modifier.size(42.dp).clip(RoundedCornerShape(11.dp)))
         } else {
             Text(
                 text = label.firstOrNull()?.uppercase() ?: "?",
