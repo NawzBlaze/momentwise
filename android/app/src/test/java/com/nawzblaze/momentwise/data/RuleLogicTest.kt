@@ -21,9 +21,9 @@ class RuleDefaultsTest {
         val rule = RuleDefaults.ruleFor("example", "Example", "Test")
 
         assertEquals("Take a second. What do you want from this app right now?", rule.openingNotice)
-        assertEquals("Not now", rule.quitOption.label)
+        assertEquals("Leave App", rule.quitOption.label)
         assertEquals(RuleAction.LEAVE_APP, rule.quitOption.action)
-        assertEquals("Open intentionally", rule.continueOption.label)
+        assertEquals("Open Intentionally", rule.continueOption.label)
         assertEquals(RuleAction.CONTINUE_INTO_APP, rule.continueOption.action)
         assertEquals(ReminderFrequency.EveryMinutes(5), rule.reminderFrequency)
         assertEquals("You've been here for a while.", rule.reminderNotice)

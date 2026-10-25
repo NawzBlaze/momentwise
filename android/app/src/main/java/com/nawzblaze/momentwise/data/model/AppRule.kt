@@ -6,10 +6,10 @@ package com.nawzblaze.momentwise.data.model
  * Every app owns its own [AppRule]; rules never inherit from or share state
  * with each other (verified by RuleIsolationTest). A newly built rule uses:
  *
- * - Opening heading: "Before you scroll"
+ * - Opening heading: "Before You Dive In"
  * - Opening support: "Take a second. What do you want from this app right now?"
- * - Option 1: "Not now" — returns home. It does not force-stop.
- * - Option 2: "Open intentionally" — dismisses the pause and starts the reminder.
+ * - Option 1: "Leave App" — returns home. It does not force-stop.
+ * - Option 2: "Open Intentionally" — dismisses this visit’s opening pause and starts its reminder.
  * - Reminder frequency: 5 minutes. Never is still an explicit choice.
  * - Reminder notice: "You've been here for a while."
  *
@@ -25,8 +25,8 @@ data class AppRule(
     /** True once the user has opened/saved this app's configuration at least once. */
     val configuredEver: Boolean = false,
     val openingNotice: String = "Take a second. What do you want from this app right now?",
-    val quitOption: ResponseOption = ResponseOption("Not now", RuleAction.LEAVE_APP),
-    val continueOption: ResponseOption = ResponseOption("Open intentionally", RuleAction.CONTINUE_INTO_APP),
+    val quitOption: ResponseOption = ResponseOption("Leave App", RuleAction.LEAVE_APP),
+    val continueOption: ResponseOption = ResponseOption("Open Intentionally", RuleAction.CONTINUE_INTO_APP),
     val reminderFrequency: ReminderFrequency = ReminderFrequency.EveryMinutes(5),
     val reminderNotice: String = "You've been here for a while.",
     val reminderActions: ReminderActions = ReminderActions(),

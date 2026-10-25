@@ -302,7 +302,7 @@ class CrossAppPauseTest {
             "Monitoring notification was not posted. ${diagnostics()}",
             waitFor {
                 val dump = notificationDump()
-                dump.contains("Momentwise is on") && dump.contains("Watching your selected apps.")
+                dump.contains("Mindful pauses are active") && dump.contains("Quietly checking the apps you selected.")
             },
         )
         return target
@@ -389,6 +389,6 @@ class CrossAppPauseTest {
 
     companion object {
         private const val APP = "com.nawzblaze.momentwise"
-        private const val PROMPT = "Before you scroll"
+        private const val PROMPT = "Before You Dive In"
     }
 }

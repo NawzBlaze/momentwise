@@ -8,11 +8,13 @@ class InterventionCopyTest {
 
     @Test
     fun openingCopyDoesNotUseTheGenericPrompt() {
-        assertEquals("Before you scroll", InterventionSurface.OPENING_HEADING)
+        assertEquals("Before You Dive In", InterventionSurface.OPENING_HEADING)
         assertEquals("Take a second. What do you want from this app right now?", InterventionSurface.OPENING_SUPPORT)
-        assertEquals("Open intentionally", InterventionSurface.CONTINUE_LABEL)
-        assertEquals("Return to the home screen.", InterventionSurface.LEAVE_SUPPORT)
+        assertEquals("Open Intentionally", InterventionSurface.CONTINUE_LABEL)
+        assertEquals("Return to your home screen.", InterventionSurface.LEAVE_SUPPORT)
+        assertEquals("Remind Me Later", InterventionSurface.REMIND_ME_LATER)
         assertEquals("Dismiss for today", InterventionSurface.DISMISS_FOR_TODAY)
+        assertEquals("Time for a Little Pause.", InterventionSurface.REMINDER_HEADING)
         assertEquals("No more prompts for Instagram today.", InterventionSurface.dismissHelp("Instagram"))
         assertFalse(InterventionSurface.OPENING_HEADING.contains("What did you come here for"))
         assertFalse(InterventionSurface.OPENING_SUPPORT.contains("What do you want to do right now?"))

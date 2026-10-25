@@ -33,7 +33,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -326,8 +326,11 @@ private fun AppIcon(packageName: String, label: String, enabled: Boolean) {
     val colors = LocalMomentwiseColors.current
     val densityDpi = context.resources.displayMetrics.densityDpi
     val cacheKey = "$packageName@$densityDpi"
-    val bitmap by produceState<ImageBitmap?>(AppIconBitmapCache.get(cacheKey), cacheKey) {
-        if (value == null) value = AppIconBitmapCache.load(context, packageName, cacheKey)
+    var bitmap by remember(cacheKey) { mutableStateOf(AppIconBitmapCache.get(cacheKey)) }
+    LaunchedEffect(context, packageName, cacheKey) {
+        if (bitmap == null) {
+            bitmap = AppIconBitmapCache.load(context, packageName, cacheKey)
+        }
     }
     Box(
         contentAlignment = Alignment.Center,
@@ -336,8 +339,9 @@ private fun AppIcon(packageName: String, label: String, enabled: Boolean) {
             .clip(RoundedCornerShape(11.dp))
             .background(if (enabled) colors.accentSubtle else colors.surfaceSubtle),
     ) {
-        if (bitmap != null) {
-            Image(bitmap, contentDescription = null, modifier = Modifier.size(42.dp).clip(RoundedCornerShape(11.dp)))
+        val currentBitmap = bitmap
+        if (currentBitmap != null) {
+            Image(bitmap = currentBitmap, contentDescription = null, modifier = Modifier.size(42.dp).clip(RoundedCornerShape(11.dp)))
         } else {
             Text(
                 text = label.firstOrNull()?.uppercase() ?: "?",

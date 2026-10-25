@@ -8,12 +8,13 @@ object InterventionSurface {
     const val CARD_HEIGHT_FRACTION = 0.62f
     const val WINDOW_TITLE = "Momentwise intervention"
     const val WORDMARK = "Momentwise"
-    const val OPENING_HEADING = "Before you scroll"
+    const val OPENING_HEADING = "Before You Dive In"
     const val OPENING_SUPPORT = "Take a second. What do you want from this app right now?"
-    const val LEAVE_SUPPORT = "Return to the home screen."
-    const val CONTINUE_LABEL = "Open intentionally"
+    const val LEAVE_SUPPORT = "Return to your home screen."
+    const val CONTINUE_LABEL = "Open Intentionally"
+    const val REMIND_ME_LATER = "Remind Me Later"
     const val DISMISS_FOR_TODAY = "Dismiss for today"
-    const val REMINDER_HEADING = "Gentle reminder"
+    const val REMINDER_HEADING = "Time for a Little Pause."
 
     /** Never, and any non-positive interval, must not promise a reminder. */
     fun continueSupport(intervalMinutes: Int?): String = when {

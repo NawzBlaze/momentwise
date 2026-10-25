@@ -61,7 +61,7 @@ class InterventionController(
 
     suspend fun snooze(request: PauseRequest) {
         sessions.update {
-            SessionClock.onSnooze(it, request.snoozeMinutes, System.currentTimeMillis())
+            SessionClock.onSnooze(it, request.snoozeMinutes, System.currentTimeMillis(), request.packageName)
         }
         PausePresenter.dismiss(context, PauseDismissReason.CHOICE)
     }

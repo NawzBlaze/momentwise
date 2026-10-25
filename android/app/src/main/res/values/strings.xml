@@ -192,11 +192,15 @@
     <string name="monitor_notification_title">Mindful pauses are active</string>
     <string name="monitor_notification_body">Quietly checking the apps you selected.</string>
     <string name="monitor_notification_pause_action">Pause monitoring</string>
-    <string name="pause_notification_title">Before you scroll</string>
+    <string name="pause_notification_title">Before You Dive In</string>
     <string name="pause_notification_fallback">The app is not blocked. This is a notification, not a cover over %1$s. Open it to choose.</string>
     <string name="pause_from_notification">Opened from a notification. The other app was not covered until you opened this.</string>
     <string name="pause_scrim_description">Momentwise pause over %1$s. The app behind is not available until you choose.</string>
     <string name="pause_quit_honesty">Leave returns you to the home screen. It does not force-stop the other app, stop its audio, or clear its back stack.</string>
     <string name="pause_opening_eyebrow">A new visit</string>
-    <string name="pause_reminder_eyebrow">Check-in</string>
+    <string name="pause_reminder_eyebrow">GENTLE CHECK-IN</string>
+    <string name="pause_opening_continue_support">Dismiss for this session</string>
+    <string name="pause_opening_snooze_support">Snooze this prompt and check again later.</string>
+    <string name="pause_reminder_notice_fallback">You\'ve been here for a while.</string>
+    <string name="pause_reminder_support">A small pause can help you feel more in control of your time.</string>
 </resources>

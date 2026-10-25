@@ -111,7 +111,7 @@ class AppRuleJsonTest {
         val rule = AppRuleJson.decodeList(saved.toString())!!.single()
 
         assertEquals("Take a second. What do you want from this app right now?", rule.openingNotice)
-        assertEquals("Open intentionally", rule.continueOption.label)
+        assertEquals("Open Intentionally", rule.continueOption.label)
         assertEquals("Dismiss for today", rule.reminderActions.dismissLabel)
         assertEquals("Take a break", rule.reminderActions.quitLabel)
         assertEquals("Continue for now", rule.reminderActions.snoozeLabel)

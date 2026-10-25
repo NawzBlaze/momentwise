@@ -47,9 +47,9 @@ print(f"versionCode={version_code}")
 print(f"versionName={version_name}")
 if package != "com.nawzblaze.momentwise":
     sys.exit(f"Unexpected package id: {package}")
-if version_name != "1.0.1":
+if version_name != "1.0.2":
     sys.exit(f"Unexpected versionName: {version_name}")
-if version_code != "13":
+if version_code != "14":
     sys.exit(f"Unexpected versionCode: {version_code}")
 PY
 
@@ -67,8 +67,8 @@ if [ "$normalized" != "$expected" ]; then
 fi
 cat > signed-artifact/signing-verification.txt <<EOF
 package=com.nawzblaze.momentwise
-versionName=1.0.1
-versionCode=13
+versionName=1.0.2
+versionCode=14
 apksigner=verified
 certificate_sha256=$normalized
 expected_certificate_sha256=$expected
@@ -99,7 +99,7 @@ payload = {
     "status": "completed",
     "conclusion": "success",
     "output": {
-        "title": "apksigner verified com.nawzblaze.momentwise 1.0.1",
+        "title": "apksigner verified com.nawzblaze.momentwise 1.0.2",
         "summary": text + "\n\nCI artifact only. Not a GitHub Release and not the website download.",
     },
 }
