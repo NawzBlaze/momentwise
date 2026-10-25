@@ -25,8 +25,8 @@ data class AppRule(
     /** True once the user has opened/saved this app's configuration at least once. */
     val configuredEver: Boolean = false,
     val openingNotice: String = "Take a second. What do you want from this app right now?",
-    val quitOption: ResponseOption = ResponseOption("Not now", RuleAction.LEAVE_APP),
-    val continueOption: ResponseOption = ResponseOption("Open intentionally", RuleAction.CONTINUE_INTO_APP),
+    val quitOption: ResponseOption = ResponseOption("Leave App", RuleAction.LEAVE_APP),
+    val continueOption: ResponseOption = ResponseOption("Open Intentionally", RuleAction.CONTINUE_INTO_APP),
     val reminderFrequency: ReminderFrequency = ReminderFrequency.EveryMinutes(5),
     val reminderNotice: String = "You've been here for a while.",
     val reminderActions: ReminderActions = ReminderActions(),
