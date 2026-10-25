@@ -69,6 +69,11 @@
             android:exported="false" />
 
         <receiver
+            android:name=".monitoring.PauseMonitoringReceiver"
+            android:enabled="true"
+            android:exported="false" />
+
+        <receiver
             android:name=".monitoring.BootReceiver"
             android:exported="true"
             android:permission="android.permission.RECEIVE_BOOT_COMPLETED">
