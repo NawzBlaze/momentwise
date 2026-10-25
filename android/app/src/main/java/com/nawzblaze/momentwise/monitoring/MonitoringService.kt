@@ -1055,10 +1055,18 @@ class MonitoringService : Service() {
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setSilent(true)
+            .setShowWhen(false)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setContentIntent(openAppPendingIntent())
-            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
+            .addAction(
+                R.drawable.ic_stat_pause,
+                getString(R.string.monitor_notification_pause_action),
+                pauseMonitoringPendingIntent(),
+            )
+            // Avoid an unnecessary instant status-bar flash at service startup.
+            // Android still surfaces an ongoing notification while monitoring runs.
+            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_DEFERRED)
             .build()
 
     private fun openAppPendingIntent(): PendingIntent {
@@ -1069,6 +1077,17 @@ class MonitoringService : Service() {
             this,
             1,
             open,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+    }
+
+    private fun pauseMonitoringPendingIntent(): PendingIntent {
+        val pause = Intent(this, PauseMonitoringReceiver::class.java)
+            .setAction(PauseMonitoringReceiver.ACTION_PAUSE)
+        return PendingIntent.getBroadcast(
+            this,
+            3,
+            pause,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
     }
