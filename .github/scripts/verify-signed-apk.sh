@@ -49,7 +49,7 @@ if package != "com.nawzblaze.momentwise":
     sys.exit(f"Unexpected package id: {package}")
 if version_name != "1.0.2":
     sys.exit(f"Unexpected versionName: {version_name}")
-if version_code != "13":
+if version_code != "14":
     sys.exit(f"Unexpected versionCode: {version_code}")
 PY
 
