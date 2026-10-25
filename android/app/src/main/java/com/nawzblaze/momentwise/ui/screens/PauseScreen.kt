@@ -33,6 +33,7 @@ import androidx.compose.material.icons.outlined.RadioButtonChecked
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Spa
 import androidx.compose.material.icons.outlined.Timelapse
+import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -60,7 +61,7 @@ import com.nawzblaze.momentwise.R
 import com.nawzblaze.momentwise.intervention.InterventionSurface
 import com.nawzblaze.momentwise.intervention.PauseRequest
 
-private val OverlayScrim = Color(0xE608100D)
+private val OverlayScrim = Color(0xB808100D)
 private val PanelTop = Color(0xFF111A15)
 private val PanelBottom = Color(0xFF070D0A)
 private val PanelBorder = Color(0xFF2B3A31)
@@ -89,7 +90,7 @@ fun PauseScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(OverlayScrim)
+            .background(if (reminder) PanelBottom else OverlayScrim)
             .windowInsetsPadding(WindowInsets.safeDrawing)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
@@ -97,25 +98,31 @@ fun PauseScreen(
                 onClick = {},
             )
             .semantics { contentDescription = scrimDescription },
-        contentAlignment = Alignment.Center,
+        contentAlignment = if (reminder) Alignment.TopCenter else Alignment.BottomCenter,
     ) {
-        Column(
-            horizontalAlignment = Alignment.Start,
-            modifier = Modifier
+        val surfaceModifier = if (reminder) {
+            Modifier
+                .fillMaxSize()
+                .background(Brush.verticalGradient(listOf(PanelTop, PanelBottom)))
+                .verticalScroll(rememberScrollState())
+                .semantics { contentDescription = InterventionSurface.WINDOW_TITLE }
+        } else {
+            Modifier
                 .widthIn(max = 440.dp)
                 .fillMaxWidth()
                 .padding(horizontal = 12.dp, vertical = 8.dp)
                 .heightIn(max = 760.dp)
                 .clip(RoundedCornerShape(30.dp))
-                .background(
-                    Brush.verticalGradient(listOf(PanelTop, PanelBottom)),
-                )
+                .background(Brush.verticalGradient(listOf(PanelTop, PanelBottom)))
                 .border(1.dp, PanelBorder, RoundedCornerShape(30.dp))
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 22.dp, vertical = 22.dp)
-                .semantics { contentDescription = InterventionSurface.WINDOW_TITLE },
+                .semantics { contentDescription = InterventionSurface.WINDOW_TITLE }
+        }
+        Column(
+            horizontalAlignment = Alignment.Start,
+            modifier = surfaceModifier,
         ) {
-            BrandHeader(showTagline = reminder)
             if (reminder) {
                 ReminderContent(
                     request = request,
@@ -124,6 +131,8 @@ fun PauseScreen(
                     onDismissReminder = onDismissReminder,
                 )
             } else {
+                OpeningDragHandle()
+                BrandHeader(showTagline = false)
                 OpeningContent(
                     request = request,
                     onQuit = onQuit,
@@ -136,7 +145,25 @@ fun PauseScreen(
 }
 
 @Composable
-private fun BrandHeader(showTagline: Boolean) {
+private fun OpeningDragHandle() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 0.dp, bottom = 18.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            modifier = Modifier
+                .width(56.dp)
+                .height(5.dp)
+                .clip(CircleShape)
+                .background(Color(0xFF8A9187)),
+        )
+    }
+}
+
+@Composable
+private fun BrandHeader(showTagline: Boolean, onClose: (() -> Unit)? = null) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth(),
@@ -174,21 +201,28 @@ private fun BrandHeader(showTagline: Boolean) {
                 )
             }
         }
-        if (showTagline) {
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFF202922)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Spa,
-                    contentDescription = null,
-                    tint = Cream,
-                    modifier = Modifier.size(19.dp),
-                )
-            }
+        Box(
+            modifier = Modifier
+                .size(if (showTagline) 44.dp else 40.dp)
+                .clip(CircleShape)
+                .background(Color(0xFF273128))
+                .then(
+                    if (showTagline && onClose != null) {
+                        Modifier.clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = onClose,
+                        )
+                    } else Modifier
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = if (showTagline) Icons.Outlined.Close else Icons.Outlined.MoreHoriz,
+                contentDescription = if (showTagline) "Dismiss reminder" else null,
+                tint = Cream,
+                modifier = Modifier.size(if (showTagline) 23.dp else 22.dp),
+            )
         }
     }
 }
@@ -227,13 +261,6 @@ private fun OpeningContent(
         onClick = onSecondary,
     )
     Spacer(Modifier.height(10.dp))
-    OpeningAction(
-        label = request.primaryLabel,
-        support = "Return to the home screen.",
-        emphasized = false,
-        icon = Icons.Outlined.Close,
-        onClick = onQuit,
-    )
     if (request.tertiaryLabel != null) {
         Spacer(Modifier.height(10.dp))
         OpeningAction(
@@ -244,6 +271,14 @@ private fun OpeningContent(
             onClick = onDismissReminder,
         )
     }
+    Spacer(Modifier.height(10.dp))
+    OpeningAction(
+        label = request.primaryLabel,
+        support = "Close this app and return home.",
+        emphasized = false,
+        icon = Icons.Outlined.Close,
+        onClick = onQuit,
+    )
     if (request.fromNotification) {
         Spacer(Modifier.height(12.dp))
         Text(
@@ -262,20 +297,42 @@ private fun ReminderContent(
     onSecondary: () -> Unit,
     onDismissReminder: () -> Unit,
 ) {
-    Spacer(Modifier.height(18.dp))
-    SunriseLandscape(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(148.dp)
-            .clip(RoundedCornerShape(20.dp)),
-    )
-    Spacer(Modifier.height(20.dp))
+            .height(286.dp),
+    ) {
+        SunriseLandscape(Modifier.fillMaxSize())
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(Color(0x55060C08), Color.Transparent, Color(0xD9070D09)),
+                    ),
+                ),
+        )
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .fillMaxWidth()
+                .padding(horizontal = 22.dp, vertical = 20.dp),
+        ) {
+            BrandHeader(showTagline = true, onClose = onSecondary)
+        }
+    }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp),
+    ) {
+    Spacer(Modifier.height(18.dp))
     Text(
-        text = "G E N T L E   R E M I N D E R",
+        text = "GENTLE REMINDER",
         color = SunriseGold,
-        fontSize = 11.sp,
+        fontSize = 12.sp,
         fontWeight = FontWeight.SemiBold,
-        letterSpacing = 1.3.sp,
+        letterSpacing = 2.1.sp,
     )
     Spacer(Modifier.height(10.dp))
     Text(
@@ -301,13 +358,13 @@ private fun ReminderContent(
         modifier = Modifier.fillMaxWidth(),
     ) {
         ReminderStat(
-            value = (request.usedMinutes ?: request.reminderIntervalMinutes ?: 1).toString() + " min",
-            label = "Time in " + request.appName,
+            value = request.usedMinutes?.let { "$it min" } ?: "—",
+            label = "Time this visit",
             modifier = Modifier.weight(1f),
             icon = Icons.Outlined.Timelapse,
         )
         ReminderStat(
-            value = (request.reminderIntervalMinutes ?: 1).toString() + " min",
+            value = request.reminderIntervalMinutes?.let { "$it min" } ?: "Off",
             label = "Check-in interval",
             modifier = Modifier.weight(1f),
             icon = Icons.Outlined.Schedule,
@@ -356,7 +413,7 @@ private fun ReminderContent(
     Spacer(Modifier.height(9.dp))
     SecondaryOverlayAction(
         label = request.secondaryLabel,
-        support = request.secondarySupport,
+        support = null,
         onClick = onSecondary,
     )
     if (request.tertiaryLabel != null) {
@@ -382,6 +439,7 @@ private fun ReminderContent(
             fontSize = 11.sp,
             lineHeight = 16.sp,
         )
+    }
     }
 }
 
@@ -507,9 +565,9 @@ private fun PrimaryOverlayAction(
     onClick: () -> Unit,
 ) {
     val description = if (support.isNullOrBlank()) label else label + ". " + support
-    Column(
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 62.dp)
@@ -520,14 +578,18 @@ private fun PrimaryOverlayAction(
                 indication = null,
                 onClick = onClick,
             )
-            .padding(horizontal = 18.dp, vertical = 15.dp)
+            .padding(horizontal = 22.dp, vertical = 15.dp)
             .semantics { contentDescription = description },
     ) {
+        Spacer(Modifier.weight(1f))
         Text(label, color = Ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
-        if (!support.isNullOrBlank()) {
-            Spacer(Modifier.height(3.dp))
-            Text(support, color = Color(0xFF4F5A50), fontSize = 12.sp, textAlign = TextAlign.Center)
-        }
+        Spacer(Modifier.weight(1f))
+        Icon(
+            imageVector = Icons.Outlined.ArrowForward,
+            contentDescription = null,
+            tint = Ink,
+            modifier = Modifier.size(22.dp),
+        )
     }
 }
 
@@ -639,6 +701,36 @@ private fun SunriseLandscape(modifier: Modifier = Modifier) {
             lineTo(w, h * 0.60f)
         }
         drawPath(ridge, SunriseGold.copy(alpha = 0.62f), style = Stroke(width = 1.dp.toPx()))
+
+        // A quiet foreground branch anchors the scene, echoing the botanical
+        // detail in the approved artwork without adding a raster dependency.
+        val branch = Path().apply {
+            moveTo(w * 0.91f, h * 1.04f)
+            cubicTo(w * 0.88f, h * 0.83f, w * 0.91f, h * 0.63f, w * 0.98f, h * 0.34f)
+        }
+        drawPath(branch, Color(0xFF08100B), style = Stroke(width = 3.2.dp.toPx()))
+        val leaves = listOf(
+            Path().apply {
+                moveTo(w * 0.91f, h * 0.80f)
+                cubicTo(w * 0.76f, h * 0.74f, w * 0.75f, h * 0.62f, w * 0.80f, h * 0.59f)
+                cubicTo(w * 0.88f, h * 0.63f, w * 0.91f, h * 0.71f, w * 0.91f, h * 0.80f)
+                close()
+            },
+            Path().apply {
+                moveTo(w * 0.93f, h * 0.68f)
+                cubicTo(w * 0.90f, h * 0.53f, w * 0.96f, h * 0.47f, w * 0.99f, h * 0.45f)
+                cubicTo(w * 1.02f, h * 0.56f, w * 0.98f, h * 0.64f, w * 0.93f, h * 0.68f)
+                close()
+            },
+            Path().apply {
+                moveTo(w * 0.90f, h * 0.90f)
+                cubicTo(w * 0.78f, h * 0.88f, w * 0.73f, h * 0.80f, w * 0.74f, h * 0.76f)
+                cubicTo(w * 0.84f, h * 0.77f, w * 0.89f, h * 0.83f, w * 0.90f, h * 0.90f)
+                close()
+            },
+        )
+        leaves.forEach { drawPath(it, Color(0xFF0A120D)) }
+
         drawRect(
             brush = Brush.verticalGradient(
                 colors = listOf(Color.Transparent, Color(0x66070D09)),
