@@ -13,6 +13,7 @@ object InterventionSurface {
     const val LEAVE_SUPPORT = "Return to your home screen."
     const val CONTINUE_LABEL = "Open Intentionally"
     const val REMIND_ME_LATER = "Remind Me Later"
+    const val DISMISS_FOR_TODAY = "Dismiss for today"
     const val REMINDER_HEADING = "Time for a Little Pause."
 
     /** Never, and any non-positive interval, must not promise a reminder. */
