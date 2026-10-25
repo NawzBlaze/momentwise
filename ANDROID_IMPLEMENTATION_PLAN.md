@@ -68,9 +68,9 @@ The sample catalog is configuration, not usage. Home does not show invented scre
 
 From the approved prototype and the product brief:
 
-- Opening heading: `Before you scroll`. Opening prompt default: `What do you want to do right now?`
-- Option 1 default: `Leave {app name}` — return home. It does not force-stop.
-- Option 2 default: `Continue` — dismiss the pause and start the reminder.
+- Opening heading: `Before You Dive In`. Opening prompt default remains configurable per app.
+- Option 1 default: `Leave App` — return home. It does not force-stop.
+- Option 2 default: `Open Intentionally` — dismiss the pause for this visit only; a later new opening should prompt again. `Remind Me Later` snoozes instead of dismissing for the day.
 - Reminder frequencies: Never, 5, 10, 15, 20 minutes, or Custom (1–300 minutes). A new rule defaults to 5 minutes. Never still shows the opening. Saved prompts, labels, and intervals are not rewritten when these defaults change. The browser prototype still has the older wording.
 - Reminder notice default: `You're still here?`
 - Advanced actions, collapsed by default:
