@@ -90,7 +90,7 @@ fun PauseScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(OverlayScrim)
+            .background(if (reminder) PanelBottom else OverlayScrim)
             .windowInsetsPadding(WindowInsets.safeDrawing)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
@@ -98,23 +98,30 @@ fun PauseScreen(
                 onClick = {},
             )
             .semantics { contentDescription = scrimDescription },
-        contentAlignment = Alignment.Center,
+        contentAlignment = if (reminder) Alignment.TopCenter else Alignment.BottomCenter,
     ) {
-        Column(
-            horizontalAlignment = Alignment.Start,
-            modifier = Modifier
+        val surfaceModifier = if (reminder) {
+            Modifier
+                .fillMaxSize()
+                .background(Brush.verticalGradient(listOf(PanelTop, PanelBottom)))
+                .verticalScroll(rememberScrollState())
+                .semantics { contentDescription = InterventionSurface.WINDOW_TITLE }
+        } else {
+            Modifier
                 .widthIn(max = 440.dp)
                 .fillMaxWidth()
                 .padding(horizontal = 12.dp, vertical = 8.dp)
                 .heightIn(max = 760.dp)
                 .clip(RoundedCornerShape(30.dp))
-                .background(
-                    Brush.verticalGradient(listOf(PanelTop, PanelBottom)),
-                )
+                .background(Brush.verticalGradient(listOf(PanelTop, PanelBottom)))
                 .border(1.dp, PanelBorder, RoundedCornerShape(30.dp))
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 22.dp, vertical = 22.dp)
-                .semantics { contentDescription = InterventionSurface.WINDOW_TITLE },
+                .semantics { contentDescription = InterventionSurface.WINDOW_TITLE }
+        }
+        Column(
+            horizontalAlignment = Alignment.Start,
+            modifier = surfaceModifier,
         ) {
             if (reminder) {
                 ReminderContent(
@@ -293,8 +300,7 @@ private fun ReminderContent(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(226.dp)
-            .clip(RoundedCornerShape(20.dp)),
+            .height(286.dp),
     ) {
         SunriseLandscape(Modifier.fillMaxSize())
         Box(
@@ -310,11 +316,16 @@ private fun ReminderContent(
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 10.dp),
+                .padding(horizontal = 22.dp, vertical = 20.dp),
         ) {
             BrandHeader(showTagline = true, onClose = onSecondary)
         }
     }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp),
+    ) {
     Spacer(Modifier.height(18.dp))
     Text(
         text = "GENTLE REMINDER",
@@ -428,6 +439,7 @@ private fun ReminderContent(
             fontSize = 11.sp,
             lineHeight = 16.sp,
         )
+    }
     }
 }
 
