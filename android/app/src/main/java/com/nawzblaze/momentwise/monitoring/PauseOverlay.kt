@@ -1,8 +1,10 @@
 package com.nawzblaze.momentwise.monitoring
 
+import android.app.ActivityManager
 import android.content.Context
 import android.graphics.PixelFormat
 import android.os.Build
+import android.os.PowerManager
 import android.view.Gravity
 import android.view.WindowManager
 import android.widget.FrameLayout
@@ -88,11 +90,19 @@ object PauseOverlay {
                 // Match the reference opening sheet's soft-focus background on
                 // Android 12+. Keep a dim scrim as the fallback for devices that
                 // disable cross-window blur or run an older platform.
+                val lowRamDevice = appContext.getSystemService(ActivityManager::class.java)
+                    ?.isLowRamDevice == true
+                val batterySaverOn = appContext.getSystemService(PowerManager::class.java)
+                    ?.isPowerSaveMode == true
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-                    request.kind == PauseRequest.Kind.OPENING
+                    request.kind == PauseRequest.Kind.OPENING &&
+                    !lowRamDevice &&
+                    !batterySaverOn
                 ) {
+                    // A smaller system blur keeps the reference's soft backdrop
+                    // without forcing it on low-RAM or battery-saver devices.
                     flags = flags or WindowManager.LayoutParams.FLAG_BLUR_BEHIND
-                    setBlurBehindRadius(36)
+                    setBlurBehindRadius(22)
                 }
                 if (Build.VERSION.SDK_INT >= 28) {
                     layoutInDisplayCutoutMode =
