@@ -73,7 +73,7 @@ class PauseActivity : ComponentActivity() {
                                 }
                             }
                         },
-                        onDismissReminder = { act { it.dismissForToday(current) } },
+                        onDismissReminder = { act { controller -> if (current.kind == PauseRequest.Kind.OPENING) controller.snooze(current) else controller.dismissForToday(current) } },
                     )
                 }
             }
@@ -153,7 +153,7 @@ class PauseActivity : ComponentActivity() {
                 kind = kind,
                 notice = intent.getStringExtra(EXTRA_NOTICE).orEmpty(),
                 heading = intent.getStringExtra(EXTRA_HEADING)?.ifBlank { null }
-                    ?: InterventionSurface.OPENING_HEADING,
+                    ?: if (kind == PauseRequest.Kind.REMINDER) InterventionSurface.REMINDER_HEADING else InterventionSurface.OPENING_HEADING,
                 primaryLabel = intent.getStringExtra(EXTRA_PRIMARY).orEmpty(),
                 secondaryLabel = intent.getStringExtra(EXTRA_SECONDARY).orEmpty(),
                 tertiaryLabel = intent.getStringExtra(EXTRA_TERTIARY),
