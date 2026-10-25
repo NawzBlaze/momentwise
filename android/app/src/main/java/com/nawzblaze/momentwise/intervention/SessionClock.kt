@@ -452,20 +452,33 @@ object SessionClock {
         )
     }
 
-    fun onSnooze(snapshot: GuardSnapshot, snoozeMinutes: Int, nowMillis: Long): GuardSnapshot {
-        val pkg = snapshot.activePackage
+    fun onSnooze(
+        snapshot: GuardSnapshot,
+        snoozeMinutes: Int,
+        nowMillis: Long,
+        packageName: String? = snapshot.activePackage,
+    ): GuardSnapshot {
+        val pkg = packageName ?: snapshot.activePackage
         val use = if (pkg == null) {
             snapshot.useByPackage
         } else {
             snapshot.useByPackage + (pkg to ActiveUse.snooze(snoozeMinutes))
         }
         return snapshot.copy(
+            activePackage = pkg,
             phase = GuardSnapshot.Phase.CONTINUING,
             nextReminderAtMillis = null,
             reminderPresentedFor = null,
+            openingHandledForPackage = pkg ?: snapshot.openingHandledForPackage,
+            quitSuppressedPackage = null,
             clearedWithoutChoice = false,
             reminderHoldUntilMillis = null,
             backgroundedAtElapsed = null,
+            recentAwayPackage = null,
+            recentAwayAtElapsed = null,
+            lastGuardedPackage = pkg ?: snapshot.lastGuardedPackage,
+            continuedVisit = pkg != null,
+            explicitLeavePending = false,
             useByPackage = use,
         )
     }
