@@ -33,6 +33,7 @@ import androidx.compose.material.icons.outlined.RadioButtonChecked
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Spa
 import androidx.compose.material.icons.outlined.Timelapse
+import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -115,7 +116,6 @@ fun PauseScreen(
                 .padding(horizontal = 22.dp, vertical = 22.dp)
                 .semantics { contentDescription = InterventionSurface.WINDOW_TITLE },
         ) {
-            BrandHeader(showTagline = reminder)
             if (reminder) {
                 ReminderContent(
                     request = request,
@@ -124,6 +124,8 @@ fun PauseScreen(
                     onDismissReminder = onDismissReminder,
                 )
             } else {
+                OpeningDragHandle()
+                BrandHeader(showTagline = false)
                 OpeningContent(
                     request = request,
                     onQuit = onQuit,
@@ -136,7 +138,25 @@ fun PauseScreen(
 }
 
 @Composable
-private fun BrandHeader(showTagline: Boolean) {
+private fun OpeningDragHandle() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 0.dp, bottom = 18.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            modifier = Modifier
+                .width(56.dp)
+                .height(5.dp)
+                .clip(CircleShape)
+                .background(Color(0xFF8A9187)),
+        )
+    }
+}
+
+@Composable
+private fun BrandHeader(showTagline: Boolean, onClose: (() -> Unit)? = null) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth(),
@@ -174,21 +194,28 @@ private fun BrandHeader(showTagline: Boolean) {
                 )
             }
         }
-        if (showTagline) {
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFF202922)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Spa,
-                    contentDescription = null,
-                    tint = Cream,
-                    modifier = Modifier.size(19.dp),
-                )
-            }
+        Box(
+            modifier = Modifier
+                .size(if (showTagline) 44.dp else 40.dp)
+                .clip(CircleShape)
+                .background(Color(0xFF273128))
+                .then(
+                    if (showTagline && onClose != null) {
+                        Modifier.clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = onClose,
+                        )
+                    } else Modifier
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = if (showTagline) Icons.Outlined.Close else Icons.Outlined.MoreHoriz,
+                contentDescription = if (showTagline) "Dismiss reminder" else null,
+                tint = Cream,
+                modifier = Modifier.size(if (showTagline) 23.dp else 22.dp),
+            )
         }
     }
 }
@@ -227,13 +254,6 @@ private fun OpeningContent(
         onClick = onSecondary,
     )
     Spacer(Modifier.height(10.dp))
-    OpeningAction(
-        label = request.primaryLabel,
-        support = "Return to the home screen.",
-        emphasized = false,
-        icon = Icons.Outlined.Close,
-        onClick = onQuit,
-    )
     if (request.tertiaryLabel != null) {
         Spacer(Modifier.height(10.dp))
         OpeningAction(
@@ -244,6 +264,14 @@ private fun OpeningContent(
             onClick = onDismissReminder,
         )
     }
+    Spacer(Modifier.height(10.dp))
+    OpeningAction(
+        label = request.primaryLabel,
+        support = "Close this app and return home.",
+        emphasized = false,
+        icon = Icons.Outlined.Close,
+        onClick = onQuit,
+    )
     if (request.fromNotification) {
         Spacer(Modifier.height(12.dp))
         Text(
@@ -262,20 +290,38 @@ private fun ReminderContent(
     onSecondary: () -> Unit,
     onDismissReminder: () -> Unit,
 ) {
-    Spacer(Modifier.height(18.dp))
-    SunriseLandscape(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(148.dp)
+            .height(226.dp)
             .clip(RoundedCornerShape(20.dp)),
-    )
-    Spacer(Modifier.height(20.dp))
+    ) {
+        SunriseLandscape(Modifier.fillMaxSize())
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(Color(0x55060C08), Color.Transparent, Color(0xD9070D09)),
+                    ),
+                ),
+        )
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+        ) {
+            BrandHeader(showTagline = true, onClose = onSecondary)
+        }
+    }
+    Spacer(Modifier.height(18.dp))
     Text(
-        text = "G E N T L E   R E M I N D E R",
+        text = "GENTLE REMINDER",
         color = SunriseGold,
-        fontSize = 11.sp,
+        fontSize = 12.sp,
         fontWeight = FontWeight.SemiBold,
-        letterSpacing = 1.3.sp,
+        letterSpacing = 2.1.sp,
     )
     Spacer(Modifier.height(10.dp))
     Text(
@@ -301,13 +347,14 @@ private fun ReminderContent(
         modifier = Modifier.fillMaxWidth(),
     ) {
         ReminderStat(
-            value = (request.usedMinutes ?: request.reminderIntervalMinutes ?: 1).toString() + " min",
-            label = "Time in " + request.appName,
+            value = request.usedMinutes?.let { "$it min" } ?: "—",
+            label = "Time this visit",
+
             modifier = Modifier.weight(1f),
             icon = Icons.Outlined.Timelapse,
         )
         ReminderStat(
-            value = (request.reminderIntervalMinutes ?: 1).toString() + " min",
+            value = request.reminderIntervalMinutes?.let { "$it min" } ?: "Off",
             label = "Check-in interval",
             modifier = Modifier.weight(1f),
             icon = Icons.Outlined.Schedule,
@@ -356,7 +403,7 @@ private fun ReminderContent(
     Spacer(Modifier.height(9.dp))
     SecondaryOverlayAction(
         label = request.secondaryLabel,
-        support = request.secondarySupport,
+        support = null,
         onClick = onSecondary,
     )
     if (request.tertiaryLabel != null) {
