@@ -290,7 +290,15 @@ private fun AppRow(
  * Bitmap allocation and Drawable rendering happen off the Compose main thread.
  */
 private object AppIconBitmapCache {
-    private val cache = LruCache<String, ImageBitmap>(48)
+    // Cap decoded icon memory, not just the number of entries. Pixel sizes vary
+    // by screen density, so a byte budget is more predictable on tablets/high-DPI.
+    private val cache = object : LruCache<String, ImageBitmap>(4 * 1024 * 1024) {
+        override fun sizeOf(key: String, value: ImageBitmap): Int =
+            (value.width.toLong() * value.height.toLong() * 4L)
+                .coerceAtMost(Int.MAX_VALUE.toLong())
+                .toInt()
+                .coerceAtLeast(1)
+    }
 
     fun get(key: String): ImageBitmap? = cache.get(key)
 
