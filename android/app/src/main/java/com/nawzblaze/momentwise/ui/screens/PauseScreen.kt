@@ -61,7 +61,7 @@ import com.nawzblaze.momentwise.R
 import com.nawzblaze.momentwise.intervention.InterventionSurface
 import com.nawzblaze.momentwise.intervention.PauseRequest
 
-private val OverlayScrim = Color(0xE608100D)
+private val OverlayScrim = Color(0xB808100D)
 private val PanelTop = Color(0xFF111A15)
 private val PanelBottom = Color(0xFF070D0A)
 private val PanelBorder = Color(0xFF2B3A31)
